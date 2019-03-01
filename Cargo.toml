@@ -2,6 +2,13 @@
 name = "earthwyrm"
 version = "0.1.0"
 authors = ["Douglas Lau <doug.lau@state.mn.us>"]
+description = "Vector tile map server for openstreetmap data"
+license = "MIT OR Apache-2.0"
+documentation = "https://docs.rs/earthwyrm"
+homepage = "https://github.com/DougLau/earthwyrm"
+repository = "https://github.com/DougLau/earthwyrm"
+readme = "README.md"
+keywords = ["cartography", "gis", "osm", "server"]
 edition = "2018"
 
 [dependencies]

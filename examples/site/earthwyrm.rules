@@ -63,7 +63,7 @@ motorway      roads       8+  highway=motorway|motorway_link
 trunk         roads      10+  highway=trunk|trunk_link
 primary       roads      11+  highway=primary|primary_link
 secondary     roads      13+  highway=secondary|secondary_link
-tertiary      roads      14+  highway=tertiary|tertiary_link
+tertiary      line       14+  highway=tertiary|tertiary_link
 roads         line       15+  highway!=motorway|motorway_link|trunk|trunk_link|primary|primary_link|secondary|secondary_link|tertiary|tertiary_link|_
 building      polygon    15+  building
 parking       polygon    15+  amenity=parking

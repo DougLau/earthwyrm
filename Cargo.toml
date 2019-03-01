@@ -5,3 +5,13 @@ authors = ["Douglas Lau <doug.lau@state.mn.us>"]
 edition = "2018"
 
 [dependencies]
+env_logger = "0.5"
+fallible-iterator = "0.1"
+log = "0.4"
+mvt = "0.5.2"
+postgis = "0.6"
+postgres = "0.15"
+r2d2 = "0.8"
+r2d2_postgres = "0.14"
+users = "0.7"
+warp = "0.1"

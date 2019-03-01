@@ -1,3 +1,7 @@
+// earthwyrm.rs
+//
+// Copyright (c) 2019 Minnesota Department of Transportation
+//
 #[macro_use] extern crate log;
 use postgres::{self, Connection};
 use earthwyrm::{Error, TileMaker};

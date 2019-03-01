@@ -1,3 +1,7 @@
+// error.rs
+//
+// Copyright (c) 2019 Minnesota Department of Transportation
+//
 use mvt;
 use postgres;
 use r2d2;

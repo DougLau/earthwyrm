@@ -1,3 +1,7 @@
+// osm.rs
+//
+// Copyright (c) 2019 Minnesota Department of Transportation
+//
 use fallible_iterator::FallibleIterator;
 use mvt::{BBox, Feature, GeomData, GeomEncoder, GeomType, Layer, MapGrid, Tile,
           TileId, Transform};

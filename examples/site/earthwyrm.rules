@@ -1,7 +1,7 @@
 # earthwyrm.rules
 #
 # The .rules file determines how MVT files are created from an osm2pgsql
-# database.  The format mimics the .style file which populates the database.
+# database.
 #
 # Each rule has 4 (or more) columns that define how layers are built from
 # tables, zoom level and tags.

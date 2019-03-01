@@ -45,7 +45,7 @@ fn run_server(maker: TileMaker, pool: Pool<PostgresConnectionManager>) {
         .and(path!("tile" / u32 / u32))
         .and(warp::path::tail())
         .and_then(move |host, z, x, tail| {
-            info!("request from {:?}", host);
+            debug!("request from {:?}", host);
             let pool = pool.clone();
             if let Some(conn) = pool.try_get() {
                 generate_tile(&maker, &conn, z, x, tail)

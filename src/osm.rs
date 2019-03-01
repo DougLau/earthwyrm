@@ -455,11 +455,16 @@ fn load_layer_defs(fname: &str) -> Result<Vec<LayerDef>, Error> {
     let f = BufReader::new(File::open(fname)?);
     for line in f.lines() {
         if let Some(ld) = parse_layer_def(&line?) {
-            info!("layer def: {:?}", &ld);
+            debug!("LayerDef: {:?}", &ld);
             defs.push(ld);
         }
     }
-    info!("layer defs loaded: {}", defs.len());
+    let mut names = String::new();
+    for ld in &defs {
+        names.push(' ');
+        names.push_str(&ld.name);
+    }
+    info!("{} layers loaded:{}", defs.len(), names);
     Ok(defs)
 }
 

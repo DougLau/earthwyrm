@@ -2,17 +2,18 @@
 //
 // Copyright (c) 2019 Minnesota Department of Transportation
 //
-#[macro_use] extern crate log;
-use postgres::{self, Connection};
+#[macro_use]
+extern crate log;
 use earthwyrm::{Error, TileMaker};
-use warp::{self, Filter, path, reject::not_found, filters};
+use postgres::{self, Connection};
 use r2d2::Pool;
-use r2d2_postgres::{TlsMode, PostgresConnectionManager};
+use r2d2_postgres::{PostgresConnectionManager, TlsMode};
+use warp::{self, filters, path, reject::not_found, Filter};
 
 fn main() -> Result<(), Error> {
     env_logger::Builder::from_default_env()
-                        .default_format_timestamp(false)
-                        .init();
+        .default_format_timestamp(false)
+        .init();
     if let Some(username) = users::get_current_username() {
         let maker = TileMaker::new("tiles").build()?;
         // build path for unix domain socket
@@ -58,9 +59,13 @@ fn run_server(maker: TileMaker, pool: Pool<PostgresConnectionManager>) {
     warp::serve(routes).run(([0, 0, 0, 0], 3030));
 }
 
-fn generate_tile(maker: &TileMaker, conn: &Connection, z: u32, x: u32,
-    tail: filters::path::Tail) -> Result<Vec<u8>, warp::reject::Rejection>
-{
+fn generate_tile(
+    maker: &TileMaker,
+    conn: &Connection,
+    z: u32,
+    x: u32,
+    tail: filters::path::Tail,
+) -> Result<Vec<u8>, warp::reject::Rejection> {
     let mut sp = tail.as_str().splitn(2, '.');
     if let (Some(y), Some("mvt")) = (sp.next(), sp.next()) {
         if let Ok(y) = y.parse::<u32>() {

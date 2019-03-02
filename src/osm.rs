@@ -3,12 +3,14 @@
 // Copyright (c) 2019 Minnesota Department of Transportation
 //
 use fallible_iterator::FallibleIterator;
-use mvt::{BBox, Feature, GeomData, GeomEncoder, GeomType, Layer, MapGrid, Tile,
-          TileId, Transform};
+use mvt::{
+    BBox, Feature, GeomData, GeomEncoder, GeomType, Layer, MapGrid, Tile,
+    TileId, Transform,
+};
 use postgis::ewkb;
-use postgres::Connection;
 use postgres::rows::Row;
 use postgres::types::{FromSql, ToSql};
+use postgres::Connection;
 use std::fs::File;
 use std::io::{BufRead, BufReader, Write};
 use std::time::Instant;
@@ -36,17 +38,20 @@ const ZOOM_MAX: u32 = 30;
 
 #[derive(Clone, Debug, PartialEq)]
 enum MustMatch {
-    No, Yes
+    No,
+    Yes,
 }
 
 #[derive(Clone, Debug)]
 enum IncludeValue {
-    No, Yes
+    No,
+    Yes,
 }
 
 #[derive(Clone, Debug)]
 enum Equality {
-    Equal, NotEqual
+    Equal,
+    NotEqual,
 }
 
 #[derive(Clone, Debug)]
@@ -98,8 +103,14 @@ impl TagPattern {
         let include = IncludeValue::Yes;
         let key = "name".to_string();
         let equality = Equality::NotEqual;
-        let values = vec!("_".to_string());
-        TagPattern { must_match, include, key, equality, values }
+        let values = vec!["_".to_string()];
+        TagPattern {
+            must_match,
+            include,
+            key,
+            equality,
+            values,
+        }
     }
 
     fn tag(&self) -> &str {
@@ -114,12 +125,8 @@ impl TagPattern {
     fn matches_value(&self, value: Option<String>) -> bool {
         debug_assert!(self.must_match == MustMatch::Yes);
         match self.equality {
-            Equality::Equal => {
-                self.matches_value_option(value)
-            },
-            Equality::NotEqual => {
-                !self.matches_value_option(value)
-            }
+            Equality::Equal => self.matches_value_option(value),
+            Equality::NotEqual => !self.matches_value_option(value),
         }
     }
 
@@ -166,7 +173,13 @@ impl TagPattern {
         let (key, equality, values) = TagPattern::parse_equality(pat)?;
         let key = key.to_string();
         let values = TagPattern::parse_values(values);
-        Some(TagPattern { must_match, include, key, equality, values })
+        Some(TagPattern {
+            must_match,
+            include,
+            key,
+            equality,
+            values,
+        })
     }
 }
 
@@ -193,7 +206,7 @@ fn parse_u32(v: &str) -> Option<u32> {
     }
 }
 
-fn parse_patterns(c: &mut Iterator<Item=&str>) -> Option<Vec<TagPattern>> {
+fn parse_patterns(c: &mut Iterator<Item = &str>) -> Option<Vec<TagPattern>> {
     let mut patterns = Vec::<TagPattern>::new();
     loop {
         if let Some(p) = c.next() {
@@ -219,12 +232,18 @@ fn parse_patterns(c: &mut Iterator<Item=&str>) -> Option<Vec<TagPattern>> {
 }
 
 impl LayerDef {
-    fn parse(c: &mut Iterator<Item=&str>) -> Option<Self> {
+    fn parse(c: &mut Iterator<Item = &str>) -> Option<Self> {
         let name = c.next()?.to_string();
         let table = c.next()?.to_string();
         let (zoom_min, zoom_max) = parse_zoom(c.next()?)?;
         let patterns = parse_patterns(c)?;
-        Some(LayerDef { name, table, zoom_min, zoom_max, patterns })
+        Some(LayerDef {
+            name,
+            table,
+            zoom_min,
+            zoom_max,
+            patterns,
+        })
     }
 
     fn check_zoom(&self, zoom: u32) -> bool {
@@ -274,9 +293,13 @@ impl LayerDef {
         None
     }
 
-    fn add_feature(&self, layer: Layer, geom_type: &GeomType, row: &Row,
-        transform: &Transform) -> Result<Layer, Error>
-    {
+    fn add_feature(
+        &self,
+        layer: Layer,
+        geom_type: &GeomType,
+        row: &Row,
+        transform: &Transform,
+    ) -> Result<Layer, Error> {
         if !self.matches(row) {
             return Ok(layer);
         }
@@ -285,27 +308,27 @@ impl LayerDef {
                 let mut feature = layer.into_feature(gd);
                 self.get_tags(&mut feature, row);
                 Ok(feature.into_layer())
-            },
-            None => {
-                Ok(layer)
-            },
+            }
+            None => Ok(layer),
         }
     }
 }
 
 fn get_geometry(geom_type: &GeomType, row: &Row, t: &Transform) -> GeomResult {
     match geom_type {
-        GeomType::Point => { get_geom_data(row, t, &encode_points) }
-        GeomType::Linestring => { get_geom_data(row, t,&encode_linestrings)}
-        GeomType::Polygon => { get_geom_data(row, t, &encode_polygons) }
+        GeomType::Point => get_geom_data(row, t, &encode_points),
+        GeomType::Linestring => get_geom_data(row, t, &encode_linestrings),
+        GeomType::Polygon => get_geom_data(row, t, &encode_polygons),
     }
 }
 
 type GeomResult = Result<Option<GeomData>, Error>;
 
-fn get_geom_data<T: FromSql>(row: &Row, t: &Transform, enc: &Fn(T, &Transform)
-    -> GeomResult) -> GeomResult
-{
+fn get_geom_data<T: FromSql>(
+    row: &Row,
+    t: &Transform,
+    enc: &Fn(T, &Transform) -> GeomResult,
+) -> GeomResult {
     match row.get_opt(WAY_COL) {
         Some(Ok(Some(g))) => enc(g, t),
         Some(Err(e)) => Err(Error::Pg(e)),
@@ -349,7 +372,7 @@ fn encode_polygons(g: ewkb::MultiPolygon, t: &Transform) -> GeomResult {
             ge.complete_geom()?;
             let len = ring.points.len();
             if len > 2 {
-                for p in &ring.points[..(len-1)] {
+                for p in &ring.points[..(len - 1)] {
                     ge.add_point(p.x, p.y);
                 }
             }
@@ -358,16 +381,22 @@ fn encode_polygons(g: ewkb::MultiPolygon, t: &Transform) -> GeomResult {
     Ok(Some(ge.encode()?))
 }
 
-
 impl TableDef {
-    fn new(name: &str, geom_type: GeomType, layer_defs: &Vec<LayerDef>)
-        -> Option<Self>
-    {
+    fn new(
+        name: &str,
+        geom_type: GeomType,
+        layer_defs: &Vec<LayerDef>,
+    ) -> Option<Self> {
         let tags = TableDef::table_tags(name, layer_defs);
         if tags.len() > 0 {
             let name = name.to_string();
             let sql = TableDef::build_query_sql(&name, &tags);
-            Some(TableDef { name, geom_type, tags, sql })
+            Some(TableDef {
+                name,
+                geom_type,
+                tags,
+                sql,
+            })
         } else {
             None
         }
@@ -411,7 +440,6 @@ impl TableDef {
 }
 
 impl Builder {
-
     pub fn pixels(mut self, pixels: u32) -> Self {
         self.pixels = pixels;
         self
@@ -445,13 +473,16 @@ impl Builder {
     }
 
     fn load_layer_defs(&self) -> Result<Vec<LayerDef>, Error> {
-        load_layer_defs(self.rules_path.as_ref().map_or(
-            RULES_PATH_DEF, String::as_str))
+        load_layer_defs(
+            self.rules_path
+                .as_ref()
+                .map_or(RULES_PATH_DEF, String::as_str),
+        )
     }
 }
 
 fn load_layer_defs(fname: &str) -> Result<Vec<LayerDef>, Error> {
-    let mut defs = vec!();
+    let mut defs = vec![];
     let f = BufReader::new(File::open(fname)?);
     for line in f.lines() {
         if let Some(ld) = parse_layer_def(&line?) {
@@ -480,19 +511,19 @@ fn parse_layer_def(line: &str) -> Option<LayerDef> {
         1...3 => {
             error!("Invalid rule (not enough columns): {}", line);
             None
-        },
+        }
         _ => {
             let ld = LayerDef::parse(&mut c.into_iter());
             if ld.is_none() {
                 error!("parsing \"{}\"", line);
             }
             ld
-        },
+        }
     }
 }
 
 fn build_table_defs(layer_defs: &Vec<LayerDef>) -> Vec<TableDef> {
-    let mut tables = vec!();
+    let mut tables = vec![];
     for row in ALL_TABLES {
         let name = row.0;
         let geom_type = row.1.clone();
@@ -514,18 +545,25 @@ impl TileMaker {
         }
     }
 
-    pub fn write_tile(&self, conn: &Connection, xtile: u32, ytile: u32,
-        zoom: u32) -> Result<(), Error>
-    {
+    pub fn write_tile(
+        &self,
+        conn: &Connection,
+        xtile: u32,
+        ytile: u32,
+        zoom: u32,
+    ) -> Result<(), Error> {
         let tid = TileId::new(xtile, ytile, zoom)?;
         let fname = format!("{}/{}.mvt", &self.name, tid);
         let mut f = File::create(fname)?;
         self.write_to(conn, tid, &mut f)
     }
 
-    pub fn write_to(&self, conn: &Connection, tid: TileId, out: &mut Write)
-        -> Result<(), Error>
-    {
+    pub fn write_to(
+        &self,
+        conn: &Connection,
+        tid: TileId,
+        out: &mut Write,
+    ) -> Result<(), Error> {
         let tile = self.fetch_tile(conn, tid)?;
         if tile.num_layers() > 0 {
             tile.write_to(out)?;
@@ -535,9 +573,13 @@ impl TileMaker {
         Ok(())
     }
 
-    pub fn write_buf(&self, conn: &Connection, xtile: u32, ytile: u32,
-        zoom: u32) -> Result<Vec<u8>, Error>
-    {
+    pub fn write_buf(
+        &self,
+        conn: &Connection,
+        xtile: u32,
+        ytile: u32,
+        zoom: u32,
+    ) -> Result<Vec<u8>, Error> {
         let tid = TileId::new(xtile, ytile, zoom)?;
         let tile = self.fetch_tile(conn, tid)?;
         if tile.num_layers() > 0 {
@@ -548,18 +590,27 @@ impl TileMaker {
         }
     }
 
-    fn fetch_tile(&self, conn: &Connection, tid: TileId) -> Result<Tile, Error>{
+    fn fetch_tile(
+        &self,
+        conn: &Connection,
+        tid: TileId,
+    ) -> Result<Tile, Error> {
         let bbox = self.grid.tile_bbox(tid);
-        let tile_sz = (bbox.x_max() - bbox.x_min())
-                  .max(bbox.y_max() - bbox.y_min());
+        let tile_sz =
+            (bbox.x_max() - bbox.x_min()).max(bbox.y_max() - bbox.y_min());
         let pixel_sz = tile_sz / self.pixels as f64;
         debug!("tile {}, pixel_sz {:?}", tid, pixel_sz);
         let ts = TILE_EXTENT as f64;
         let transform = self.grid.tile_transform(tid).scale(ts, ts);
         let t = Instant::now();
-        let tile = self.query_tile(conn, &transform, &bbox, pixel_sz, tid.z())?;
-        info!("tile {}, fetched {} bytes in {:?}", tid, tile.compute_size(),
-            t.elapsed());
+        let tile =
+            self.query_tile(conn, &transform, &bbox, pixel_sz, tid.z())?;
+        info!(
+            "tile {}, fetched {} bytes in {:?}",
+            tid,
+            tile.compute_size(),
+            t.elapsed()
+        );
         Ok(tile)
     }
 
@@ -567,18 +618,31 @@ impl TileMaker {
         self.layer_defs.iter().any(|l| l.check_table(table, zoom))
     }
 
-    fn query_tile(&self, conn: &Connection, transform: &Transform, bbox: &BBox,
-        tol: f64, zoom: u32) -> Result<Tile, Error>
-    {
+    fn query_tile(
+        &self,
+        conn: &Connection,
+        transform: &Transform,
+        bbox: &BBox,
+        tol: f64,
+        zoom: u32,
+    ) -> Result<Tile, Error> {
         let mut tile = Tile::new(TILE_EXTENT);
-        let mut layers = self.layer_defs
+        let mut layers = self
+            .layer_defs
             .iter()
             .map(|ld| tile.create_layer(&ld.name))
             .collect();
         for table in &self.tables {
             if self.check_layers(table, zoom) {
-                self.query_layers(conn, table, &bbox, &transform, tol, zoom,
-                    &mut layers)?;
+                self.query_layers(
+                    conn,
+                    table,
+                    &bbox,
+                    &transform,
+                    tol,
+                    zoom,
+                    &mut layers,
+                )?;
             }
         }
         for layer in layers.drain(..) {
@@ -589,10 +653,16 @@ impl TileMaker {
         Ok(tile)
     }
 
-    fn query_layers(&self, conn: &Connection, table: &TableDef, bbox: &BBox,
-        transform: &Transform, tol: f64, zoom: u32, layers: &mut Vec<Layer>)
-        -> Result<(), Error>
-    {
+    fn query_layers(
+        &self,
+        conn: &Connection,
+        table: &TableDef,
+        bbox: &BBox,
+        transform: &Transform,
+        tol: f64,
+        zoom: u32,
+        layers: &mut Vec<Layer>,
+    ) -> Result<(), Error> {
         debug!("sql: {}", &table.sql);
         let stmt = conn.prepare_cached(&table.sql)?;
         let trans = conn.transaction()?;
@@ -602,8 +672,11 @@ impl TileMaker {
         let y_max = bbox.y_max();
         let params: Vec<&ToSql> = vec![&tol, &x_min, &y_min, &x_max, &y_max];
         debug!("params: {:?}", params);
-        let row_limit = if self.query_limit < 50 { self.query_limit as i32 }
-                        else { 50 };
+        let row_limit = if self.query_limit < 50 {
+            self.query_limit as i32
+        } else {
+            50
+        };
         let rows = stmt.lazy_query(&trans, &params[..], row_limit)?;
         let mut i = 0;
         for row in rows.iterator() {
@@ -617,19 +690,23 @@ impl TileMaker {
         Ok(())
     }
 
-    fn add_layer_features(&self, table: &TableDef, row: &Row, transform:
-        &Transform, zoom: u32, layers: &mut Vec<Layer>) -> Result<(), Error>
-    {
+    fn add_layer_features(
+        &self,
+        table: &TableDef,
+        row: &Row,
+        transform: &Transform,
+        zoom: u32,
+        layers: &mut Vec<Layer>,
+    ) -> Result<(), Error> {
         let geom_type = &table.geom_type;
         let mut lyrs: Vec<Layer> = layers.drain(..).collect();
         for mut layer in lyrs.drain(..) {
-            let layer_def = self.layer_defs
-                .iter()
-                .find(|ld| ld.name == layer.name());
+            let layer_def =
+                self.layer_defs.iter().find(|ld| ld.name == layer.name());
             if let Some(layer_def) = layer_def {
                 if layer_def.check_table(table, zoom) {
-                    layer = layer_def.add_feature(layer, geom_type, &row,
-                        transform)?;
+                    layer = layer_def
+                        .add_feature(layer, geom_type, &row, transform)?;
                 }
             }
             layers.push(layer);

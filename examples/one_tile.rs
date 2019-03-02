@@ -2,14 +2,15 @@
 //
 // Copyright (c) 2019 Minnesota Department of Transportation
 //
-#[macro_use] extern crate log;
-use postgres::{self, Connection, TlsMode};
+#[macro_use]
+extern crate log;
 use earthwyrm::{Error, TileMaker};
+use postgres::{self, Connection, TlsMode};
 
 fn main() {
     env_logger::Builder::from_default_env()
-                        .default_format_timestamp(false)
-                        .init();
+        .default_format_timestamp(false)
+        .init();
     write_tile().unwrap();
 }
 

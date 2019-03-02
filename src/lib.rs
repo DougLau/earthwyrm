@@ -2,7 +2,8 @@
 //
 // Copyright (c) 2019 Minnesota Department of Transportation
 //
-#[macro_use] extern crate log;
+#[macro_use]
+extern crate log;
 
 mod error;
 mod osm;

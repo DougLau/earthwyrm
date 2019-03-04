@@ -46,7 +46,7 @@ By default, *EarthWyrm* will listen on the IPv4 loopback address.  This means
 clients from other hosts will not be able to reach the server.  There are a
 couple of options:
 
-* Update "bind_address" in /etc/earthwyrm/earthwyrm.toml
+* Update *bind_address* in /etc/earthwyrm/earthwyrm.toml
 * (Preferred option!)  Set up a reverse proxy, such as
   [nginx](https://nginx.org/en/).  This has the advantage that caching can be
   enabled to improve latency.

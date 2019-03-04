@@ -1,0 +1,13 @@
+[Unit]
+Description=EarthWyrm map server
+StartLimitIntervalSec=0
+
+[Service]
+Environment=RUST_LOG=warn
+ExecStart=/usr/local/bin/earthwyrm
+Restart=always
+RestartSec=2
+User=earthwyrm
+
+[Install]
+WantedBy=multi-user.target

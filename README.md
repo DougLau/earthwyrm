@@ -1,6 +1,6 @@
 # EarthWyrm
 
-EarthWyrm is an open-source map server developed for the Minnesota Department
+*EarthWyrm* is an open-source map server developed for the Minnesota Department
 of Transportation (MnDOT).  It can serve OpenStreetMap (or other) data in
 [MVT](https://github.com/mapbox/vector-tile-spec) format.
 
@@ -23,17 +23,29 @@ psql earthwyrm -c 'CREATE EXTENSION postgis'
 time osm2pgsql -v --number-processes=8 -d earthwyrm --multi-geometry -s --drop ./[map-data].osm.pbf
 ```
 
-* Build earthwyrm
+* Build and install
 ```
 git clone https://github.com/DougLau/earthwyrm.git
 cd earthwyrm
 cargo build --release
+cp target/release/earthwyrm /usr/local/bin/
+sh ./examples/site/install.sh
 ```
 
-* Install earthwyrm
+* Start the server
 ```
-cp target/release/earthwyrm /usr/local/bin/
-mkdir /etc/earthwyrm
-cp examples/site/earthwyrm.toml /etc/
-cp examples/site/earthwyrm.rules /etc/
+systemctl enable earthwyrm
+systemctl start earthwyrm
+systemctl status earthwyrm
 ```
+
+## Customizing
+
+By default, *EarthWyrm* will listen on the IPv4 loopback address.  This means
+clients from other hosts will not be able to reach the server.  There are a
+couple of options:
+
+* Update "bind_address" in /etc/earthwyrm/earthwyrm.toml
+* Set up a reverse proxy, such as nginx (preferred option!)
+
+In either case, the url in /var/lib/earthwyrm/map.js will need to be updated.

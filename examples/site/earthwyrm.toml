@@ -1,0 +1,43 @@
+# earthwyrm.toml
+#
+# Socket address and port to bind server
+bind_address = "0.0.0.0:3030"
+# Layer rule file
+rule_file = "/etc/earthwyrm.rules"
+# Root path for static files
+document_root = "/var/lib/earthwyrm"
+#
+# Defining a table makes it available for layer rules
+#   - name: Table name, as used in rules file
+#   - db_table: Database table (may include schema)
+#   - id_column: Database column to uniquely identify features
+#   - geom_column: Database column for PostGIS feature geometry
+#   - geom_type: Type of PostGIS geometry (polygon, linestring or point)
+#
+[[table]]
+name = "polygon"
+db_table = "planet_osm_polygon"
+id_column = "osm_id"
+geom_column = "way"
+geom_type = "polygon"
+
+[[table]]
+name = "line"
+db_table = "planet_osm_line"
+id_column = "osm_id"
+geom_column = "way"
+geom_type = "linestring"
+
+[[table]]
+name = "roads"
+db_table = "planet_osm_roads"
+id_column = "osm_id"
+geom_column = "way"
+geom_type = "linestring"
+
+[[table]]
+name = "point"
+db_table = "planet_osm_point"
+id_column = "osm_id"
+geom_column = "way"
+geom_type = "point"

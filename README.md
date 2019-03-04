@@ -31,3 +31,9 @@ cargo build --release
 ```
 
 * Install earthwyrm
+```
+cp target/release/earthwyrm /usr/local/bin/
+mkdir /etc/earthwyrm
+cp examples/site/earthwyrm.toml /etc/
+cp examples/site/earthwyrm.rules /etc/
+```

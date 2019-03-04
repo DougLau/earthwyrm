@@ -8,12 +8,15 @@ use earthwyrm::{Error, TileMaker};
 use postgres::{self, Connection};
 use r2d2::Pool;
 use r2d2_postgres::{PostgresConnectionManager, TlsMode};
+use std::net::SocketAddr;
 use warp::{self, filters, path, reject::not_found, Filter};
 
 fn main() -> Result<(), Error> {
     env_logger::Builder::from_default_env()
         .default_format_timestamp(false)
         .init();
+    let sock_addr: SocketAddr = "0.0.0.0:3030".parse()
+                                              .expect("Invalid socket address");
     if let Some(username) = users::get_current_username() {
         let maker = TileMaker::new("tiles").build()?;
         // build path for unix domain socket
@@ -23,7 +26,7 @@ fn main() -> Result<(), Error> {
         db_url.push_str("@%2Frun%2Fpostgresql/earthwyrm");
         let manager = PostgresConnectionManager::new(db_url, TlsMode::None)?;
         let pool = r2d2::Pool::new(manager)?;
-        run_server(maker, pool);
+        run_server(sock_addr, maker, pool);
         Ok(())
     } else {
         error!("User name lookup error");
@@ -31,7 +34,11 @@ fn main() -> Result<(), Error> {
     }
 }
 
-fn run_server(maker: TileMaker, pool: Pool<PostgresConnectionManager>) {
+fn run_server(
+    sock_addr: SocketAddr,
+    maker: TileMaker,
+    pool: Pool<PostgresConnectionManager>)
+{
     let html = warp::get2()
         .and(path!("map.html"))
         .and(warp::fs::file("map.html"));
@@ -56,7 +63,7 @@ fn run_server(maker: TileMaker, pool: Pool<PostgresConnectionManager>) {
             }
         });
     let routes = html.or(css).or(js).or(tile);
-    warp::serve(routes).run(([0, 0, 0, 0], 3030));
+    warp::serve(routes).run(sock_addr);
 }
 
 fn generate_tile(

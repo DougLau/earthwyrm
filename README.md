@@ -6,11 +6,12 @@ of Transportation (MnDOT).  It can serve OpenStreetMap (or other) data in
 
 ## Setup
 
-* Install linux with dependencies:  (available from linux repositories)
+* Install linux and dependencies (available from linux repositories):
   - **PostgreSQL 9+**
   - **PostGIS 2.4+**
   - **osm2pgsql 0.96+**
   - **cargo 1.31+**
+  - **nginx** (optional)
 
 * Download OpenStreetMap data in _.osm.pbf_ (OSM protobuf) format.  See the
   [OSM wiki](https://wiki.openstreetmap.org/wiki/Downloading_data) for download
@@ -46,6 +47,8 @@ clients from other hosts will not be able to reach the server.  There are a
 couple of options:
 
 * Update "bind_address" in /etc/earthwyrm/earthwyrm.toml
-* Set up a reverse proxy, such as nginx (preferred option!)
+* (Preferred option!)  Set up a reverse proxy, such as
+  [nginx](https://nginx.org/en/).  This has the advantage that caching can be
+  enabled to improve latency.
 
 In either case, the url in /var/lib/earthwyrm/map.js will need to be updated.

@@ -20,7 +20,7 @@ fn main() -> Result<(), Error> {
         let mut db_url = "postgres://".to_string();
         db_url.push_str(&username);
         // not worth using percent_encode
-        db_url.push_str("@%2Frun%2Fpostgresql/osm"); // FIXME: => earthwyrm
+        db_url.push_str("@%2Frun%2Fpostgresql/earthwyrm");
         let manager = PostgresConnectionManager::new(db_url, TlsMode::None)?;
         let pool = r2d2::Pool::new(manager)?;
         run_server(maker, pool);

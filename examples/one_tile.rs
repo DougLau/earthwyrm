@@ -21,7 +21,7 @@ fn write_tile() -> Result<(), Error> {
         let mut db_url = "postgres://".to_string();
         db_url.push_str(&username);
         // not worth using percent_encode
-        db_url.push_str("@%2Frun%2Fpostgresql/osm");
+        db_url.push_str("@%2Frun%2Fpostgresql/earthwyrm");
         let conn = Connection::connect(db_url, TlsMode::None)?;
         maker.write_tile(&conn, 246, 368, 10)?;
     } else {

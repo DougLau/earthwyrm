@@ -2,8 +2,8 @@
 #
 # Socket address and port to bind server
 bind_address = "127.0.0.1:3030"
-# Layer rule file
-rule_file = "/etc/earthwyrm.rules"
+# Path to layer rules
+rules_path = "/etc/earthwyrm.rules"
 # Root path for static files
 document_root = "/var/lib/earthwyrm"
 #

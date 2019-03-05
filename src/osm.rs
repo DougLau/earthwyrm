@@ -11,6 +11,7 @@ use postgis::ewkb;
 use postgres::rows::Row;
 use postgres::types::{FromSql, ToSql};
 use postgres::Connection;
+use serde_derive::Deserialize;
 use std::fs::File;
 use std::io::{BufRead, BufReader, Write};
 use std::time::Instant;
@@ -19,22 +20,18 @@ use crate::error::Error;
 
 const TILE_EXTENT: u32 = 4096;
 
+const ZOOM_MAX: u32 = 30;
+
 const RULES_PATH_DEF: &'static str = "./earthwyrm.rules";
 
-const TABLE_BASE: &'static str = &"planet_osm_";
-
-const ALL_TABLES: &[(&str, GeomType)] = &[
-    ("polygon", GeomType::Polygon),
-    ("line", GeomType::Linestring),
-    ("roads", GeomType::Linestring),
-    ("point", GeomType::Point),
-];
-
-const ID_COL: &'static str = &"osm_id";
-
-const WAY_COL: &'static str = &"way";
-
-const ZOOM_MAX: u32 = 30;
+fn lookup_geom_type(geom_type: &str) -> Option<GeomType> {
+    match geom_type {
+        "polygon" => Some(GeomType::Polygon),
+        "linestring" => Some(GeomType::Linestring),
+        "point" => Some(GeomType::Point),
+        _ => None,
+    }
+}
 
 #[derive(Clone, Debug, PartialEq)]
 enum MustMatch {
@@ -72,9 +69,19 @@ struct LayerDef {
     patterns: Vec<TagPattern>,
 }
 
+#[derive(Debug, Deserialize)]
+pub struct TableCfg {
+    name: String,
+    db_table: String,
+    id_column: String,
+    geom_column: String,
+    geom_type: String,
+}
+
 #[derive(Clone, Debug)]
 struct TableDef {
     name: String,
+    id_column: String,
     geom_type: GeomType,
     tags: Vec<String>,
     sql: String,
@@ -85,6 +92,7 @@ pub struct Builder {
     pixels: u32,
     query_limit: usize,
     rules_path: Option<String>,
+    tables: Vec<TableCfg>,
 }
 
 #[derive(Clone)]
@@ -268,11 +276,12 @@ impl LayerDef {
         true
     }
 
-    fn get_tags(&self, feature: &mut Feature, row: &Row) {
-        let fid = row.get::<_, i64>(ID_COL);
+    fn get_tags(&self, id_column: &str, feature: &mut Feature, row: &Row) {
+        // id_column is always #0 (see build_query_sql)
+        let fid = row.get::<_, i64>(0);
         trace!("layer {}, fid {}", &self.name, fid);
         // NOTE: Leaflet apparently can't use mvt feature id; use tag/property
-        feature.add_tag_sint(ID_COL, fid);
+        feature.add_tag_sint(id_column, fid);
         for pattern in &self.patterns {
             if let IncludeValue::Yes = pattern.include {
                 let key = pattern.tag();
@@ -296,6 +305,7 @@ impl LayerDef {
     fn add_feature(
         &self,
         layer: Layer,
+        id_column: &str,
         geom_type: &GeomType,
         row: &Row,
         transform: &Transform,
@@ -306,7 +316,7 @@ impl LayerDef {
         match get_geometry(geom_type, row, transform)? {
             Some(gd) => {
                 let mut feature = layer.into_feature(gd);
-                self.get_tags(&mut feature, row);
+                self.get_tags(id_column, &mut feature, row);
                 Ok(feature.into_layer())
             }
             None => Ok(layer),
@@ -329,7 +339,8 @@ fn get_geom_data<T: FromSql>(
     t: &Transform,
     enc: &Fn(T, &Transform) -> GeomResult,
 ) -> GeomResult {
-    match row.get_opt(WAY_COL) {
+    // geom_column is always #1 (see build_query_sql)
+    match row.get_opt(1) {
         Some(Ok(Some(g))) => enc(g, t),
         Some(Err(e)) => Err(Error::Pg(e)),
         _ => Ok(None),
@@ -381,18 +392,57 @@ fn encode_polygons(g: ewkb::MultiPolygon, t: &Transform) -> GeomResult {
     Ok(Some(ge.encode()?))
 }
 
-impl TableDef {
-    fn new(
+impl TableCfg {
+    pub fn new(
         name: &str,
-        geom_type: GeomType,
-        layer_defs: &Vec<LayerDef>,
-    ) -> Option<Self> {
+        db_table: &str,
+        id_column: &str,
+        geom_column: &str,
+        geom_type: &str,
+    ) -> Self {
+        let name = name.to_string();
+        let db_table = db_table.to_string();
+        let id_column = id_column.to_string();
+        let geom_column = geom_column.to_string();
+        let geom_type = geom_type.to_string();
+        TableCfg { name, db_table, id_column, geom_column, geom_type }
+    }
+
+    fn build_query_sql(&self, tags: &Vec<String>) -> String {
+        let mut sql = "SELECT ".to_string();
+        // id_column must be first (#0)
+        sql.push_str(&self.id_column);
+        sql.push_str(",ST_Multi(ST_SimplifyPreserveTopology(ST_SnapToGrid(");
+        // geom_column must be second (#1)
+        sql.push_str(&self.geom_column);
+        sql.push_str(",$1),$1))");
+        for tag in tags {
+            sql.push_str(",\"");
+            sql.push_str(tag);
+            sql.push('"');
+        }
+        sql.push_str(" FROM ");
+        sql.push_str(&self.db_table);
+        sql.push_str(" WHERE ");
+        sql.push_str(&self.geom_column);
+        sql.push_str(" && ST_MakeEnvelope($2,$3,$4,$5,3857)");
+        sql
+    }
+}
+
+impl TableDef {
+    fn new(table_cfg: &TableCfg, layer_defs: &Vec<LayerDef>) -> Option<Self> {
+        let name = &table_cfg.name;
+        let id_column = table_cfg.id_column.clone();
+        // FIXME: unknown geom type should be an error
+        let geom_type = lookup_geom_type(&table_cfg.geom_type)?;
         let tags = TableDef::table_tags(name, layer_defs);
         if tags.len() > 0 {
             let name = name.to_string();
-            let sql = TableDef::build_query_sql(&name, &tags);
+            let sql = table_cfg.build_query_sql(&tags);
             Some(TableDef {
                 name,
+                id_column,
                 geom_type,
                 tags,
                 sql,
@@ -416,27 +466,6 @@ impl TableDef {
         }
         tags
     }
-
-    fn build_query_sql(name: &str, tags: &Vec<String>) -> String {
-        let mut sql = "SELECT ".to_string();
-        sql.push_str(ID_COL);
-        sql.push_str(",ST_Multi(ST_SimplifyPreserveTopology(ST_SnapToGrid(");
-        sql.push_str(WAY_COL);
-        sql.push_str(",$1),$1)) AS ");
-        sql.push_str(WAY_COL);
-        for tag in tags {
-            sql.push_str(",\"");
-            sql.push_str(tag);
-            sql.push('"');
-        }
-        sql.push_str(" FROM ");
-        sql.push_str(TABLE_BASE);
-        sql.push_str(name);
-        sql.push_str(" WHERE ");
-        sql.push_str(WAY_COL);
-        sql.push_str(" && ST_MakeEnvelope($2,$3,$4,$5,3857)");
-        sql
-    }
 }
 
 impl Builder {
@@ -455,9 +484,14 @@ impl Builder {
         self
     }
 
+    pub fn tables(mut self, tables: Vec<TableCfg>) -> Self {
+        self.tables = tables;
+        self
+    }
+
     pub fn build(self) -> Result<TileMaker, Error> {
         let layer_defs = self.load_layer_defs()?;
-        let tables = build_table_defs(&layer_defs);
+        let tables = self.build_table_defs(&layer_defs);
         let name = self.name;
         let pixels = self.pixels;
         let query_limit = self.query_limit;
@@ -478,6 +512,16 @@ impl Builder {
                 .as_ref()
                 .map_or(RULES_PATH_DEF, String::as_str),
         )
+    }
+
+    fn build_table_defs(&self, layer_defs: &Vec<LayerDef>) -> Vec<TableDef> {
+        let mut tables = vec![];
+        for table_cfg in &self.tables {
+            if let Some(table) = TableDef::new(&table_cfg, layer_defs) {
+                tables.push(table);
+            }
+        }
+        tables
     }
 }
 
@@ -522,18 +566,6 @@ fn parse_layer_def(line: &str) -> Option<LayerDef> {
     }
 }
 
-fn build_table_defs(layer_defs: &Vec<LayerDef>) -> Vec<TableDef> {
-    let mut tables = vec![];
-    for row in ALL_TABLES {
-        let name = row.0;
-        let geom_type = row.1.clone();
-        if let Some(table) = TableDef::new(name, geom_type, layer_defs) {
-            tables.push(table);
-        }
-    }
-    tables
-}
-
 impl TileMaker {
     pub fn new(name: &str) -> Builder {
         let name = name.to_string();
@@ -542,6 +574,7 @@ impl TileMaker {
             pixels: 256,
             query_limit: std::usize::MAX,
             rules_path: None,
+            tables: vec![],
         }
     }
 
@@ -705,8 +738,8 @@ impl TileMaker {
                 self.layer_defs.iter().find(|ld| ld.name == layer.name());
             if let Some(layer_def) = layer_def {
                 if layer_def.check_table(table, zoom) {
-                    layer = layer_def
-                        .add_feature(layer, geom_type, &row, transform)?;
+                    layer = layer_def.add_feature(layer, &table.id_column,
+                        geom_type, &row, transform)?;
                 }
             }
             layers.push(layer);

@@ -9,4 +9,5 @@ mod error;
 mod osm;
 
 pub use error::Error;
+pub use osm::TableCfg;
 pub use osm::TileMaker;

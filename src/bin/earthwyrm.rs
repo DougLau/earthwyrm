@@ -4,34 +4,55 @@
 //
 #[macro_use]
 extern crate log;
-use earthwyrm::{Error, TileMaker};
+use earthwyrm::{Error, TableCfg, TileMaker};
 use postgres::{self, Connection};
 use r2d2::Pool;
 use r2d2_postgres::{PostgresConnectionManager, TlsMode};
+use serde_derive::Deserialize;
+use std::fs;
 use std::net::SocketAddr;
 use warp::{self, filters, path, reject::not_found, Filter};
 
-fn main() -> Result<(), Error> {
+#[derive(Debug, Deserialize)]
+struct Config {
+    bind_address: String,
+    rules_path: String,
+    document_root: Option<String>,
+    table: Vec<TableCfg>,
+}
+
+fn main() {
     env_logger::Builder::from_default_env()
         .default_format_timestamp(false)
         .init();
-    let sock_addr: SocketAddr = "0.0.0.0:3030".parse()
-                                              .expect("Invalid socket address");
-    if let Some(username) = users::get_current_username() {
-        let maker = TileMaker::new("tiles").build()?;
-        // build path for unix domain socket
-        let mut db_url = "postgres://".to_string();
-        db_url.push_str(&username);
-        // not worth using percent_encode
-        db_url.push_str("@%2Frun%2Fpostgresql/earthwyrm");
-        let manager = PostgresConnectionManager::new(db_url, TlsMode::None)?;
-        let pool = r2d2::Pool::new(manager)?;
-        run_server(sock_addr, maker, pool);
-        Ok(())
-    } else {
-        error!("User name lookup error");
-        Ok(()) // FIXME
+    if let Err(e) = do_main() {
+        error!("{:?}", e);
     }
+}
+
+fn do_main() -> Result<(), Error> {
+    let username = users::get_current_username()
+        .ok_or(Error::Other("User name lookup error".to_string()))?;
+    let config = read_config("./earthwyrm.toml")?;
+    let sock_addr: SocketAddr = config.bind_address.parse()?;
+    let builder = TileMaker::new("tiles")
+        .rules_path(&config.rules_path)
+        .tables(config.table);
+    let maker = builder.build()?;
+    // build path for unix domain socket
+    let mut db_url = "postgres://".to_string();
+    db_url.push_str(&username);
+    // not worth using percent_encode
+    db_url.push_str("@%2Frun%2Fpostgresql/earthwyrm");
+    let manager = PostgresConnectionManager::new(db_url, TlsMode::None)?;
+    let pool = r2d2::Pool::new(manager)?;
+    run_server(sock_addr, maker, pool);
+    Ok(())
+}
+
+fn read_config(fname: &str) -> Result<Config, Error> {
+    let config: Config = toml::from_str(&fs::read_to_string(fname)?)?;
+    Ok(config)
 }
 
 fn run_server(

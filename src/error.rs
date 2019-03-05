@@ -6,6 +6,8 @@ use mvt;
 use postgres;
 use r2d2;
 use std::io;
+use std::net::AddrParseError;
+use toml;
 
 #[derive(Debug)]
 pub enum Error {
@@ -38,5 +40,17 @@ impl From<r2d2::Error> for Error {
 impl From<mvt::Error> for Error {
     fn from(e: mvt::Error) -> Self {
         Error::Mvt(e)
+    }
+}
+
+impl From<toml::de::Error> for Error {
+    fn from(e: toml::de::Error) -> Self {
+        Error::Other(e.to_string())
+    }
+}
+
+impl From<AddrParseError> for Error {
+    fn from(e: AddrParseError) -> Self {
+        Error::Other(e.to_string())
     }
 }

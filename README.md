@@ -25,11 +25,20 @@ psql earthwyrm -c 'CREATE EXTENSION postgis'
 time osm2pgsql -v --number-processes=8 -d earthwyrm --multi-geometry -s --drop ./[map-data].osm.pbf
 ```
 
-* Build and install
+* Configure PostgreSQL access for UNIX domain sockets
+
+Edit /var/lib/pgsql/data/pg_hba.conf: change _local_ method to _ident_.
+Restart PostgreSQL server.
+
+* Build earthwyrm
 ```
 git clone https://github.com/DougLau/earthwyrm.git
 cd earthwyrm
 cargo build --release
+```
+
+* Install (as root)
+```
 cp target/release/earthwyrm /usr/local/bin/
 sh ./examples/site/install.sh
 ```

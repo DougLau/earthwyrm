@@ -1,7 +1,8 @@
 # EarthWyrm ![Logo](./logo.svg)
 
 *EarthWyrm* is an open-source map server developed for the Minnesota Department
-of Transportation (MnDOT).  It can serve OpenStreetMap (or other) data in
+of Transportation (MnDOT).  It can serve
+[OpenStreetMap](https://www.openstreetmap.org/about) (and other) data in
 [MVT](https://github.com/mapbox/vector-tile-spec) format.
 
 ## Setup

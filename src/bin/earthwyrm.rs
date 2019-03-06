@@ -35,6 +35,7 @@ fn do_main() -> Result<(), Error> {
         .ok_or(Error::Other("User name lookup error".to_string()))?;
     let config = read_config("./earthwyrm.toml")?;
     let sock_addr: SocketAddr = config.bind_address.parse()?;
+    let document_root = config.document_root;
     let builder = TileMaker::new("tiles")
         .rules_path(&config.rules_path)
         .tables(config.table);
@@ -46,7 +47,7 @@ fn do_main() -> Result<(), Error> {
     db_url.push_str("@%2Frun%2Fpostgresql/earthwyrm");
     let manager = PostgresConnectionManager::new(db_url, TlsMode::None)?;
     let pool = r2d2::Pool::new(manager)?;
-    run_server(sock_addr, maker, pool);
+    run_server(document_root, sock_addr, maker, pool);
     Ok(())
 }
 
@@ -56,19 +57,11 @@ fn read_config(fname: &str) -> Result<Config, Error> {
 }
 
 fn run_server(
+    document_root: Option<String>,
     sock_addr: SocketAddr,
     maker: TileMaker,
     pool: Pool<PostgresConnectionManager>)
 {
-    let html = warp::get2()
-        .and(path!("map.html"))
-        .and(warp::fs::file("map.html"));
-    let css = warp::get2()
-        .and(path!("map.css"))
-        .and(warp::fs::file("map.css"));
-    let js = warp::get2()
-        .and(path!("map.js"))
-        .and(warp::fs::file("map.js"));
     let tile = warp::get2()
         .and(warp::addr::remote())
         .and(path!("tile" / u32 / u32))
@@ -83,7 +76,11 @@ fn run_server(
                 Err(not_found())
             }
         });
-    let routes = html.or(css).or(js).or(tile);
+    let root = document_root.unwrap_or("/var/lib/earthwyrm".to_string());
+    let map = warp::path("map.html")
+        .and(warp::fs::file(root.to_string() + "/map.html"));
+    let files = warp::path("static").and(warp::fs::dir(root));
+    let routes = tile.or(map).or(files);
     warp::serve(routes).run(sock_addr);
 }
 

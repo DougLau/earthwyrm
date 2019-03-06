@@ -25,8 +25,10 @@ fn main() {
     env_logger::Builder::from_default_env()
         .default_format_timestamp(false)
         .init();
-    if let Err(e) = do_main() {
+    let res = do_main();
+    if let Err(e) = &res {
         error!("{:?}", e);
+        res.unwrap();
     }
 }
 

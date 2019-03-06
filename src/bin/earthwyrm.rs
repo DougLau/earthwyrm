@@ -8,10 +8,12 @@ use earthwyrm::{Error, TableCfg, TileMaker};
 use postgres::{self, Connection};
 use r2d2::Pool;
 use r2d2_postgres::{PostgresConnectionManager, TlsMode};
-use serde_derive::Deserialize;
+use serde_derive::{Deserialize, Serialize};
 use std::fs;
 use std::net::SocketAddr;
-use warp::{self, filters, path, reject::not_found, Filter};
+use warp::{self, filters, path, reject::custom, reject::not_found, Filter};
+use warp::{Rejection, Reply};
+use warp::http::StatusCode;
 
 #[derive(Debug, Deserialize)]
 struct Config {
@@ -19,6 +21,12 @@ struct Config {
     rules_path: String,
     document_root: Option<String>,
     table: Vec<TableCfg>,
+}
+
+#[derive(Serialize)]
+struct ErrorMessage {
+    code: u16,
+    message: String,
 }
 
 fn main() {
@@ -74,15 +82,14 @@ fn run_server(
             if let Some(conn) = pool.try_get() {
                 generate_tile(&maker, &conn, z, x, tail)
             } else {
-                // FIXME: respond with 503 (service unavailable) status
-                Err(not_found())
+                Err(custom(Error::Other("DB connection failed".to_string())))
             }
         });
     let root = document_root.unwrap_or("/var/lib/earthwyrm".to_string());
     let map = warp::path("map.html")
         .and(warp::fs::file(root.to_string() + "/map.html"));
     let files = warp::path("static").and(warp::fs::dir(root));
-    let routes = tile.or(map).or(files);
+    let routes = tile.or(map).or(files).recover(customize_error);
     warp::serve(routes).run(sock_addr);
 }
 
@@ -98,18 +105,31 @@ fn generate_tile(
         if let Ok(y) = y.parse::<u32>() {
             return match maker.write_buf(conn, x, y, z) {
                 Ok(buf) => Ok(buf),
-                // FIXME: respond with 500 (internal server error)
-                Err(Error::Pg(_)) => Err(not_found()),
-                // FIXME: respond with 500 (internal server error)
-                Err(Error::Mvt(_)) => Err(not_found()),
-                // FIXME: respond with 503 (service unavaliable)
-                Err(Error::R2D2(_)) => Err(not_found()),
-                // FIXME: respond with 204 (no content)
-                Err(Error::TileEmpty()) => Err(not_found()),
-                // FIXME: respond with 400 (bad request) or 404 (not found)
-                Err(_) => Err(not_found()),
+                Err(e) => Err(custom(e)),
             };
         }
     }
     Err(not_found())
+}
+
+fn customize_error(err: Rejection) -> Result<impl Reply, Rejection> {
+    if let Some(ref err) = err.find_cause::<Error>() {
+        let code = match err {
+            Error::Pg(_) => StatusCode::INTERNAL_SERVER_ERROR,
+            Error::Mvt(_) => StatusCode::INTERNAL_SERVER_ERROR,
+            Error::R2D2(_) => StatusCode::SERVICE_UNAVAILABLE,
+            Error::TileEmpty() => StatusCode::NO_CONTENT,
+            Error::Other(_) => StatusCode::INTERNAL_SERVER_ERROR,
+            _ => StatusCode::BAD_REQUEST,
+        };
+        let msg = err.to_string();
+        warn!("request err: {}", msg);
+        let json = warp::reply::json(&ErrorMessage {
+            code: code.as_u16(),
+            message: msg,
+        });
+        Ok(warp::reply::with_status(json, code))
+    } else {
+        Err(err)
+    }
 }

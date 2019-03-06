@@ -5,7 +5,7 @@
 use mvt;
 use postgres;
 use r2d2;
-use std::io;
+use std::{fmt, io};
 use std::net::AddrParseError;
 use toml;
 
@@ -17,6 +17,31 @@ pub enum Error {
     Mvt(mvt::Error),
     TileEmpty(),
     Other(String),
+}
+
+impl fmt::Display for Error {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            Error::Io(e) => write!(f, "{}", e.to_string()),
+            Error::Pg(e) => write!(f, "{}", e.to_string()),
+            Error::R2D2(e) => write!(f, "{}", e.to_string()),
+            Error::Mvt(e) => write!(f, "{}", e.to_string()),
+            Error::TileEmpty() => write!(f, "Tile empty"),
+            Error::Other(s) => write!(f, "Error {}", s),
+        }
+    }
+}
+
+impl std::error::Error for Error {
+    fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
+        match self {
+            Error::Io(e) => Some(e),
+            Error::Pg(e) => Some(e),
+            Error::R2D2(e) => Some(e),
+            Error::Mvt(e) => Some(e),
+            _ => None,
+        }
+    }
 }
 
 impl From<io::Error> for Error {

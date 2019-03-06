@@ -1,4 +1,4 @@
-// osm.rs
+// map.rs
 //
 // Copyright (c) 2019 Minnesota Department of Transportation
 //

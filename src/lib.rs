@@ -6,8 +6,8 @@
 extern crate log;
 
 mod error;
-mod osm;
+mod map;
 
 pub use error::Error;
-pub use osm::TableCfg;
-pub use osm::TileMaker;
+pub use map::TableCfg;
+pub use map::TileMaker;

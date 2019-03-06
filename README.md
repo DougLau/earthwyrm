@@ -25,9 +25,19 @@ psql earthwyrm -c 'CREATE EXTENSION postgis'
 time osm2pgsql -v --number-processes=8 -d earthwyrm --multi-geometry -s --drop ./[map-data].osm.pbf
 ```
 
+* Grant select permissions to public
+```
+psql earthwyrm
+GRANT SELECT ON planet_osm_polygon TO PUBLIC;
+GRANT SELECT ON planet_osm_line TO PUBLIC;
+GRANT SELECT ON planet_osm_roads TO PUBLIC;
+GRANT SELECT ON planet_osm_point TO PUBLIC;
+\q
+```
+
 * Configure PostgreSQL access for UNIX domain sockets
 
-Edit /var/lib/pgsql/data/pg_hba.conf: change _local_ method to _ident_.
+Edit /var/lib/pgsql/data/pg_hba.conf: change _local_ method to _peer_.
 Restart PostgreSQL server.
 
 * Build earthwyrm

@@ -33,7 +33,7 @@ fn main() {
 fn do_main() -> Result<(), Error> {
     let username = users::get_current_username()
         .ok_or(Error::Other("User name lookup error".to_string()))?;
-    let config = read_config("./earthwyrm.toml")?;
+    let config = read_config("/etc/earthwyrm/earthwyrm.toml")?;
     let sock_addr: SocketAddr = config.bind_address.parse()?;
     let document_root = config.document_root;
     let builder = TileMaker::new("tiles")

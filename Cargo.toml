@@ -12,7 +12,7 @@ keywords = ["cartography", "gis", "osm", "server"]
 edition = "2018"
 
 [dependencies]
-env_logger = "0.5"
+env_logger = "0.6"
 fallible-iterator = "0.1"
 log = "0.4"
 mvt = "0.5.2"

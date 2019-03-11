@@ -24,7 +24,7 @@ const ZOOM_MAX: u32 = 30;
 
 const RULES_PATH_DEF: &'static str = "./earthwyrm.rules";
 
-/// Lookup a geometry type from a string name.
+/// Lookup a geometry type from a string name
 fn lookup_geom_type(geom_type: &str) -> Option<GeomType> {
     match geom_type {
         "polygon" => Some(GeomType::Polygon),
@@ -37,24 +37,28 @@ fn lookup_geom_type(geom_type: &str) -> Option<GeomType> {
     }
 }
 
+/// Tag pattern specification to require matching tag
 #[derive(Clone, Debug, PartialEq)]
 enum MustMatch {
     No,
     Yes,
 }
 
+/// Tag pattern specification to include tag value in layer
 #[derive(Clone, Debug)]
 enum IncludeValue {
     No,
     Yes,
 }
 
+/// Tag pattern specification to match value equal vs. not equal
 #[derive(Clone, Debug)]
 enum Equality {
     Equal,
     NotEqual,
 }
 
+/// Tag pattern specification for layer rule
 #[derive(Clone, Debug)]
 struct TagPattern {
     must_match: MustMatch,
@@ -64,6 +68,7 @@ struct TagPattern {
     values: Vec<String>,
 }
 
+/// Layer rule definition
 #[derive(Clone, Debug)]
 struct LayerDef {
     name: String,
@@ -73,6 +78,7 @@ struct LayerDef {
     patterns: Vec<TagPattern>,
 }
 
+/// Table configuration (names of columns, etc)
 #[derive(Debug, Deserialize)]
 pub struct TableCfg {
     name: String,
@@ -82,6 +88,7 @@ pub struct TableCfg {
     geom_type: String,
 }
 
+/// Table definition (tags, sql query, etc)
 #[derive(Clone, Debug)]
 struct TableDef {
     name: String,
@@ -91,6 +98,7 @@ struct TableDef {
     sql: String,
 }
 
+/// Builder for tile maker
 pub struct Builder {
     name: String,
     pixels: u32,
@@ -99,6 +107,7 @@ pub struct Builder {
     tables: Vec<TableCfg>,
 }
 
+/// Map tile maker
 #[derive(Clone)]
 pub struct TileMaker {
     name: String,
@@ -110,6 +119,7 @@ pub struct TileMaker {
 }
 
 impl TagPattern {
+    /// Create a new "name" tag pattern
     fn new_name() -> Self {
         let must_match = MustMatch::No;
         let include = IncludeValue::Yes;
@@ -125,15 +135,18 @@ impl TagPattern {
         }
     }
 
+    /// Get the tag (key)
     fn tag(&self) -> &str {
         &self.key
     }
 
+    /// Check if the key matches
     fn matches_key(&self, key: &str) -> bool {
         debug_assert!(self.must_match == MustMatch::Yes);
         self.key == key
     }
 
+    /// Check if the value matches
     fn matches_value(&self, value: Option<String>) -> bool {
         debug_assert!(self.must_match == MustMatch::Yes);
         match self.equality {
@@ -142,6 +155,7 @@ impl TagPattern {
         }
     }
 
+    /// Check if an optional value matches
     fn matches_value_option(&self, value: Option<String>) -> bool {
         debug_assert!(self.must_match == MustMatch::Yes);
         match value {
@@ -150,6 +164,7 @@ impl TagPattern {
         }
     }
 
+    /// Parse a tag pattern rule
     fn parse_rule(pat: &str) -> (MustMatch, IncludeValue, &str) {
         if pat.starts_with('.') {
             (MustMatch::Yes, IncludeValue::Yes, &pat[1..])
@@ -160,6 +175,7 @@ impl TagPattern {
         }
     }
 
+    /// Parse the equality portion
     fn parse_equality(pat: &str) -> Option<(&str, Equality, &str)> {
         if pat.contains('=') {
             let mut kv = pat.splitn(2, '=');
@@ -176,10 +192,12 @@ impl TagPattern {
         }
     }
 
+    /// Parse the value(s) portion
     fn parse_values(val: &str) -> Vec<String> {
         val.split('|').map(|v| v.to_string()).collect()
     }
 
+    /// Parse a tag pattern rule
     fn parse(pat: &str) -> Option<TagPattern> {
         let (must_match, include, pat) = TagPattern::parse_rule(pat);
         let (key, equality, values) = TagPattern::parse_equality(pat)?;
@@ -195,6 +213,7 @@ impl TagPattern {
     }
 }
 
+/// Parse the zoom portion of a layer rule
 fn parse_zoom(z: &str) -> Option<(u32, u32)> {
     if z.ends_with('+') {
         let c = z.len() - 1;
@@ -211,6 +230,7 @@ fn parse_zoom(z: &str) -> Option<(u32, u32)> {
     }
 }
 
+/// Parse a u32 value
 fn parse_u32(v: &str) -> Option<u32> {
     match v.parse::<u32>() {
         Ok(v) => Some(v),
@@ -218,6 +238,7 @@ fn parse_u32(v: &str) -> Option<u32> {
     }
 }
 
+/// Parse tag patterns of a layer rule
 fn parse_patterns(c: &mut Iterator<Item = &str>) -> Option<Vec<TagPattern>> {
     let mut patterns = Vec::<TagPattern>::new();
     loop {
@@ -244,6 +265,7 @@ fn parse_patterns(c: &mut Iterator<Item = &str>) -> Option<Vec<TagPattern>> {
 }
 
 impl LayerDef {
+    /// Parse a layer definition rule
     fn parse(c: &mut Iterator<Item = &str>) -> Option<Self> {
         let name = c.next()?.to_string();
         let table = c.next()?.to_string();
@@ -258,14 +280,17 @@ impl LayerDef {
         })
     }
 
+    /// Check if zoom level matches
     fn check_zoom(&self, zoom: u32) -> bool {
         zoom >= self.zoom_min && zoom <= self.zoom_max
     }
 
+    /// Check a table definition and zoom level
     fn check_table(&self, table: &TableDef, zoom: u32) -> bool {
         self.check_zoom(zoom) && self.table == table.name
     }
 
+    /// Check if a row matches the layer rule
     fn matches(&self, row: &Row) -> bool {
         for pattern in &self.patterns {
             if pattern.must_match == MustMatch::Yes {
@@ -280,6 +305,7 @@ impl LayerDef {
         true
     }
 
+    /// Get tags from a row and add them to a feature
     fn get_tags(&self, id_column: &str, feature: &mut Feature, row: &Row) {
         // id_column is always #0 (see build_query_sql)
         let fid = row.get::<_, i64>(0);
@@ -297,6 +323,7 @@ impl LayerDef {
         }
     }
 
+    /// Get one tag value (string)
     fn get_tag_value(&self, row: &Row, col: &str) -> Option<String> {
         if let Some(v) = row.get::<_, Option<String>>(col) {
             if v.len() > 0 {
@@ -306,6 +333,7 @@ impl LayerDef {
         None
     }
 
+    /// Add a feature to a layer (if it matches)
     fn add_feature(
         &self,
         layer: Layer,
@@ -328,6 +356,7 @@ impl LayerDef {
     }
 }
 
+/// Get geometry from a row, encoded as MVT GeomData
 fn get_geometry(geom_type: &GeomType, row: &Row, t: &Transform) -> GeomResult {
     match geom_type {
         GeomType::Point => get_geom_data(row, t, &encode_points),
@@ -338,6 +367,7 @@ fn get_geometry(geom_type: &GeomType, row: &Row, t: &Transform) -> GeomResult {
 
 type GeomResult = Result<Option<GeomData>, Error>;
 
+/// Get geom data from a row
 fn get_geom_data<T: FromSql>(
     row: &Row,
     t: &Transform,
@@ -351,6 +381,7 @@ fn get_geom_data<T: FromSql>(
     }
 }
 
+/// Encode points into GeomData
 fn encode_points(g: ewkb::MultiPoint, t: &Transform) -> GeomResult {
     if g.points.len() == 0 {
         return Ok(None);
@@ -362,6 +393,7 @@ fn encode_points(g: ewkb::MultiPoint, t: &Transform) -> GeomResult {
     Ok(Some(ge.encode()?))
 }
 
+/// Encode linestrings into GeomData
 fn encode_linestrings(g: ewkb::MultiLineString, t: &Transform) -> GeomResult {
     if g.lines.len() == 0 {
         return Ok(None);
@@ -376,6 +408,7 @@ fn encode_linestrings(g: ewkb::MultiLineString, t: &Transform) -> GeomResult {
     Ok(Some(ge.encode()?))
 }
 
+/// Encode polygons into GeomData
 fn encode_polygons(g: ewkb::MultiPolygon, t: &Transform) -> GeomResult {
     if g.polygons.len() == 0 {
         return Ok(None);
@@ -397,6 +430,7 @@ fn encode_polygons(g: ewkb::MultiPolygon, t: &Transform) -> GeomResult {
 }
 
 impl TableCfg {
+    /// Create a new table configuration
     pub fn new(
         name: &str,
         db_table: &str,
@@ -412,6 +446,7 @@ impl TableCfg {
         TableCfg { name, db_table, id_column, geom_column, geom_type }
     }
 
+    /// Build SQL query
     fn build_query_sql(&self, tags: &Vec<String>) -> String {
         let mut sql = "SELECT ".to_string();
         // id_column must be first (#0)
@@ -435,6 +470,7 @@ impl TableCfg {
 }
 
 impl TableDef {
+    /// Create a new table definition
     fn new(table_cfg: &TableCfg, layer_defs: &Vec<LayerDef>) -> Option<Self> {
         let name = &table_cfg.name;
         let id_column = table_cfg.id_column.clone();
@@ -455,6 +491,7 @@ impl TableDef {
         }
     }
 
+    /// Get the tags requested for the table from defined layers
     fn table_tags(name: &str, layer_defs: &Vec<LayerDef>) -> Vec<String> {
         let mut tags = Vec::<String>::new();
         for ld in layer_defs {
@@ -472,26 +509,31 @@ impl TableDef {
 }
 
 impl Builder {
+    /// Set the tile pixels
     pub fn pixels(mut self, pixels: u32) -> Self {
         self.pixels = pixels;
         self
     }
 
+    /// Set the query limit
     pub fn query_limit(mut self, query_limit: usize) -> Self {
         self.query_limit = query_limit;
         self
     }
 
+    /// Set the path to the layer rules file
     pub fn rules_path(mut self, rules_path: &str) -> Self {
         self.rules_path = Some(rules_path.to_string());
         self
     }
 
+    /// Set the table configurations
     pub fn tables(mut self, tables: Vec<TableCfg>) -> Self {
         self.tables = tables;
         self
     }
 
+    /// Build the tile maker
     pub fn build(self) -> Result<TileMaker, Error> {
         let layer_defs = self.load_layer_defs()?;
         let tables = self.build_table_defs(&layer_defs);
@@ -509,6 +551,7 @@ impl Builder {
         })
     }
 
+    /// Load the layer rule definitions
     fn load_layer_defs(&self) -> Result<Vec<LayerDef>, Error> {
         load_layer_defs(
             self.rules_path
@@ -517,6 +560,7 @@ impl Builder {
         )
     }
 
+    /// Build the table definitions
     fn build_table_defs(&self, layer_defs: &Vec<LayerDef>) -> Vec<TableDef> {
         let mut tables = vec![];
         for table_cfg in &self.tables {
@@ -528,6 +572,7 @@ impl Builder {
     }
 }
 
+/// Load layer rule definition file
 fn load_layer_defs(fname: &str) -> Result<Vec<LayerDef>, Error> {
     let mut defs = vec![];
     let f = BufReader::new(File::open(fname)?);
@@ -546,6 +591,7 @@ fn load_layer_defs(fname: &str) -> Result<Vec<LayerDef>, Error> {
     Ok(defs)
 }
 
+/// Parse one layer definition
 fn parse_layer_def(line: &str) -> Option<LayerDef> {
     let line = if let Some(hash) = line.find('#') {
         &line[..hash]
@@ -570,6 +616,7 @@ fn parse_layer_def(line: &str) -> Option<LayerDef> {
 }
 
 impl TileMaker {
+    /// Create a new tile maker builder
     pub fn new(name: &str) -> Builder {
         let name = name.to_string();
         Builder {
@@ -581,6 +628,7 @@ impl TileMaker {
         }
     }
 
+    /// Write a tile to a file
     pub fn write_tile(
         &self,
         conn: &Connection,
@@ -594,6 +642,7 @@ impl TileMaker {
         self.write_to(conn, tid, &mut f)
     }
 
+    /// Write a tile
     pub fn write_to(
         &self,
         conn: &Connection,
@@ -609,6 +658,7 @@ impl TileMaker {
         Ok(())
     }
 
+    /// Write a tile to a buffer
     pub fn write_buf(
         &self,
         conn: &Connection,
@@ -626,6 +676,7 @@ impl TileMaker {
         }
     }
 
+    /// Fetch a tile
     fn fetch_tile(
         &self,
         conn: &Connection,
@@ -650,10 +701,12 @@ impl TileMaker {
         Ok(tile)
     }
 
+    /// Check one table for matching layers
     fn check_layers(&self, table: &TableDef, zoom: u32) -> bool {
         self.layer_defs.iter().any(|l| l.check_table(table, zoom))
     }
 
+    /// Query one tile from DB
     fn query_tile(
         &self,
         conn: &Connection,
@@ -689,6 +742,7 @@ impl TileMaker {
         Ok(tile)
     }
 
+    /// Query layers for one table
     fn query_layers(
         &self,
         conn: &Connection,
@@ -726,6 +780,7 @@ impl TileMaker {
         Ok(())
     }
 
+    /// Add features to a layer
     fn add_layer_features(
         &self,
         table: &TableDef,

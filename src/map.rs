@@ -24,12 +24,16 @@ const ZOOM_MAX: u32 = 30;
 
 const RULES_PATH_DEF: &'static str = "./earthwyrm.rules";
 
+/// Lookup a geometry type from a string name.
 fn lookup_geom_type(geom_type: &str) -> Option<GeomType> {
     match geom_type {
         "polygon" => Some(GeomType::Polygon),
         "linestring" => Some(GeomType::Linestring),
         "point" => Some(GeomType::Point),
-        _ => None,
+        _ => {
+            warn!("unknown geom type: {}", geom_type);
+            None
+        },
     }
 }
 
@@ -434,7 +438,6 @@ impl TableDef {
     fn new(table_cfg: &TableCfg, layer_defs: &Vec<LayerDef>) -> Option<Self> {
         let name = &table_cfg.name;
         let id_column = table_cfg.id_column.clone();
-        // FIXME: unknown geom type should be an error
         let geom_type = lookup_geom_type(&table_cfg.geom_type)?;
         let tags = TableDef::table_tags(name, layer_defs);
         if tags.len() > 0 {

@@ -78,7 +78,8 @@ struct LayerDef {
     patterns: Vec<TagPattern>,
 }
 
-/// Table configuration (names of columns, etc)
+/// Table configuration (names of columns, etc).
+/// FIXME: Should we check against geometry_columns view?
 #[derive(Debug, Deserialize)]
 pub struct TableCfg {
     name: String,

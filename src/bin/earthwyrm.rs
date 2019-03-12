@@ -48,6 +48,7 @@ fn do_main() -> Result<(), Error> {
     let document_root = config.document_root;
     let builder = TileMaker::new("tiles")
         .rules_path(&config.rules_path)
+        .buffer_pixels(5)
         .tables(config.table);
     let maker = builder.build()?;
     // build path for unix domain socket

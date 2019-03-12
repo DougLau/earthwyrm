@@ -103,6 +103,7 @@ struct TableDef {
 pub struct Builder {
     name: String,
     pixels: u32,
+    buffer_pixels: u32,
     query_limit: usize,
     rules_path: Option<String>,
     tables: Vec<TableCfg>,
@@ -113,6 +114,7 @@ pub struct Builder {
 pub struct TileMaker {
     name: String,
     pixels: u32,
+    buffer_pixels: u32,
     query_limit: usize,
     grid: MapGrid,
     layer_defs: Vec<LayerDef>,
@@ -465,7 +467,7 @@ impl TableCfg {
         sql.push_str(&self.db_table);
         sql.push_str(" WHERE ");
         sql.push_str(&self.geom_column);
-        sql.push_str(" && ST_MakeEnvelope($2,$3,$4,$5,3857)");
+        sql.push_str(" && ST_Buffer(ST_MakeEnvelope($2,$3,$4,$5,3857),$6)");
         sql
     }
 }
@@ -516,6 +518,12 @@ impl Builder {
         self
     }
 
+    /// Set the buffer pixels (at tile edges)
+    pub fn buffer_pixels(mut self, buffer_pixels: u32) -> Self {
+        self.buffer_pixels = buffer_pixels;
+        self
+    }
+
     /// Set the query limit
     pub fn query_limit(mut self, query_limit: usize) -> Self {
         self.query_limit = query_limit;
@@ -540,11 +548,13 @@ impl Builder {
         let tables = self.build_table_defs(&layer_defs);
         let name = self.name;
         let pixels = self.pixels;
+        let buffer_pixels = self.buffer_pixels;
         let query_limit = self.query_limit;
         let grid = MapGrid::new_web_mercator();
         Ok(TileMaker {
             name,
             pixels,
+            buffer_pixels,
             query_limit,
             grid,
             layer_defs,
@@ -623,6 +633,7 @@ impl TileMaker {
         Builder {
             name,
             pixels: 256,
+            buffer_pixels: 0,
             query_limit: std::usize::MAX,
             rules_path: None,
             tables: vec![],
@@ -761,7 +772,9 @@ impl TileMaker {
         let y_min = bbox.y_min();
         let x_max = bbox.x_max();
         let y_max = bbox.y_max();
-        let params: Vec<&ToSql> = vec![&tol, &x_min, &y_min, &x_max, &y_max];
+        let rad = tol * self.buffer_pixels as f64;
+        let params: Vec<&ToSql> =
+            vec![&tol, &x_min, &y_min, &x_max, &y_max, &rad];
         debug!("params: {:?}", params);
         let row_limit = if self.query_limit < 50 {
             self.query_limit as i32

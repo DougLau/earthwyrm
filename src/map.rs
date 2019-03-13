@@ -804,6 +804,7 @@ impl TileMaker {
         layers: &mut Vec<Layer>,
     ) -> Result<(), Error> {
         let geom_type = &table.geom_type;
+        // FIXME: can this be done without a temp vec?
         let mut lyrs: Vec<Layer> = layers.drain(..).collect();
         for mut layer in lyrs.drain(..) {
             let layer_def =

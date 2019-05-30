@@ -2,8 +2,11 @@
 //
 // Copyright (c) 2019 Minnesota Department of Transportation
 //
+#![forbid(unsafe_code)]
+
 #[macro_use]
 extern crate log;
+
 use earthwyrm::{Error, TableCfg, TileMaker};
 use postgres::{self, Connection};
 use r2d2::Pool;

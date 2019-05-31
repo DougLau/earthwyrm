@@ -7,7 +7,7 @@ use crate::config::{LayerGroupCfg, TableCfg};
 use crate::geom::{GeomRow, lookup_geom_type};
 use crate::rules::LayerDef;
 use fallible_iterator::FallibleIterator;
-use log::{debug, info};
+use log::{debug, info, warn};
 use mvt::{BBox, GeomType, Layer, MapGrid, Tile, TileId, Transform};
 use postgres::rows::Row;
 use postgres::types::ToSql;
@@ -239,7 +239,7 @@ impl TileMaker {
         for row in rows.iterator() {
             self.add_layer_features(table_def, &row?, config, layers)?;
             if i == self.query_limit {
-                info!("table {}, query limit reached: {}", &table_def.name, i);
+                warn!("table {}, query limit reached: {}", &table_def.name, i);
                 break;
             }
             i += 1;

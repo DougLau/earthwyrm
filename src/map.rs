@@ -102,7 +102,7 @@ pub struct TileMaker {
     query_limit: u32,
     grid: MapGrid,
     layer_defs: Vec<LayerDef>,
-    tables: Vec<TableDef>,
+    table_defs: Vec<TableDef>,
 }
 
 impl TagPattern {
@@ -243,7 +243,49 @@ fn parse_patterns(c: &mut Iterator<Item = &str>) -> Option<Vec<TagPattern>> {
     }
 }
 
+/// Parse one layer definition
+fn parse_layer_def(line: &str) -> Option<LayerDef> {
+    let line = if let Some(hash) = line.find('#') {
+        &line[..hash]
+    } else {
+        &line
+    };
+    let c: Vec<&str> = line.split_whitespace().collect();
+    match c.len() {
+        0 => None,
+        1...3 => {
+            error!("Invalid rule (not enough columns): {}", line);
+            None
+        }
+        _ => {
+            let ld = LayerDef::parse(&mut c.into_iter());
+            if ld.is_none() {
+                error!("parsing \"{}\"", line);
+            }
+            ld
+        }
+    }
+}
+
 impl LayerDef {
+    /// Load layer rule definition file
+    fn load_all(rules_path: &str) -> Result<Vec<LayerDef>, Error> {
+        let mut defs = vec![];
+        let f = BufReader::new(File::open(rules_path)?);
+        for line in f.lines() {
+            if let Some(ld) = parse_layer_def(&line?) {
+                debug!("LayerDef: {:?}", &ld);
+                defs.push(ld);
+            }
+        }
+        let mut names = String::new();
+        for ld in &defs {
+            names.push(' ');
+            names.push_str(&ld.name);
+        }
+        info!("{} layers loaded:{}", defs.len(), names);
+        Ok(defs)
+    }
     /// Parse a layer definition rule
     fn parse(c: &mut Iterator<Item = &str>) -> Option<Self> {
         let name = c.next()?.to_string();
@@ -469,8 +511,8 @@ impl Builder {
     pub fn build(self, table_cfgs: &[TableCfg], layer_group: &LayerGroupCfg)
         -> Result<TileMaker, Error>
     {
-        let layer_defs = layer_group.load_layer_defs()?;
-        let tables = self.build_table_defs(&layer_defs, table_cfgs);
+        let layer_defs = LayerDef::load_all(layer_group.rules_path())?;
+        let table_defs = self.build_table_defs(&layer_defs, table_cfgs);
         let base_name = layer_group.base_name().to_string();
         let tile_extent = self.tile_extent;
         let pixels = self.pixels;
@@ -485,65 +527,20 @@ impl Builder {
             query_limit,
             grid,
             layer_defs,
-            tables,
+            table_defs,
         })
     }
     /// Build the table definitions
     fn build_table_defs(&self, layer_defs: &[LayerDef],
         table_cfgs: &[TableCfg]) -> Vec<TableDef>
     {
-        let mut tables = vec![];
+        let mut table_defs = vec![];
         for table_cfg in table_cfgs {
             if let Some(table) = TableDef::new(table_cfg, layer_defs) {
-                tables.push(table);
+                table_defs.push(table);
             }
         }
-        tables
-    }
-}
-
-impl LayerGroupCfg {
-    /// Load layer rule definition file
-    fn load_layer_defs(&self) -> Result<Vec<LayerDef>, Error> {
-        let mut defs = vec![];
-        let f = BufReader::new(File::open(&self.rules_path())?);
-        for line in f.lines() {
-            if let Some(ld) = parse_layer_def(&line?) {
-                debug!("LayerDef: {:?}", &ld);
-                defs.push(ld);
-            }
-        }
-        let mut names = String::new();
-        for ld in &defs {
-            names.push(' ');
-            names.push_str(&ld.name);
-        }
-        info!("{} layers loaded:{}", defs.len(), names);
-        Ok(defs)
-    }
-}
-
-/// Parse one layer definition
-fn parse_layer_def(line: &str) -> Option<LayerDef> {
-    let line = if let Some(hash) = line.find('#') {
-        &line[..hash]
-    } else {
-        &line
-    };
-    let c: Vec<&str> = line.split_whitespace().collect();
-    match c.len() {
-        0 => None,
-        1...3 => {
-            error!("Invalid rule (not enough columns): {}", line);
-            None
-        }
-        _ => {
-            let ld = LayerDef::parse(&mut c.into_iter());
-            if ld.is_none() {
-                error!("parsing \"{}\"", line);
-            }
-            ld
-        }
+        table_defs
     }
 }
 
@@ -640,11 +637,11 @@ impl TileMaker {
             .iter()
             .map(|ld| tile.create_layer(&ld.name))
             .collect();
-        for table in &self.tables {
-            if self.check_layers(table, zoom) {
+        for table_def in &self.table_defs {
+            if self.check_layers(table_def, zoom) {
                 self.query_layers(
                     conn,
-                    table,
+                    table_def,
                     &bbox,
                     &transform,
                     tol,

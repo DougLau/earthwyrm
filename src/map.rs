@@ -4,7 +4,7 @@
 //
 use crate::Error;
 use crate::config::{LayerGroupCfg, TableCfg};
-use crate::rules::{IncludeValue, LayerDef, MustMatch};
+use crate::rules::LayerDef;
 use fallible_iterator::FallibleIterator;
 use log::{debug, info, trace, warn};
 use mvt::{
@@ -162,12 +162,9 @@ impl LayerDef {
     /// Check if a row matches the layer rule
     fn matches(&self, grow: &GeomRow) -> bool {
         for pattern in self.patterns() {
-            if pattern.must_match == MustMatch::Yes {
-                let key = pattern.tag();
-                if pattern.matches_key(key) {
-                    if !pattern.matches_value(grow.get_tag_value(key)) {
-                        return false;
-                    }
+            if let Some(key) = pattern.match_key() {
+                if !pattern.matches_value(grow.get_tag_value(key)) {
+                    return false;
                 }
             }
         }
@@ -180,8 +177,7 @@ impl LayerDef {
         // NOTE: Leaflet apparently can't use mvt feature id; use tag/property
         feature.add_tag_sint(id_column, fid);
         for pattern in self.patterns() {
-            if let IncludeValue::Yes = pattern.include {
-                let key = pattern.tag();
+            if let Some(key) = pattern.include_key() {
                 if let Some(v) = grow.get_tag_value(key) {
                     feature.add_tag_string(key, &v);
                     trace!("layer {}, {}={}", self.name(), key, &v);
@@ -233,9 +229,9 @@ impl TableDef {
         let mut tags = Vec::<String>::new();
         for ld in layer_defs {
             if ld.table() == name {
-                for p in ld.patterns() {
-                    let tag = p.tag().to_string();
-                    if !tags.contains(&tag) {
+                for pattern in ld.patterns() {
+                    let tag = pattern.tag();
+                    if !tags.iter().any(|t| t == tag) {
                         tags.push(tag.to_string());
                     }
                 }
@@ -312,39 +308,18 @@ impl TileMaker {
     pub fn base_name(&self) -> &str {
         &self.base_name
     }
-    /// Write a tile to a file
-    pub fn write_tile(&self, conn: &Connection, xtile: u32, ytile: u32,
-        zoom: u32) -> Result<(), Error>
-    {
-        let tid = TileId::new(xtile, ytile, zoom)?;
-        let fname = format!("{}/{}.mvt", &self.base_name, tid);
-        let mut f = File::create(fname)?;
-        self.write_to(conn, tid, &mut f)
+    /// Find a layer by name
+    fn find_layer(&self, name: &str) -> Option<&LayerDef> {
+        self.layer_defs.iter().find(|ld| ld.name() == name)
     }
-    /// Write a tile
-    pub fn write_to(&self, conn: &Connection, tid: TileId, out: &mut Write)
-        -> Result<(), Error>
-    {
-        let tile = self.fetch_tile(conn, tid)?;
-        if tile.num_layers() > 0 {
-            tile.write_to(out)?;
-        } else {
-            debug!("tile {} not written (no layers)", tid);
-        }
-        Ok(())
+    /// Create all layers for a tile
+    fn create_layers(&self, tile: &Tile) -> Vec<Layer> {
+        self.layer_defs.iter().map(|ld| tile.create_layer(&ld.name())).collect()
     }
-    /// Write a tile to a buffer
-    pub fn write_buf(&self, conn: &Connection, xtile: u32, ytile: u32,
-        zoom: u32) -> Result<Vec<u8>, Error>
-    {
-        let tid = TileId::new(xtile, ytile, zoom)?;
-        let tile = self.fetch_tile(conn, tid)?;
-        if tile.num_layers() > 0 {
-            Ok(tile.to_bytes()?)
-        } else {
-            debug!("tile {} empty (no layers)", tid);
-            Err(Error::TileEmpty())
-        }
+    /// Check one table for matching layers
+    fn check_layers(&self, table_def: &TableDef, zoom: u32) -> bool {
+        let table = &table_def.name;
+        self.layer_defs.iter().any(|l| l.check_table(table, zoom))
     }
     /// Fetch a tile
     fn fetch_tile(&self, conn: &Connection, tid: TileId) -> Result<Tile, Error>{
@@ -366,21 +341,12 @@ impl TileMaker {
         );
         Ok(tile)
     }
-    /// Check one table for matching layers
-    fn check_layers(&self, table_def: &TableDef, zoom: u32) -> bool {
-        let table = &table_def.name;
-        self.layer_defs.iter().any(|l| l.check_table(table, zoom))
-    }
     /// Query one tile from DB
     fn query_tile(&self, conn: &Connection, transform: &Transform, bbox: &BBox,
         tol: f64, zoom: u32) -> Result<Tile, Error>
     {
         let mut tile = Tile::new(self.tile_extent);
-        let mut layers = self
-            .layer_defs
-            .iter()
-            .map(|ld| tile.create_layer(&ld.name()))
-            .collect();
+        let mut layers = self.create_layers(&tile);
         for table_def in &self.table_defs {
             if self.check_layers(table_def, zoom) {
                 self.query_layers(
@@ -417,12 +383,7 @@ impl TileMaker {
         let params: Vec<&ToSql> =
             vec![&tol, &x_min, &y_min, &x_max, &y_max, &rad];
         debug!("params: {:?}", params);
-        let row_limit = if self.query_limit < 50 {
-            self.query_limit as i32
-        } else {
-            50
-        };
-        let rows = stmt.lazy_query(&trans, &params[..], row_limit)?;
+        let rows = stmt.lazy_query(&trans, &params[..], self.row_limit())?;
         let mut i = 0;
         for row in rows.iterator() {
             self.add_layer_features(table_def, &row?, transform, zoom, layers)?;
@@ -434,6 +395,14 @@ impl TileMaker {
         }
         Ok(())
     }
+    /// Get the row limit for a lazy query
+    fn row_limit(&self) -> i32 {
+        if self.query_limit < 50 {
+            self.query_limit as i32
+        } else {
+            50
+        }
+    }
     /// Add features to a layer
     fn add_layer_features(&self, table_def: &TableDef, row: &Row,
         transform: &Transform, zoom: u32, layers: &mut Vec<Layer>)
@@ -444,9 +413,7 @@ impl TileMaker {
         // FIXME: can this be done without a temp vec?
         let mut lyrs: Vec<Layer> = layers.drain(..).collect();
         for mut layer in lyrs.drain(..) {
-            let layer_def =
-                self.layer_defs.iter().find(|ld| ld.name() == layer.name());
-            if let Some(layer_def) = layer_def {
+            if let Some(layer_def) = self.find_layer(layer.name()) {
                 if layer_def.check_table(table, zoom) {
                     layer = layer_def.add_feature(layer, &table_def.id_column,
                         &grow, transform)?;
@@ -455,5 +422,39 @@ impl TileMaker {
             layers.push(layer);
         }
         Ok(())
+    }
+    /// Write a tile to a file
+    pub fn write_tile(&self, conn: &Connection, xtile: u32, ytile: u32,
+        zoom: u32) -> Result<(), Error>
+    {
+        let tid = TileId::new(xtile, ytile, zoom)?;
+        let fname = format!("{}/{}.mvt", &self.base_name, tid);
+        let mut f = File::create(fname)?;
+        self.write_to(conn, tid, &mut f)
+    }
+    /// Write a tile
+    pub fn write_to(&self, conn: &Connection, tid: TileId, out: &mut Write)
+        -> Result<(), Error>
+    {
+        let tile = self.fetch_tile(conn, tid)?;
+        if tile.num_layers() > 0 {
+            tile.write_to(out)?;
+        } else {
+            debug!("tile {} not written (no layers)", tid);
+        }
+        Ok(())
+    }
+    /// Write a tile to a buffer
+    pub fn write_buf(&self, conn: &Connection, xtile: u32, ytile: u32,
+        zoom: u32) -> Result<Vec<u8>, Error>
+    {
+        let tid = TileId::new(xtile, ytile, zoom)?;
+        let tile = self.fetch_tile(conn, tid)?;
+        if tile.num_layers() > 0 {
+            Ok(tile.to_bytes()?)
+        } else {
+            debug!("tile {} empty (no layers)", tid);
+            Err(Error::TileEmpty())
+        }
     }
 }

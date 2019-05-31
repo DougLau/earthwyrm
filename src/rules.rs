@@ -11,14 +11,14 @@ const ZOOM_MAX: u32 = 30;
 
 /// Tag pattern specification to require matching tag
 #[derive(Clone, Debug, PartialEq)]
-pub enum MustMatch {
+enum MustMatch {
     No,
     Yes,
 }
 
 /// Tag pattern specification to include tag value in layer
 #[derive(Clone, Debug)]
-pub enum IncludeValue {
+enum IncludeValue {
     No,
     Yes,
 }
@@ -33,8 +33,8 @@ enum Equality {
 /// Tag pattern specification for layer rule
 #[derive(Clone, Debug)]
 pub struct TagPattern {
-    pub must_match: MustMatch,
-    pub include: IncludeValue,
+    must_match: MustMatch,
+    include: IncludeValue,
     key: String,
     equality: Equality,
     values: Vec<String>,
@@ -70,10 +70,19 @@ impl TagPattern {
     pub fn tag(&self) -> &str {
         &self.key
     }
-    /// Check if the key matches
-    pub fn matches_key(&self, key: &str) -> bool {
-        debug_assert!(self.must_match == MustMatch::Yes);
-        self.key == key
+    /// Get key for match patterns only
+    pub fn match_key(&self) -> Option<&str> {
+        match self.must_match {
+            MustMatch::Yes => Some(self.tag()),
+            MustMatch::No => None,
+        }
+    }
+    /// Get key for include patterns only
+    pub fn include_key(&self) -> Option<&str> {
+        match self.include {
+            IncludeValue::Yes => Some(self.tag()),
+            IncludeValue::No => None,
+        }
     }
     /// Check if the value matches
     pub fn matches_value(&self, value: Option<String>) -> bool {

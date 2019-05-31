@@ -8,7 +8,7 @@ DST3=/etc/systemd/system
 useradd --system earthwyrm &&
 mkdir $DST1 &&
 cp $SRC/earthwyrm.toml $DST1 &&
-cp $SRC/earthwyrm.rules $DST1 &&
+cp $SRC/tile.rules $DST1 &&
 mkdir $DST2 &&
 cp $SRC/map.* $DST2 &&
 chown --recursive earthwyrm.earthwyrm $DST2 &&

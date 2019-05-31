@@ -5,11 +5,11 @@ bind_address = "127.0.0.1:3030"
 # Root path for static files
 document_root = "/var/lib/earthwyrm"
 # Tile pixels
-# pixels = 256
+#pixels = 256
 # Buffer pixels around tile edges
 buffer_pixels = 5
 # Per-tile query limit
-# query_limit = 1000
+#query_limit = 1000
 #
 # Defining a table makes it available for layer rules
 #   - name: Table name, as used in rules file
@@ -52,4 +52,4 @@ geom_type = "point"
 #
 [[layer_group]]
 base_name = "tile"
-rules_path = "/etc/earthwyrm/earthwyrm.rules"
+rules_path = "/etc/earthwyrm/tile.rules"

@@ -3,8 +3,9 @@
 // Copyright (c) 2019  Minnesota Department of Transportation
 //
 use crate::Error;
-use log::warn;
-use mvt::{GeomData, GeomEncoder, GeomType, Transform };
+use crate::rules::LayerDef;
+use log::{trace, warn};
+use mvt::{Feature, GeomData, GeomEncoder, GeomType, Layer, Transform};
 use postgis::ewkb;
 use postgres::rows::Row;
 use postgres::types::FromSql;
@@ -63,12 +64,24 @@ fn encode_polygons(g: ewkb::MultiPolygon, t: &Transform) -> GeomResult {
 pub struct GeomRow<'a> {
     row: &'a Row<'a>,
     geom_type: GeomType,
+    id_column: &'a str,
 }
 
 impl<'a> GeomRow<'a> {
     /// Create a new geom row
-    pub fn new(row: &'a Row, geom_type: GeomType) -> Self {
-        GeomRow { row, geom_type }
+    pub fn new(row: &'a Row, geom_type: GeomType, id_column: &'a str) -> Self {
+        GeomRow { row, geom_type, id_column }
+    }
+    /// Check if a row matches a layer
+    pub fn matches_layer(&self, layer_def: &LayerDef) -> bool {
+        for pattern in layer_def.patterns() {
+            if let Some(key) = pattern.match_key() {
+                if !pattern.matches_value(self.get_tag_value(key)) {
+                    return false;
+                }
+            }
+        }
+        true
     }
     /// Get the row ID
     pub fn get_id(&self) -> i64 {
@@ -76,7 +89,7 @@ impl<'a> GeomRow<'a> {
         self.row.get::<_, i64>(0)
     }
     /// Get one tag value (string)
-    pub fn get_tag_value(&self, col: &str) -> Option<String> {
+    fn get_tag_value(&self, col: &str) -> Option<String> {
         if let Some(v) = self.row.get::<_, Option<String>>(col) {
             if v.len() > 0 {
                 return Some(v);
@@ -101,6 +114,29 @@ impl<'a> GeomRow<'a> {
             Some(Ok(Some(g))) => enc(g, t),
             Some(Err(e)) => Err(Error::Pg(e)),
             _ => Ok(None),
+        }
+    }
+    /// Add a feature to a layer
+    pub fn add_feature(&self, layer: Layer, layer_def: &LayerDef,
+        geom_data: GeomData) -> Layer
+    {
+        let mut feature = layer.into_feature(geom_data);
+        self.get_tags(layer_def, &mut feature);
+        feature.into_layer()
+    }
+    /// Get tags from a row and add them to a feature
+    fn get_tags(&self, layer_def: &LayerDef, feature: &mut Feature) {
+        let fid = self.get_id();
+        trace!("layer {}, fid {}", layer_def.name(), fid);
+        // NOTE: Leaflet apparently can't use mvt feature id; use tag/property
+        feature.add_tag_sint(self.id_column, fid);
+        for pattern in layer_def.patterns() {
+            if let Some(key) = pattern.include_key() {
+                if let Some(v) = self.get_tag_value(key) {
+                    feature.add_tag_string(key, &v);
+                    trace!("layer {}, {}={}", layer_def.name(), key, &v);
+                }
+            }
         }
     }
 }

@@ -7,10 +7,8 @@ use crate::config::{LayerGroupCfg, TableCfg};
 use crate::geom::{GeomRow, lookup_geom_type};
 use crate::rules::LayerDef;
 use fallible_iterator::FallibleIterator;
-use log::{debug, info, trace};
-use mvt::{
-    BBox, Feature, GeomType, Layer, MapGrid, Tile, TileId, Transform,
-};
+use log::{debug, info};
+use mvt::{BBox, GeomType, Layer, MapGrid, Tile, TileId, Transform};
 use postgres::rows::Row;
 use postgres::types::ToSql;
 use postgres::Connection;
@@ -55,51 +53,6 @@ pub struct TileMaker {
     grid: MapGrid,
     layer_defs: Vec<LayerDef>,
     table_defs: Vec<TableDef>,
-}
-
-impl LayerDef {
-    /// Check if a row matches the layer rule
-    fn matches(&self, grow: &GeomRow) -> bool {
-        for pattern in self.patterns() {
-            if let Some(key) = pattern.match_key() {
-                if !pattern.matches_value(grow.get_tag_value(key)) {
-                    return false;
-                }
-            }
-        }
-        true
-    }
-    /// Get tags from a row and add them to a feature
-    fn get_tags(&self, id_column: &str, feature: &mut Feature, grow: &GeomRow) {
-        let fid = grow.get_id();
-        trace!("layer {}, fid {}", self.name(), fid);
-        // NOTE: Leaflet apparently can't use mvt feature id; use tag/property
-        feature.add_tag_sint(id_column, fid);
-        for pattern in self.patterns() {
-            if let Some(key) = pattern.include_key() {
-                if let Some(v) = grow.get_tag_value(key) {
-                    feature.add_tag_string(key, &v);
-                    trace!("layer {}, {}={}", self.name(), key, &v);
-                }
-            }
-        }
-    }
-    /// Add a feature to a layer (if it matches)
-    fn add_feature(&self, layer: Layer, id_column: &str, grow: &GeomRow,
-        transform: &Transform) -> Result<Layer, Error>
-    {
-        if !self.matches(grow) {
-            return Ok(layer);
-        }
-        match grow.get_geometry(transform)? {
-            Some(gd) => {
-                let mut feature = layer.into_feature(gd);
-                self.get_tags(id_column, &mut feature, grow);
-                Ok(feature.into_layer())
-            }
-            None => Ok(layer),
-        }
-    }
 }
 
 impl TableDef {
@@ -303,18 +256,20 @@ impl TileMaker {
     }
     /// Add features to a layer
     fn add_layer_features(&self, table_def: &TableDef, row: &Row,
-        config: &TileConfig, layers: &mut Vec<Layer>)
-        -> Result<(), Error>
+        config: &TileConfig, layers: &mut Vec<Layer>) -> Result<(), Error>
     {
         let table = &table_def.name;
-        let grow = GeomRow::new(row, table_def.geom_type);
+        let grow = GeomRow::new(row, table_def.geom_type, &table_def.id_column);
         // FIXME: can this be done without a temp vec?
         let mut lyrs: Vec<Layer> = layers.drain(..).collect();
         for mut layer in lyrs.drain(..) {
             if let Some(layer_def) = self.find_layer(layer.name()) {
-                if layer_def.check_table(table, config.zoom()) {
-                    layer = layer_def.add_feature(layer, &table_def.id_column,
-                        &grow, &config.transform)?;
+                if layer_def.check_table(table, config.zoom()) &&
+                    grow.matches_layer(layer_def)
+                {
+                    if let Some(geom) = grow.get_geometry(&config.transform)? {
+                        layer = grow.add_feature(layer, layer_def, geom);
+                    }
                 }
             }
             layers.push(layer);

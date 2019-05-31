@@ -7,6 +7,7 @@
 mod config;
 mod error;
 mod map;
+mod rules;
 
 pub use config::TomlCfg;
 pub use error::Error;

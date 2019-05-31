@@ -19,138 +19,7 @@ use std::fs::File;
 use std::io::Write;
 use std::time::Instant;
 
-/// Lookup a geometry type from a string name
-fn lookup_geom_type(geom_type: &str) -> Option<GeomType> {
-    match geom_type {
-        "polygon" => Some(GeomType::Polygon),
-        "linestring" => Some(GeomType::Linestring),
-        "point" => Some(GeomType::Point),
-        _ => {
-            warn!("unknown geom type: {}", geom_type);
-            None
-        },
-    }
-}
-
-/// Table definition (tags, sql query, etc)
-#[derive(Clone, Debug)]
-struct TableDef {
-    name: String,
-    id_column: String,
-    geom_type: GeomType,
-    tags: Vec<String>,
-    sql: String,
-}
-
-/// Builder for tile maker
-pub struct Builder {
-    tile_extent: u32,
-    pixels: u32,
-    buffer_pixels: u32,
-    query_limit: u32,
-}
-
-/// Map tile maker
-#[derive(Clone)]
-pub struct TileMaker {
-    base_name: String,
-    tile_extent: u32,
-    pixels: u32,
-    buffer_pixels: u32,
-    query_limit: u32,
-    grid: MapGrid,
-    layer_defs: Vec<LayerDef>,
-    table_defs: Vec<TableDef>,
-}
-
-impl LayerDef {
-    /// Check if a row matches the layer rule
-    fn matches(&self, row: &Row) -> bool {
-        for pattern in self.patterns() {
-            if pattern.must_match == MustMatch::Yes {
-                let key = pattern.tag();
-                if pattern.matches_key(key) {
-                    if !pattern.matches_value(self.get_tag_value(row, key)) {
-                        return false;
-                    }
-                }
-            }
-        }
-        true
-    }
-    /// Get tags from a row and add them to a feature
-    fn get_tags(&self, id_column: &str, feature: &mut Feature, row: &Row) {
-        // id_column is always #0 (see build_query_sql)
-        let fid = row.get::<_, i64>(0);
-        trace!("layer {}, fid {}", self.name(), fid);
-        // NOTE: Leaflet apparently can't use mvt feature id; use tag/property
-        feature.add_tag_sint(id_column, fid);
-        for pattern in self.patterns() {
-            if let IncludeValue::Yes = pattern.include {
-                let key = pattern.tag();
-                if let Some(v) = self.get_tag_value(row, key) {
-                    feature.add_tag_string(key, &v);
-                    trace!("layer {}, {}={}", self.name(), key, &v);
-                }
-            }
-        }
-    }
-    /// Get one tag value (string)
-    fn get_tag_value(&self, row: &Row, col: &str) -> Option<String> {
-        if let Some(v) = row.get::<_, Option<String>>(col) {
-            if v.len() > 0 {
-                return Some(v);
-            }
-        }
-        None
-    }
-    /// Add a feature to a layer (if it matches)
-    fn add_feature(
-        &self,
-        layer: Layer,
-        id_column: &str,
-        geom_type: &GeomType,
-        row: &Row,
-        transform: &Transform,
-    ) -> Result<Layer, Error> {
-        if !self.matches(row) {
-            return Ok(layer);
-        }
-        match get_geometry(geom_type, row, transform)? {
-            Some(gd) => {
-                let mut feature = layer.into_feature(gd);
-                self.get_tags(id_column, &mut feature, row);
-                Ok(feature.into_layer())
-            }
-            None => Ok(layer),
-        }
-    }
-}
-
-/// Get geometry from a row, encoded as MVT GeomData
-fn get_geometry(geom_type: &GeomType, row: &Row, t: &Transform) -> GeomResult {
-    match geom_type {
-        GeomType::Point => get_geom_data(row, t, &encode_points),
-        GeomType::Linestring => get_geom_data(row, t, &encode_linestrings),
-        GeomType::Polygon => get_geom_data(row, t, &encode_polygons),
-    }
-}
-
 type GeomResult = Result<Option<GeomData>, Error>;
-
-/// Get geom data from a row
-fn get_geom_data<T: FromSql>(
-    row: &Row,
-    t: &Transform,
-    enc: &Fn(T, &Transform) -> GeomResult,
-) -> GeomResult {
-    // geom_column is always #1 (see build_query_sql)
-    match row.get_opt(1) {
-        Some(Ok(Some(g))) => enc(g, t),
-        Some(Err(e)) => Err(Error::Pg(e)),
-        _ => Ok(None),
-    }
-}
 
 /// Encode points into GeomData
 fn encode_points(g: ewkb::MultiPoint, t: &Transform) -> GeomResult {
@@ -198,6 +67,144 @@ fn encode_polygons(g: ewkb::MultiPolygon, t: &Transform) -> GeomResult {
         }
     }
     Ok(Some(ge.encode()?))
+}
+
+struct GeomRow<'a> {
+    row: &'a Row<'a>,
+    geom_type: GeomType,
+}
+
+impl<'a> GeomRow<'a> {
+    /// Create a new geom row
+    fn new(row: &'a Row, geom_type: GeomType) -> Self {
+        GeomRow { row, geom_type }
+    }
+    /// Get the row ID
+    fn get_id(&self) -> i64 {
+        // id_column is always #0 (see build_query_sql)
+        self.row.get::<_, i64>(0)
+    }
+    /// Get one tag value (string)
+    fn get_tag_value(&self, col: &str) -> Option<String> {
+        if let Some(v) = self.row.get::<_, Option<String>>(col) {
+            if v.len() > 0 {
+                return Some(v);
+            }
+        }
+        None
+    }
+    /// Get geometry from a row, encoded as MVT GeomData
+    fn get_geometry(&self, t: &Transform) -> GeomResult {
+        match self.geom_type {
+            GeomType::Point => self.get_geom_data(t, &encode_points),
+            GeomType::Linestring => self.get_geom_data(t, &encode_linestrings),
+            GeomType::Polygon => self.get_geom_data(t, &encode_polygons),
+        }
+    }
+    /// Get geom data from a row
+    fn get_geom_data<T: FromSql>(&self, t: &Transform, enc: &Fn(T, &Transform)
+        -> GeomResult) -> GeomResult
+    {
+        // geom_column is always #1 (see build_query_sql)
+        match self.row.get_opt(1) {
+            Some(Ok(Some(g))) => enc(g, t),
+            Some(Err(e)) => Err(Error::Pg(e)),
+            _ => Ok(None),
+        }
+    }
+}
+
+/// Lookup a geometry type from a string name
+fn lookup_geom_type(geom_type: &str) -> Option<GeomType> {
+    match geom_type {
+        "polygon" => Some(GeomType::Polygon),
+        "linestring" => Some(GeomType::Linestring),
+        "point" => Some(GeomType::Point),
+        _ => {
+            warn!("unknown geom type: {}", geom_type);
+            None
+        },
+    }
+}
+
+/// Table definition (tags, sql query, etc)
+#[derive(Clone, Debug)]
+struct TableDef {
+    name: String,
+    id_column: String,
+    geom_type: GeomType,
+    tags: Vec<String>,
+    sql: String,
+}
+
+/// Builder for tile maker
+pub struct Builder {
+    tile_extent: u32,
+    pixels: u32,
+    buffer_pixels: u32,
+    query_limit: u32,
+}
+
+/// Map tile maker
+#[derive(Clone)]
+pub struct TileMaker {
+    base_name: String,
+    tile_extent: u32,
+    pixels: u32,
+    buffer_pixels: u32,
+    query_limit: u32,
+    grid: MapGrid,
+    layer_defs: Vec<LayerDef>,
+    table_defs: Vec<TableDef>,
+}
+
+impl LayerDef {
+    /// Check if a row matches the layer rule
+    fn matches(&self, grow: &GeomRow) -> bool {
+        for pattern in self.patterns() {
+            if pattern.must_match == MustMatch::Yes {
+                let key = pattern.tag();
+                if pattern.matches_key(key) {
+                    if !pattern.matches_value(grow.get_tag_value(key)) {
+                        return false;
+                    }
+                }
+            }
+        }
+        true
+    }
+    /// Get tags from a row and add them to a feature
+    fn get_tags(&self, id_column: &str, feature: &mut Feature, grow: &GeomRow) {
+        let fid = grow.get_id();
+        trace!("layer {}, fid {}", self.name(), fid);
+        // NOTE: Leaflet apparently can't use mvt feature id; use tag/property
+        feature.add_tag_sint(id_column, fid);
+        for pattern in self.patterns() {
+            if let IncludeValue::Yes = pattern.include {
+                let key = pattern.tag();
+                if let Some(v) = grow.get_tag_value(key) {
+                    feature.add_tag_string(key, &v);
+                    trace!("layer {}, {}={}", self.name(), key, &v);
+                }
+            }
+        }
+    }
+    /// Add a feature to a layer (if it matches)
+    fn add_feature(&self, layer: Layer, id_column: &str, grow: &GeomRow,
+        transform: &Transform) -> Result<Layer, Error>
+    {
+        if !self.matches(grow) {
+            return Ok(layer);
+        }
+        match grow.get_geometry(transform)? {
+            Some(gd) => {
+                let mut feature = layer.into_feature(gd);
+                self.get_tags(id_column, &mut feature, grow);
+                Ok(feature.into_layer())
+            }
+            None => Ok(layer),
+        }
+    }
 }
 
 impl TableDef {
@@ -306,25 +313,18 @@ impl TileMaker {
         &self.base_name
     }
     /// Write a tile to a file
-    pub fn write_tile(
-        &self,
-        conn: &Connection,
-        xtile: u32,
-        ytile: u32,
-        zoom: u32,
-    ) -> Result<(), Error> {
+    pub fn write_tile(&self, conn: &Connection, xtile: u32, ytile: u32,
+        zoom: u32) -> Result<(), Error>
+    {
         let tid = TileId::new(xtile, ytile, zoom)?;
         let fname = format!("{}/{}.mvt", &self.base_name, tid);
         let mut f = File::create(fname)?;
         self.write_to(conn, tid, &mut f)
     }
     /// Write a tile
-    pub fn write_to(
-        &self,
-        conn: &Connection,
-        tid: TileId,
-        out: &mut Write,
-    ) -> Result<(), Error> {
+    pub fn write_to(&self, conn: &Connection, tid: TileId, out: &mut Write)
+        -> Result<(), Error>
+    {
         let tile = self.fetch_tile(conn, tid)?;
         if tile.num_layers() > 0 {
             tile.write_to(out)?;
@@ -334,13 +334,9 @@ impl TileMaker {
         Ok(())
     }
     /// Write a tile to a buffer
-    pub fn write_buf(
-        &self,
-        conn: &Connection,
-        xtile: u32,
-        ytile: u32,
-        zoom: u32,
-    ) -> Result<Vec<u8>, Error> {
+    pub fn write_buf(&self, conn: &Connection, xtile: u32, ytile: u32,
+        zoom: u32) -> Result<Vec<u8>, Error>
+    {
         let tid = TileId::new(xtile, ytile, zoom)?;
         let tile = self.fetch_tile(conn, tid)?;
         if tile.num_layers() > 0 {
@@ -351,11 +347,7 @@ impl TileMaker {
         }
     }
     /// Fetch a tile
-    fn fetch_tile(
-        &self,
-        conn: &Connection,
-        tid: TileId,
-    ) -> Result<Tile, Error> {
+    fn fetch_tile(&self, conn: &Connection, tid: TileId) -> Result<Tile, Error>{
         let bbox = self.grid.tile_bbox(tid);
         let tile_sz =
             (bbox.x_max() - bbox.x_min()).max(bbox.y_max() - bbox.y_min());
@@ -380,14 +372,9 @@ impl TileMaker {
         self.layer_defs.iter().any(|l| l.check_table(table, zoom))
     }
     /// Query one tile from DB
-    fn query_tile(
-        &self,
-        conn: &Connection,
-        transform: &Transform,
-        bbox: &BBox,
-        tol: f64,
-        zoom: u32,
-    ) -> Result<Tile, Error> {
+    fn query_tile(&self, conn: &Connection, transform: &Transform, bbox: &BBox,
+        tol: f64, zoom: u32) -> Result<Tile, Error>
+    {
         let mut tile = Tile::new(self.tile_extent);
         let mut layers = self
             .layer_defs
@@ -415,16 +402,10 @@ impl TileMaker {
         Ok(tile)
     }
     /// Query layers for one table
-    fn query_layers(
-        &self,
-        conn: &Connection,
-        table_def: &TableDef,
-        bbox: &BBox,
-        transform: &Transform,
-        tol: f64,
-        zoom: u32,
-        layers: &mut Vec<Layer>,
-    ) -> Result<(), Error> {
+    fn query_layers(&self, conn: &Connection, table_def: &TableDef, bbox: &BBox,
+        transform: &Transform, tol: f64, zoom: u32, layers: &mut Vec<Layer>)
+        -> Result<(), Error>
+    {
         debug!("sql: {}", &table_def.sql);
         let stmt = conn.prepare_cached(&table_def.sql)?;
         let trans = conn.transaction()?;
@@ -454,16 +435,12 @@ impl TileMaker {
         Ok(())
     }
     /// Add features to a layer
-    fn add_layer_features(
-        &self,
-        table_def: &TableDef,
-        row: &Row,
-        transform: &Transform,
-        zoom: u32,
-        layers: &mut Vec<Layer>,
-    ) -> Result<(), Error> {
+    fn add_layer_features(&self, table_def: &TableDef, row: &Row,
+        transform: &Transform, zoom: u32, layers: &mut Vec<Layer>)
+        -> Result<(), Error>
+    {
         let table = &table_def.name;
-        let geom_type = &table_def.geom_type;
+        let grow = GeomRow::new(row, table_def.geom_type);
         // FIXME: can this be done without a temp vec?
         let mut lyrs: Vec<Layer> = layers.drain(..).collect();
         for mut layer in lyrs.drain(..) {
@@ -472,7 +449,7 @@ impl TileMaker {
             if let Some(layer_def) = layer_def {
                 if layer_def.check_table(table, zoom) {
                     layer = layer_def.add_feature(layer, &table_def.id_column,
-                        geom_type, &row, transform)?;
+                        &grow, transform)?;
                 }
             }
             layers.push(layer);

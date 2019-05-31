@@ -2,10 +2,14 @@
 #
 # Socket address and port to bind server
 bind_address = "127.0.0.1:3030"
-# Path to layer rules
-rules_path = "/etc/earthwyrm/earthwyrm.rules"
 # Root path for static files
 document_root = "/var/lib/earthwyrm"
+# Tile pixels
+# pixels = 256
+# Buffer pixels around tile edges
+buffer_pixels = 5
+# Per-tile query limit
+# query_limit = 1000
 #
 # Defining a table makes it available for layer rules
 #   - name: Table name, as used in rules file
@@ -41,3 +45,11 @@ db_table = "planet_osm_point"
 id_column = "osm_id"
 geom_column = "way"
 geom_type = "point"
+#
+# Layer groups are collections of MVT files containing related layers.
+#   - base_name: Base path name for URI
+#   - rules_path: File containing layer rules
+#
+[[layer_group]]
+base_name = "tile"
+rules_path = "/etc/earthwyrm/earthwyrm.rules"

@@ -4,12 +4,10 @@
 //
 #![forbid(unsafe_code)]
 
-#[macro_use]
-extern crate log;
-
+mod config;
 mod error;
 mod map;
 
+pub use config::TomlCfg;
 pub use error::Error;
-pub use map::TableCfg;
-pub use map::TileMaker;
+pub use map::{Builder, TileMaker};

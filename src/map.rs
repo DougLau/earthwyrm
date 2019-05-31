@@ -1,8 +1,11 @@
 // map.rs
 //
-// Copyright (c) 2019 Minnesota Department of Transportation
+// Copyright (c) 2019  Minnesota Department of Transportation
 //
+use crate::Error;
+use crate::config::{LayerGroupCfg, TableCfg};
 use fallible_iterator::FallibleIterator;
+use log::{debug, error, info, trace, warn};
 use mvt::{
     BBox, Feature, GeomData, GeomEncoder, GeomType, Layer, MapGrid, Tile,
     TileId, Transform,
@@ -11,18 +14,13 @@ use postgis::ewkb;
 use postgres::rows::Row;
 use postgres::types::{FromSql, ToSql};
 use postgres::Connection;
-use serde_derive::Deserialize;
 use std::fs::File;
 use std::io::{BufRead, BufReader, Write};
 use std::time::Instant;
 
-use crate::error::Error;
-
 const TILE_EXTENT: u32 = 4096;
 
 const ZOOM_MAX: u32 = 30;
-
-const RULES_PATH_DEF: &'static str = "./earthwyrm.rules";
 
 /// Lookup a geometry type from a string name
 fn lookup_geom_type(geom_type: &str) -> Option<GeomType> {
@@ -78,17 +76,6 @@ struct LayerDef {
     patterns: Vec<TagPattern>,
 }
 
-/// Table configuration (names of columns, etc).
-/// FIXME: Should we check against geometry_columns view?
-#[derive(Debug, Deserialize)]
-pub struct TableCfg {
-    name: String,
-    db_table: String,
-    id_column: String,
-    geom_column: String,
-    geom_type: String,
-}
-
 /// Table definition (tags, sql query, etc)
 #[derive(Clone, Debug)]
 struct TableDef {
@@ -101,21 +88,18 @@ struct TableDef {
 
 /// Builder for tile maker
 pub struct Builder {
-    name: String,
     pixels: u32,
     buffer_pixels: u32,
-    query_limit: usize,
-    rules_path: Option<String>,
-    tables: Vec<TableCfg>,
+    query_limit: u32,
 }
 
 /// Map tile maker
 #[derive(Clone)]
 pub struct TileMaker {
-    name: String,
+    base_name: String,
     pixels: u32,
     buffer_pixels: u32,
-    query_limit: usize,
+    query_limit: u32,
     grid: MapGrid,
     layer_defs: Vec<LayerDef>,
     tables: Vec<TableDef>,
@@ -137,18 +121,15 @@ impl TagPattern {
             values,
         }
     }
-
     /// Get the tag (key)
     fn tag(&self) -> &str {
         &self.key
     }
-
     /// Check if the key matches
     fn matches_key(&self, key: &str) -> bool {
         debug_assert!(self.must_match == MustMatch::Yes);
         self.key == key
     }
-
     /// Check if the value matches
     fn matches_value(&self, value: Option<String>) -> bool {
         debug_assert!(self.must_match == MustMatch::Yes);
@@ -157,7 +138,6 @@ impl TagPattern {
             Equality::NotEqual => !self.matches_value_option(value),
         }
     }
-
     /// Check if an optional value matches
     fn matches_value_option(&self, value: Option<String>) -> bool {
         debug_assert!(self.must_match == MustMatch::Yes);
@@ -166,7 +146,6 @@ impl TagPattern {
             None => self.values.iter().any(|v| v == &"_"),
         }
     }
-
     /// Parse a tag pattern rule
     fn parse_rule(pat: &str) -> (MustMatch, IncludeValue, &str) {
         if pat.starts_with('.') {
@@ -177,7 +156,6 @@ impl TagPattern {
             (MustMatch::Yes, IncludeValue::No, pat)
         }
     }
-
     /// Parse the equality portion
     fn parse_equality(pat: &str) -> Option<(&str, Equality, &str)> {
         if pat.contains('=') {
@@ -194,12 +172,10 @@ impl TagPattern {
             Some((pat, Equality::NotEqual, &"_"))
         }
     }
-
     /// Parse the value(s) portion
     fn parse_values(val: &str) -> Vec<String> {
         val.split('|').map(|v| v.to_string()).collect()
     }
-
     /// Parse a tag pattern rule
     fn parse(pat: &str) -> Option<TagPattern> {
         let (must_match, include, pat) = TagPattern::parse_rule(pat);
@@ -282,17 +258,14 @@ impl LayerDef {
             patterns,
         })
     }
-
     /// Check if zoom level matches
     fn check_zoom(&self, zoom: u32) -> bool {
         zoom >= self.zoom_min && zoom <= self.zoom_max
     }
-
     /// Check a table definition and zoom level
     fn check_table(&self, table: &TableDef, zoom: u32) -> bool {
         self.check_zoom(zoom) && self.table == table.name
     }
-
     /// Check if a row matches the layer rule
     fn matches(&self, row: &Row) -> bool {
         for pattern in &self.patterns {
@@ -307,7 +280,6 @@ impl LayerDef {
         }
         true
     }
-
     /// Get tags from a row and add them to a feature
     fn get_tags(&self, id_column: &str, feature: &mut Feature, row: &Row) {
         // id_column is always #0 (see build_query_sql)
@@ -325,7 +297,6 @@ impl LayerDef {
             }
         }
     }
-
     /// Get one tag value (string)
     fn get_tag_value(&self, row: &Row, col: &str) -> Option<String> {
         if let Some(v) = row.get::<_, Option<String>>(col) {
@@ -335,7 +306,6 @@ impl LayerDef {
         }
         None
     }
-
     /// Add a feature to a layer (if it matches)
     fn add_feature(
         &self,
@@ -432,52 +402,12 @@ fn encode_polygons(g: ewkb::MultiPolygon, t: &Transform) -> GeomResult {
     Ok(Some(ge.encode()?))
 }
 
-impl TableCfg {
-    /// Create a new table configuration
-    pub fn new(
-        name: &str,
-        db_table: &str,
-        id_column: &str,
-        geom_column: &str,
-        geom_type: &str,
-    ) -> Self {
-        let name = name.to_string();
-        let db_table = db_table.to_string();
-        let id_column = id_column.to_string();
-        let geom_column = geom_column.to_string();
-        let geom_type = geom_type.to_string();
-        TableCfg { name, db_table, id_column, geom_column, geom_type }
-    }
-
-    /// Build SQL query
-    fn build_query_sql(&self, tags: &Vec<String>) -> String {
-        let mut sql = "SELECT ".to_string();
-        // id_column must be first (#0)
-        sql.push_str(&self.id_column);
-        sql.push_str(",ST_Multi(ST_SimplifyPreserveTopology(ST_SnapToGrid(");
-        // geom_column must be second (#1)
-        sql.push_str(&self.geom_column);
-        sql.push_str(",$1),$1))");
-        for tag in tags {
-            sql.push_str(",\"");
-            sql.push_str(tag);
-            sql.push('"');
-        }
-        sql.push_str(" FROM ");
-        sql.push_str(&self.db_table);
-        sql.push_str(" WHERE ");
-        sql.push_str(&self.geom_column);
-        sql.push_str(" && ST_Buffer(ST_MakeEnvelope($2,$3,$4,$5,3857),$6)");
-        sql
-    }
-}
-
 impl TableDef {
     /// Create a new table definition
-    fn new(table_cfg: &TableCfg, layer_defs: &Vec<LayerDef>) -> Option<Self> {
-        let name = &table_cfg.name;
-        let id_column = table_cfg.id_column.clone();
-        let geom_type = lookup_geom_type(&table_cfg.geom_type)?;
+    fn new(table_cfg: &TableCfg, layer_defs: &[LayerDef]) -> Option<Self> {
+        let name = &table_cfg.name();
+        let id_column = table_cfg.id_column().to_string();
+        let geom_type = lookup_geom_type(&table_cfg.geom_type())?;
         let tags = TableDef::table_tags(name, layer_defs);
         if tags.len() > 0 {
             let name = name.to_string();
@@ -493,9 +423,8 @@ impl TableDef {
             None
         }
     }
-
     /// Get the tags requested for the table from defined layers
-    fn table_tags(name: &str, layer_defs: &Vec<LayerDef>) -> Vec<String> {
+    fn table_tags(name: &str, layer_defs: &[LayerDef]) -> Vec<String> {
         let mut tags = Vec::<String>::new();
         for ld in layer_defs {
             if ld.table == name {
@@ -512,47 +441,38 @@ impl TableDef {
 }
 
 impl Builder {
+    /// Create a new builder
+    pub fn new() -> Self {
+        let pixels = 256;
+        let buffer_pixels = 0;
+        let query_limit = std::u32::MAX;
+        Builder { pixels, buffer_pixels, query_limit }
+    }
     /// Set the tile pixels
-    pub fn pixels(mut self, pixels: u32) -> Self {
+    pub fn set_pixels(&mut self, pixels: u32) {
         self.pixels = pixels;
-        self
     }
-
     /// Set the buffer pixels (at tile edges)
-    pub fn buffer_pixels(mut self, buffer_pixels: u32) -> Self {
+    pub fn set_buffer_pixels(&mut self, buffer_pixels: u32) {
         self.buffer_pixels = buffer_pixels;
-        self
     }
-
     /// Set the query limit
-    pub fn query_limit(mut self, query_limit: usize) -> Self {
+    pub fn set_query_limit(&mut self, query_limit: u32) {
         self.query_limit = query_limit;
-        self
     }
-
-    /// Set the path to the layer rules file
-    pub fn rules_path(mut self, rules_path: &str) -> Self {
-        self.rules_path = Some(rules_path.to_string());
-        self
-    }
-
-    /// Set the table configurations
-    pub fn tables(mut self, tables: Vec<TableCfg>) -> Self {
-        self.tables = tables;
-        self
-    }
-
     /// Build the tile maker
-    pub fn build(self) -> Result<TileMaker, Error> {
-        let layer_defs = self.load_layer_defs()?;
-        let tables = self.build_table_defs(&layer_defs);
-        let name = self.name;
+    pub fn build(self, table_cfgs: &[TableCfg], layer_group: &LayerGroupCfg)
+        -> Result<TileMaker, Error>
+    {
+        let layer_defs = layer_group.load_layer_defs()?;
+        let tables = self.build_table_defs(&layer_defs, table_cfgs);
+        let base_name = layer_group.base_name().to_string();
         let pixels = self.pixels;
         let buffer_pixels = self.buffer_pixels;
         let query_limit = self.query_limit;
         let grid = MapGrid::new_web_mercator();
         Ok(TileMaker {
-            name,
+            base_name,
             pixels,
             buffer_pixels,
             query_limit,
@@ -561,21 +481,13 @@ impl Builder {
             tables,
         })
     }
-
-    /// Load the layer rule definitions
-    fn load_layer_defs(&self) -> Result<Vec<LayerDef>, Error> {
-        load_layer_defs(
-            self.rules_path
-                .as_ref()
-                .map_or(RULES_PATH_DEF, String::as_str),
-        )
-    }
-
     /// Build the table definitions
-    fn build_table_defs(&self, layer_defs: &Vec<LayerDef>) -> Vec<TableDef> {
+    fn build_table_defs(&self, layer_defs: &[LayerDef],
+        table_cfgs: &[TableCfg]) -> Vec<TableDef>
+    {
         let mut tables = vec![];
-        for table_cfg in &self.tables {
-            if let Some(table) = TableDef::new(&table_cfg, layer_defs) {
+        for table_cfg in table_cfgs {
+            if let Some(table) = TableDef::new(table_cfg, layer_defs) {
                 tables.push(table);
             }
         }
@@ -583,23 +495,25 @@ impl Builder {
     }
 }
 
-/// Load layer rule definition file
-fn load_layer_defs(fname: &str) -> Result<Vec<LayerDef>, Error> {
-    let mut defs = vec![];
-    let f = BufReader::new(File::open(fname)?);
-    for line in f.lines() {
-        if let Some(ld) = parse_layer_def(&line?) {
-            debug!("LayerDef: {:?}", &ld);
-            defs.push(ld);
+impl LayerGroupCfg {
+    /// Load layer rule definition file
+    fn load_layer_defs(&self) -> Result<Vec<LayerDef>, Error> {
+        let mut defs = vec![];
+        let f = BufReader::new(File::open(&self.rules_path())?);
+        for line in f.lines() {
+            if let Some(ld) = parse_layer_def(&line?) {
+                debug!("LayerDef: {:?}", &ld);
+                defs.push(ld);
+            }
         }
+        let mut names = String::new();
+        for ld in &defs {
+            names.push(' ');
+            names.push_str(&ld.name);
+        }
+        info!("{} layers loaded:{}", defs.len(), names);
+        Ok(defs)
     }
-    let mut names = String::new();
-    for ld in &defs {
-        names.push(' ');
-        names.push_str(&ld.name);
-    }
-    info!("{} layers loaded:{}", defs.len(), names);
-    Ok(defs)
 }
 
 /// Parse one layer definition
@@ -627,19 +541,10 @@ fn parse_layer_def(line: &str) -> Option<LayerDef> {
 }
 
 impl TileMaker {
-    /// Create a new tile maker builder
-    pub fn new(name: &str) -> Builder {
-        let name = name.to_string();
-        Builder {
-            name,
-            pixels: 256,
-            buffer_pixels: 0,
-            query_limit: std::usize::MAX,
-            rules_path: None,
-            tables: vec![],
-        }
+    /// Get the base name
+    pub fn base_name(&self) -> &str {
+        &self.base_name
     }
-
     /// Write a tile to a file
     pub fn write_tile(
         &self,
@@ -649,11 +554,10 @@ impl TileMaker {
         zoom: u32,
     ) -> Result<(), Error> {
         let tid = TileId::new(xtile, ytile, zoom)?;
-        let fname = format!("{}/{}.mvt", &self.name, tid);
+        let fname = format!("{}/{}.mvt", &self.base_name, tid);
         let mut f = File::create(fname)?;
         self.write_to(conn, tid, &mut f)
     }
-
     /// Write a tile
     pub fn write_to(
         &self,
@@ -669,7 +573,6 @@ impl TileMaker {
         }
         Ok(())
     }
-
     /// Write a tile to a buffer
     pub fn write_buf(
         &self,
@@ -687,7 +590,6 @@ impl TileMaker {
             Err(Error::TileEmpty())
         }
     }
-
     /// Fetch a tile
     fn fetch_tile(
         &self,
@@ -712,12 +614,10 @@ impl TileMaker {
         );
         Ok(tile)
     }
-
     /// Check one table for matching layers
     fn check_layers(&self, table: &TableDef, zoom: u32) -> bool {
         self.layer_defs.iter().any(|l| l.check_table(table, zoom))
     }
-
     /// Query one tile from DB
     fn query_tile(
         &self,
@@ -753,7 +653,6 @@ impl TileMaker {
         }
         Ok(tile)
     }
-
     /// Query layers for one table
     fn query_layers(
         &self,
@@ -793,7 +692,6 @@ impl TileMaker {
         }
         Ok(())
     }
-
     /// Add features to a layer
     fn add_layer_features(
         &self,

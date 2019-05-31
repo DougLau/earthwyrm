@@ -4,14 +4,14 @@
 //
 #![forbid(unsafe_code)]
 
-use earthwyrm::{TomlCfg, Error, TileMaker};
+use earthwyrm::{Error, TileMaker, TomlCfg};
 use log::{debug, error, warn};
-use postgres::{self, Connection};
+use postgres::Connection;
 use r2d2::Pool;
 use r2d2_postgres::{PostgresConnectionManager, TlsMode};
 use serde_derive::Serialize;
 use std::net::SocketAddr;
-use warp::{self, filters, Filter, Rejection, Reply};
+use warp::{filters, Filter, Rejection, Reply};
 use warp::filters::BoxedFilter;
 use warp::http::StatusCode;
 use warp::reject::{custom, not_found};
@@ -47,11 +47,8 @@ fn do_main() -> Result<(), Error> {
     Ok(())
 }
 
-fn run_server(
-    document_root: String,
-    sock_addr: SocketAddr,
-    makers: Vec<TileMaker>,
-    pool: Pool<PostgresConnectionManager>)
+fn run_server(document_root: String, sock_addr: SocketAddr,
+    makers: Vec<TileMaker>, pool: Pool<PostgresConnectionManager>)
 {
     let tiles = tile_route(makers, pool.clone());
     let map = warp::path("map.html")

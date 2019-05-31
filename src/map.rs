@@ -28,6 +28,14 @@ struct TableDef {
     sql: String,
 }
 
+/// Tile configuration
+struct TileConfig {
+    tid: TileId,
+    bbox: BBox,
+    transform: Transform,
+    pixel_sz: f64,
+}
+
 /// Builder for tile maker
 pub struct Builder {
     tile_extent: u32,
@@ -132,6 +140,13 @@ impl TableDef {
     }
 }
 
+impl TileConfig {
+    /// Get the zoom level
+    fn zoom(&self) -> u32 {
+        self.tid.z()
+    }
+}
+
 impl Builder {
     /// Create a new builder
     pub fn new() -> Self {
@@ -212,8 +227,8 @@ impl TileMaker {
         let table = &table_def.name;
         self.layer_defs.iter().any(|l| l.check_table(table, zoom))
     }
-    /// Fetch a tile
-    fn fetch_tile(&self, conn: &Connection, tid: TileId) -> Result<Tile, Error>{
+    /// Create tile config for a tile ID
+    fn tile_config(&self, tid: TileId) -> TileConfig {
         let bbox = self.grid.tile_bbox(tid);
         let tile_sz =
             (bbox.x_max() - bbox.x_min()).max(bbox.y_max() - bbox.y_min());
@@ -221,34 +236,26 @@ impl TileMaker {
         debug!("tile {}, pixel_sz {:?}", tid, pixel_sz);
         let ts = self.tile_extent as f64;
         let transform = self.grid.tile_transform(tid).scale(ts, ts);
+        TileConfig { tid, bbox, transform, pixel_sz }
+    }
+    /// Fetch a tile
+    fn fetch_tile(&self, conn: &Connection, tid: TileId) -> Result<Tile, Error>{
+        let config = self.tile_config(tid);
         let t = Instant::now();
-        let tile =
-            self.query_tile(conn, &transform, &bbox, pixel_sz, tid.z())?;
-        info!(
-            "tile {}, fetched {} bytes in {:?}",
-            tid,
-            tile.compute_size(),
-            t.elapsed()
-        );
+        let tile = self.query_tile(conn, &config)?;
+        info!("tile {}, fetched {} bytes in {:?}", tid, tile.compute_size(),
+            t.elapsed());
         Ok(tile)
     }
     /// Query one tile from DB
-    fn query_tile(&self, conn: &Connection, transform: &Transform, bbox: &BBox,
-        tol: f64, zoom: u32) -> Result<Tile, Error>
+    fn query_tile(&self, conn: &Connection, config: &TileConfig)
+        -> Result<Tile, Error>
     {
         let mut tile = Tile::new(self.tile_extent);
         let mut layers = self.create_layers(&tile);
         for table_def in &self.table_defs {
-            if self.check_layers(table_def, zoom) {
-                self.query_layers(
-                    conn,
-                    table_def,
-                    &bbox,
-                    &transform,
-                    tol,
-                    zoom,
-                    &mut layers,
-                )?;
+            if self.check_layers(table_def, config.zoom()) {
+                self.query_layers(conn, table_def, &mut layers, config)?;
             }
         }
         for layer in layers.drain(..) {
@@ -259,17 +266,17 @@ impl TileMaker {
         Ok(tile)
     }
     /// Query layers for one table
-    fn query_layers(&self, conn: &Connection, table_def: &TableDef, bbox: &BBox,
-        transform: &Transform, tol: f64, zoom: u32, layers: &mut Vec<Layer>)
-        -> Result<(), Error>
+    fn query_layers(&self, conn: &Connection, table_def: &TableDef,
+         layers: &mut Vec<Layer>, config: &TileConfig) -> Result<(), Error>
     {
         debug!("sql: {}", &table_def.sql);
         let stmt = conn.prepare_cached(&table_def.sql)?;
         let trans = conn.transaction()?;
-        let x_min = bbox.x_min();
-        let y_min = bbox.y_min();
-        let x_max = bbox.x_max();
-        let y_max = bbox.y_max();
+        let x_min = config.bbox.x_min();
+        let y_min = config.bbox.y_min();
+        let x_max = config.bbox.x_max();
+        let y_max = config.bbox.y_max();
+        let tol = config.pixel_sz;
         let rad = tol * self.buffer_pixels as f64;
         let params: Vec<&ToSql> =
             vec![&tol, &x_min, &y_min, &x_max, &y_max, &rad];
@@ -277,7 +284,7 @@ impl TileMaker {
         let rows = stmt.lazy_query(&trans, &params[..], self.row_limit())?;
         let mut i = 0;
         for row in rows.iterator() {
-            self.add_layer_features(table_def, &row?, transform, zoom, layers)?;
+            self.add_layer_features(table_def, &row?, config, layers)?;
             if i == self.query_limit {
                 info!("table {}, query limit reached: {}", &table_def.name, i);
                 break;
@@ -296,7 +303,7 @@ impl TileMaker {
     }
     /// Add features to a layer
     fn add_layer_features(&self, table_def: &TableDef, row: &Row,
-        transform: &Transform, zoom: u32, layers: &mut Vec<Layer>)
+        config: &TileConfig, layers: &mut Vec<Layer>)
         -> Result<(), Error>
     {
         let table = &table_def.name;
@@ -305,9 +312,9 @@ impl TileMaker {
         let mut lyrs: Vec<Layer> = layers.drain(..).collect();
         for mut layer in lyrs.drain(..) {
             if let Some(layer_def) = self.find_layer(layer.name()) {
-                if layer_def.check_table(table, zoom) {
+                if layer_def.check_table(table, config.zoom()) {
                     layer = layer_def.add_feature(layer, &table_def.id_column,
-                        &grow, transform)?;
+                        &grow, &config.transform)?;
                 }
             }
             layers.push(layer);

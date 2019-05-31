@@ -38,8 +38,7 @@ fn do_main() -> Result<(), Error> {
     let sock_addr: SocketAddr = config.bind_address().parse()?;
     let document_root = config.document_root().to_string();
     let makers = config.into_tile_makers()?;
-    let username = users::get_current_username()
-        .ok_or(Error::Other("User name lookup error".to_string()))?;
+    let username = whoami::username();
     // Format path for unix domain socket -- not worth using percent_encode
     let uds = format!("postgres://{:}@%2Frun%2Fpostgresql/earthwyrm", username);
     let manager = PostgresConnectionManager::new(uds, TlsMode::None)?;

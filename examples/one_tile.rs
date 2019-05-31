@@ -42,19 +42,12 @@ rules_path = "./earthwyrm.rules"
 "#;
 
 fn write_tile() -> Result<(), Error> {
-    if let Some(username) = users::get_current_username() {
-        let maker = &TomlCfg::from_str(TOML)?.into_tile_makers()?[0];
-
-        // build path for unix domain socket
-        let mut db_url = "postgres://".to_string();
-        db_url.push_str(&username);
-        // not worth using percent_encode
-        db_url.push_str("@%2Frun%2Fpostgresql/earthwyrm");
-        let conn = Connection::connect(db_url, TlsMode::None)?;
-        maker.write_tile(&conn, 246, 368, 10)
-    } else {
-        Err(Error::Other("User name lookup error".to_string()))
-    }
+    let maker = &TomlCfg::from_str(TOML)?.into_tile_makers()?[0];
+    let username = whoami::username();
+    // Format path for unix domain socket -- not worth using percent_encode
+    let uds = format!("postgres://{:}@%2Frun%2Fpostgresql/earthwyrm", username);
+    let conn = Connection::connect(uds, TlsMode::None)?;
+    maker.write_tile(&conn, 246, 368, 10)
 }
 
 fn main() {

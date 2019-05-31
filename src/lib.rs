@@ -6,6 +6,7 @@
 
 mod config;
 mod error;
+mod geom;
 mod map;
 mod rules;
 

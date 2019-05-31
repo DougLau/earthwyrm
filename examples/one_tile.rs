@@ -8,6 +8,7 @@ use postgres::{self, Connection, TlsMode};
 const TOML: &str = & r#"
 bind_address = ""
 document_root = ""
+
 [[table]]
 name = "polygon"
 db_table = "planet_osm_polygon"
@@ -38,7 +39,7 @@ geom_type = "point"
 
 [[layer_group]]
 base_name = "tile"
-rules_path = "./earthwyrm.rules"
+rules_path = "./tile.rules"
 "#;
 
 fn write_tile() -> Result<(), Error> {

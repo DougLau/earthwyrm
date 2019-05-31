@@ -305,8 +305,8 @@ impl LayerDef {
         zoom >= self.zoom_min && zoom <= self.zoom_max
     }
     /// Check a table definition and zoom level
-    fn check_table(&self, table: &TableDef, zoom: u32) -> bool {
-        self.check_zoom(zoom) && self.table == table.name
+    fn check_table(&self, table: &str, zoom: u32) -> bool {
+        self.check_zoom(zoom) && self.table == table
     }
     /// Check if a row matches the layer rule
     fn matches(&self, row: &Row) -> bool {
@@ -536,8 +536,8 @@ impl Builder {
     {
         let mut table_defs = vec![];
         for table_cfg in table_cfgs {
-            if let Some(table) = TableDef::new(table_cfg, layer_defs) {
-                table_defs.push(table);
+            if let Some(table_def) = TableDef::new(table_cfg, layer_defs) {
+                table_defs.push(table_def);
             }
         }
         table_defs
@@ -619,7 +619,8 @@ impl TileMaker {
         Ok(tile)
     }
     /// Check one table for matching layers
-    fn check_layers(&self, table: &TableDef, zoom: u32) -> bool {
+    fn check_layers(&self, table_def: &TableDef, zoom: u32) -> bool {
+        let table = &table_def.name;
         self.layer_defs.iter().any(|l| l.check_table(table, zoom))
     }
     /// Query one tile from DB
@@ -661,15 +662,15 @@ impl TileMaker {
     fn query_layers(
         &self,
         conn: &Connection,
-        table: &TableDef,
+        table_def: &TableDef,
         bbox: &BBox,
         transform: &Transform,
         tol: f64,
         zoom: u32,
         layers: &mut Vec<Layer>,
     ) -> Result<(), Error> {
-        debug!("sql: {}", &table.sql);
-        let stmt = conn.prepare_cached(&table.sql)?;
+        debug!("sql: {}", &table_def.sql);
+        let stmt = conn.prepare_cached(&table_def.sql)?;
         let trans = conn.transaction()?;
         let x_min = bbox.x_min();
         let y_min = bbox.y_min();
@@ -687,9 +688,9 @@ impl TileMaker {
         let rows = stmt.lazy_query(&trans, &params[..], row_limit)?;
         let mut i = 0;
         for row in rows.iterator() {
-            self.add_layer_features(table, &row?, transform, zoom, layers)?;
+            self.add_layer_features(table_def, &row?, transform, zoom, layers)?;
             if i == self.query_limit {
-                info!("table {}, query limit reached: {}", &table.name, i);
+                info!("table {}, query limit reached: {}", &table_def.name, i);
                 break;
             }
             i += 1;
@@ -699,13 +700,14 @@ impl TileMaker {
     /// Add features to a layer
     fn add_layer_features(
         &self,
-        table: &TableDef,
+        table_def: &TableDef,
         row: &Row,
         transform: &Transform,
         zoom: u32,
         layers: &mut Vec<Layer>,
     ) -> Result<(), Error> {
-        let geom_type = &table.geom_type;
+        let table = &table_def.name;
+        let geom_type = &table_def.geom_type;
         // FIXME: can this be done without a temp vec?
         let mut lyrs: Vec<Layer> = layers.drain(..).collect();
         for mut layer in lyrs.drain(..) {
@@ -713,7 +715,7 @@ impl TileMaker {
                 self.layer_defs.iter().find(|ld| ld.name == layer.name());
             if let Some(layer_def) = layer_def {
                 if layer_def.check_table(table, zoom) {
-                    layer = layer_def.add_feature(layer, &table.id_column,
+                    layer = layer_def.add_feature(layer, &table_def.id_column,
                         geom_type, &row, transform)?;
                 }
             }

@@ -18,8 +18,6 @@ use std::fs::File;
 use std::io::{BufRead, BufReader, Write};
 use std::time::Instant;
 
-const TILE_EXTENT: u32 = 4096;
-
 const ZOOM_MAX: u32 = 30;
 
 /// Lookup a geometry type from a string name
@@ -88,6 +86,7 @@ struct TableDef {
 
 /// Builder for tile maker
 pub struct Builder {
+    tile_extent: u32,
     pixels: u32,
     buffer_pixels: u32,
     query_limit: u32,
@@ -97,6 +96,7 @@ pub struct Builder {
 #[derive(Clone)]
 pub struct TileMaker {
     base_name: String,
+    tile_extent: u32,
     pixels: u32,
     buffer_pixels: u32,
     query_limit: u32,
@@ -443,10 +443,15 @@ impl TableDef {
 impl Builder {
     /// Create a new builder
     pub fn new() -> Self {
+        let tile_extent = 4096;
         let pixels = 256;
         let buffer_pixels = 0;
         let query_limit = std::u32::MAX;
-        Builder { pixels, buffer_pixels, query_limit }
+        Builder { tile_extent, pixels, buffer_pixels, query_limit }
+    }
+    /// Set the tile extent (within MVT files)
+    pub fn set_tile_extent(&mut self, tile_extent: u32) {
+        self.tile_extent = tile_extent;
     }
     /// Set the tile pixels
     pub fn set_pixels(&mut self, pixels: u32) {
@@ -467,12 +472,14 @@ impl Builder {
         let layer_defs = layer_group.load_layer_defs()?;
         let tables = self.build_table_defs(&layer_defs, table_cfgs);
         let base_name = layer_group.base_name().to_string();
+        let tile_extent = self.tile_extent;
         let pixels = self.pixels;
         let buffer_pixels = self.buffer_pixels;
         let query_limit = self.query_limit;
         let grid = MapGrid::new_web_mercator();
         Ok(TileMaker {
             base_name,
+            tile_extent,
             pixels,
             buffer_pixels,
             query_limit,
@@ -601,7 +608,7 @@ impl TileMaker {
             (bbox.x_max() - bbox.x_min()).max(bbox.y_max() - bbox.y_min());
         let pixel_sz = tile_sz / self.pixels as f64;
         debug!("tile {}, pixel_sz {:?}", tid, pixel_sz);
-        let ts = TILE_EXTENT as f64;
+        let ts = self.tile_extent as f64;
         let transform = self.grid.tile_transform(tid).scale(ts, ts);
         let t = Instant::now();
         let tile =
@@ -627,7 +634,7 @@ impl TileMaker {
         tol: f64,
         zoom: u32,
     ) -> Result<Tile, Error> {
-        let mut tile = Tile::new(TILE_EXTENT);
+        let mut tile = Tile::new(self.tile_extent);
         let mut layers = self
             .layer_defs
             .iter()

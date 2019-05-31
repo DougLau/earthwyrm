@@ -12,6 +12,7 @@ use std::fs;
 pub struct TomlCfg {
     bind_address: String,
     document_root: String,
+    tile_extent: Option<u32>,
     pixels: Option<u32>,
     buffer_pixels: Option<u32>,
     query_limit: Option<u32>,
@@ -72,6 +73,9 @@ impl TomlCfg {
     /// Build a `TileMaker`
     fn tile_maker(&self, group: &LayerGroupCfg) -> Result<TileMaker, Error> {
         let mut builder = Builder::new();
+        if let Some(tile_extent) = self.tile_extent {
+            builder.set_tile_extent(tile_extent);
+        }
         if let Some(pixels) = self.pixels {
             builder.set_pixels(pixels);
         }

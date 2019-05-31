@@ -4,6 +4,8 @@
 bind_address = "127.0.0.1:3030"
 # Root path for static files
 document_root = "/var/lib/earthwyrm"
+# Tile extent (within MVT files)
+#tile_extent = 4096
 # Tile pixels
 #pixels = 256
 # Buffer pixels around tile edges

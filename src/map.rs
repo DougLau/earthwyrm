@@ -196,8 +196,8 @@ impl TileMaker {
         let config = self.tile_config(tid);
         let t = Instant::now();
         let tile = self.query_tile(conn, &config)?;
-        info!("tile {}, fetched {} bytes in {:?}", tid, tile.compute_size(),
-            t.elapsed());
+        info!("{} {}, fetched {} bytes in {:?}", self.base_name(), tid,
+            tile.compute_size(), t.elapsed());
         Ok(tile)
     }
     /// Query one tile from DB

@@ -1,4 +1,4 @@
-# earthwyrm.rules
+# tile.rules
 #
 # The .rules file determines how MVT files are created from an osm2pgsql
 # database.

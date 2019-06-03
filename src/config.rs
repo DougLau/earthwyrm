@@ -16,8 +16,8 @@ pub struct TomlCfg {
     pixels: Option<u32>,
     buffer_pixels: Option<u32>,
     query_limit: Option<u32>,
-    tables: Vec<TableCfg>,
-    layer_groups: Vec<LayerGroupCfg>,
+    table: Vec<TableCfg>,
+    layer_group: Vec<LayerGroupCfg>,
 }
 
 /// Table configuration (names of columns, etc).
@@ -56,11 +56,11 @@ impl TomlCfg {
     }
     /// Get the table configurations
     pub fn tables(&self) -> &[TableCfg] {
-        &self.tables
+        &self.table
     }
     /// Get the layer group configurations
     pub fn layer_groups(&self) -> &[LayerGroupCfg] {
-        &self.layer_groups
+        &self.layer_group
     }
     /// Convert into a `Vec` of `TileMaker`s (one for each layer group)
     pub fn into_tile_makers(self) -> Result<Vec<TileMaker>, Error> {

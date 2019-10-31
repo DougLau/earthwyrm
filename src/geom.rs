@@ -106,8 +106,8 @@ impl<'a> GeomRow<'a> {
         }
     }
     /// Get geom data from a row
-    fn get_geom_data<T: FromSql>(&self, t: &Transform, enc: &Fn(T, &Transform)
-        -> GeomResult) -> GeomResult
+    fn get_geom_data<T: FromSql>(&self, t: &Transform,
+        enc: &dyn Fn(T, &Transform) -> GeomResult) -> GeomResult
     {
         // geom_column is always #1 (see build_query_sql)
         match self.row.get_opt(1) {

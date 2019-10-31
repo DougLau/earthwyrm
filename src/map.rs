@@ -231,7 +231,7 @@ impl TileMaker {
         let y_max = config.bbox.y_max();
         let tol = config.pixel_sz;
         let rad = tol * self.buffer_pixels as f64;
-        let params: Vec<&ToSql> =
+        let params: Vec<&dyn ToSql> =
             vec![&tol, &x_min, &y_min, &x_max, &y_max, &rad];
         debug!("params: {:?}", params);
         let rows = stmt.lazy_query(&trans, &params[..], self.row_limit())?;
@@ -286,7 +286,7 @@ impl TileMaker {
         self.write_to(conn, tid, &mut f)
     }
     /// Write a tile
-    pub fn write_to(&self, conn: &Connection, tid: TileId, out: &mut Write)
+    pub fn write_to(&self, conn: &Connection, tid: TileId, out: &mut dyn Write)
         -> Result<(), Error>
     {
         let tile = self.fetch_tile(conn, tid)?;

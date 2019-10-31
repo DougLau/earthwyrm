@@ -1,6 +1,6 @@
 [package]
 name = "earthwyrm"
-version = "0.3.0"
+version = "0.3.1"
 authors = ["Douglas Lau <doug.lau@state.mn.us>"]
 description = "Vector tile map server for openstreetmap data"
 license = "MIT OR Apache-2.0"
@@ -12,7 +12,7 @@ keywords = ["cartography", "gis", "osm", "server"]
 edition = "2018"
 
 [dependencies]
-env_logger = "0.6"
+env_logger = "0.7"
 fallible-iterator = "0.1"
 log = "0.4"
 mvt = "0.5"

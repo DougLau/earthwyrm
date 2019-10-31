@@ -172,7 +172,8 @@ fn parse_u32(v: &str) -> Option<u32> {
 }
 
 /// Parse tag patterns of a layer rule
-fn parse_patterns(c: &mut Iterator<Item = &str>) -> Option<Vec<TagPattern>> {
+fn parse_patterns(c: &mut dyn Iterator<Item = &str>) -> Option<Vec<TagPattern>>
+{
     let mut patterns = Vec::<TagPattern>::new();
     loop {
         if let Some(p) = c.next() {
@@ -207,7 +208,7 @@ fn parse_layer_def(line: &str) -> Option<LayerDef> {
     let c: Vec<&str> = line.split_whitespace().collect();
     match c.len() {
         0 => None,
-        1...3 => {
+        1..=3 => {
             error!("Invalid rule (not enough columns): {}", line);
             None
         }
@@ -241,7 +242,7 @@ impl LayerDef {
         Ok(defs)
     }
     /// Parse a layer definition rule
-    fn parse(c: &mut Iterator<Item = &str>) -> Option<Self> {
+    fn parse(c: &mut dyn Iterator<Item = &str>) -> Option<Self> {
         let name = c.next()?.to_string();
         let table = c.next()?.to_string();
         let (zoom_min, zoom_max) = parse_zoom(c.next()?)?;

@@ -23,9 +23,7 @@ struct ErrorMessage {
 }
 
 fn main() {
-    env_logger::Builder::from_default_env()
-        .default_format_timestamp(false)
-        .init();
+    env_logger::builder().format_timestamp(None).init();
     let res = do_main();
     if let Err(e) = &res {
         error!("{:?}", e);

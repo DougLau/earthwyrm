@@ -1,12 +1,12 @@
 // error.rs
 //
-// Copyright (c) 2019 Minnesota Department of Transportation
+// Copyright (c) 2019-2020  Minnesota Department of Transportation
 //
 use mvt;
 use postgres;
 use r2d2;
-use std::{fmt, io};
 use std::net::AddrParseError;
+use std::{fmt, io};
 use toml;
 
 #[derive(Debug)]

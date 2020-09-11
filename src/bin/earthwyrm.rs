@@ -1,6 +1,6 @@
 // earthwyrm.rs
 //
-// Copyright (c) 2019 Minnesota Department of Transportation
+// Copyright (c) 2019-2020  Minnesota Department of Transportation
 //
 #![forbid(unsafe_code)]
 
@@ -11,10 +11,10 @@ use r2d2::Pool;
 use r2d2_postgres::{PostgresConnectionManager, TlsMode};
 use serde_derive::Serialize;
 use std::net::SocketAddr;
-use warp::{filters, Filter, Rejection, Reply};
 use warp::filters::BoxedFilter;
 use warp::http::StatusCode;
 use warp::reject::{custom, not_found};
+use warp::{filters, Filter, Rejection, Reply};
 
 #[derive(Serialize)]
 struct ErrorMessage {
@@ -45,9 +45,12 @@ fn do_main() -> Result<(), Error> {
     Ok(())
 }
 
-fn run_server(document_root: String, sock_addr: SocketAddr,
-    makers: Vec<TileMaker>, pool: Pool<PostgresConnectionManager>)
-{
+fn run_server(
+    document_root: String,
+    sock_addr: SocketAddr,
+    makers: Vec<TileMaker>,
+    pool: Pool<PostgresConnectionManager>,
+) {
     let tiles = tile_route(makers, pool.clone());
     let map = warp::path("map.html")
         .and(warp::fs::file(document_root.to_string() + "/map.html"));
@@ -56,9 +59,10 @@ fn run_server(document_root: String, sock_addr: SocketAddr,
     warp::serve(routes).run(sock_addr);
 }
 
-fn tile_route(makers: Vec<TileMaker>, pool: Pool<PostgresConnectionManager>) ->
-    BoxedFilter<(impl Reply, )>
-{
+fn tile_route(
+    makers: Vec<TileMaker>,
+    pool: Pool<PostgresConnectionManager>,
+) -> BoxedFilter<(impl Reply,)> {
     warp::get2()
         .and(warp::addr::remote())
         .and(warp::path::param::<String>())

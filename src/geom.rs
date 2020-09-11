@@ -1,9 +1,9 @@
 // geom.rs
 //
-// Copyright (c) 2019  Minnesota Department of Transportation
+// Copyright (c) 2019-2020  Minnesota Department of Transportation
 //
-use crate::Error;
 use crate::rules::LayerDef;
+use crate::Error;
 use log::{trace, warn};
 use mvt::{Feature, GeomData, GeomEncoder, GeomType, Layer, Transform};
 use postgis::ewkb;
@@ -70,7 +70,11 @@ pub struct GeomRow<'a> {
 impl<'a> GeomRow<'a> {
     /// Create a new geom row
     pub fn new(row: &'a Row, geom_type: GeomType, id_column: &'a str) -> Self {
-        GeomRow { row, geom_type, id_column }
+        GeomRow {
+            row,
+            geom_type,
+            id_column,
+        }
     }
     /// Check if a row matches a layer
     pub fn matches_layer(&self, layer_def: &LayerDef) -> bool {
@@ -106,9 +110,11 @@ impl<'a> GeomRow<'a> {
         }
     }
     /// Get geom data from a row
-    fn get_geom_data<T: FromSql>(&self, t: &Transform,
-        enc: &dyn Fn(T, &Transform) -> GeomResult) -> GeomResult
-    {
+    fn get_geom_data<T: FromSql>(
+        &self,
+        t: &Transform,
+        enc: &dyn Fn(T, &Transform) -> GeomResult,
+    ) -> GeomResult {
         // geom_column is always #1 (see build_query_sql)
         match self.row.get_opt(1) {
             Some(Ok(Some(g))) => enc(g, t),
@@ -117,9 +123,12 @@ impl<'a> GeomRow<'a> {
         }
     }
     /// Add a feature to a layer
-    pub fn add_feature(&self, layer: Layer, layer_def: &LayerDef,
-        geom_data: GeomData) -> Layer
-    {
+    pub fn add_feature(
+        &self,
+        layer: Layer,
+        layer_def: &LayerDef,
+        geom_data: GeomData,
+    ) -> Layer {
         let mut feature = layer.into_feature(geom_data);
         self.get_tags(layer_def, &mut feature);
         feature.into_layer()
@@ -150,6 +159,6 @@ pub fn lookup_geom_type(geom_type: &str) -> Option<GeomType> {
         _ => {
             warn!("unknown geom type: {}", geom_type);
             None
-        },
+        }
     }
 }

@@ -1,6 +1,6 @@
 // rules.rs
 //
-// Copyright (c) 2019  Minnesota Department of Transportation
+// Copyright (c) 2019-2020  Minnesota Department of Transportation
 //
 use crate::Error;
 use log::{debug, error, info};
@@ -172,8 +172,9 @@ fn parse_u32(v: &str) -> Option<u32> {
 }
 
 /// Parse tag patterns of a layer rule
-fn parse_patterns(c: &mut dyn Iterator<Item = &str>) -> Option<Vec<TagPattern>>
-{
+fn parse_patterns(
+    c: &mut dyn Iterator<Item = &str>,
+) -> Option<Vec<TagPattern>> {
     let mut patterns = Vec::<TagPattern>::new();
     loop {
         if let Some(p) = c.next() {

@@ -1,6 +1,6 @@
 // config.rs
 //
-// Copyright (c) 2019  Minnesota Department of Transportation
+// Copyright (c) 2019-2020  Minnesota Department of Transportation
 //
 use crate::error::Error;
 use crate::map::{Builder, TileMaker};
@@ -103,7 +103,13 @@ impl TableCfg {
         let id_column = id_column.to_string();
         let geom_column = geom_column.to_string();
         let geom_type = geom_type.to_string();
-        TableCfg { name, db_table, id_column, geom_column, geom_type }
+        TableCfg {
+            name,
+            db_table,
+            id_column,
+            geom_column,
+            geom_type,
+        }
     }
     /// Get table name
     pub fn name(&self) -> &str {
@@ -145,7 +151,10 @@ impl LayerGroupCfg {
     pub fn new(base_name: &str, rules_path: &str) -> Self {
         let base_name = base_name.to_string();
         let rules_path = rules_path.to_string();
-        LayerGroupCfg { base_name, rules_path }
+        LayerGroupCfg {
+            base_name,
+            rules_path,
+        }
     }
     /// Get base name
     pub fn base_name(&self) -> &str {

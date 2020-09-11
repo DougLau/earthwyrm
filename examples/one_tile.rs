@@ -1,11 +1,11 @@
 // one_tile.rs
 //
-// Copyright (c) 2019 Minnesota Department of Transportation
+// Copyright (c) 2019-2020  Minnesota Department of Transportation
 //
-use earthwyrm::{TomlCfg, Error};
+use earthwyrm::{Error, TomlCfg};
 use postgres::{self, Connection, TlsMode};
 
-const TOML: &str = & r#"
+const TOML: &str = &r#"
 bind_address = ""
 document_root = ""
 

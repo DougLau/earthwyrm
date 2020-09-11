@@ -1,11 +1,11 @@
 // map.rs
 //
-// Copyright (c) 2019  Minnesota Department of Transportation
+// Copyright (c) 2019-2020  Minnesota Department of Transportation
 //
-use crate::Error;
 use crate::config::{LayerGroupCfg, TableCfg};
-use crate::geom::{GeomRow, lookup_geom_type};
+use crate::geom::{lookup_geom_type, GeomRow};
 use crate::rules::LayerDef;
+use crate::Error;
 use fallible_iterator::FallibleIterator;
 use log::{debug, info, warn};
 use mvt::{BBox, GeomType, Layer, MapGrid, Tile, TileId, Transform};
@@ -107,7 +107,12 @@ impl Builder {
         let pixels = 256;
         let buffer_pixels = 0;
         let query_limit = std::u32::MAX;
-        Builder { tile_extent, pixels, buffer_pixels, query_limit }
+        Builder {
+            tile_extent,
+            pixels,
+            buffer_pixels,
+            query_limit,
+        }
     }
     /// Set the tile extent (within MVT files)
     pub fn set_tile_extent(&mut self, tile_extent: u32) {
@@ -126,9 +131,11 @@ impl Builder {
         self.query_limit = query_limit;
     }
     /// Build the tile maker
-    pub fn build(self, table_cfgs: &[TableCfg], layer_group: &LayerGroupCfg)
-        -> Result<TileMaker, Error>
-    {
+    pub fn build(
+        self,
+        table_cfgs: &[TableCfg],
+        layer_group: &LayerGroupCfg,
+    ) -> Result<TileMaker, Error> {
         let layer_defs = LayerDef::load_all(layer_group.rules_path())?;
         let table_defs = self.build_table_defs(&layer_defs, table_cfgs);
         let base_name = layer_group.base_name().to_string();
@@ -149,9 +156,11 @@ impl Builder {
         })
     }
     /// Build the table definitions
-    fn build_table_defs(&self, layer_defs: &[LayerDef],
-        table_cfgs: &[TableCfg]) -> Vec<TableDef>
-    {
+    fn build_table_defs(
+        &self,
+        layer_defs: &[LayerDef],
+        table_cfgs: &[TableCfg],
+    ) -> Vec<TableDef> {
         let mut table_defs = vec![];
         for table_cfg in table_cfgs {
             if let Some(table_def) = TableDef::new(table_cfg, layer_defs) {
@@ -173,7 +182,10 @@ impl TileMaker {
     }
     /// Create all layers for a tile
     fn create_layers(&self, tile: &Tile) -> Vec<Layer> {
-        self.layer_defs.iter().map(|ld| tile.create_layer(&ld.name())).collect()
+        self.layer_defs
+            .iter()
+            .map(|ld| tile.create_layer(&ld.name()))
+            .collect()
     }
     /// Check one table for matching layers
     fn check_layers(&self, table_def: &TableDef, zoom: u32) -> bool {
@@ -189,21 +201,37 @@ impl TileMaker {
         debug!("tile {}, pixel_sz {:?}", tid, pixel_sz);
         let ts = self.tile_extent as f64;
         let transform = self.grid.tile_transform(tid).scale(ts, ts);
-        TileConfig { tid, bbox, transform, pixel_sz }
+        TileConfig {
+            tid,
+            bbox,
+            transform,
+            pixel_sz,
+        }
     }
     /// Fetch a tile
-    fn fetch_tile(&self, conn: &Connection, tid: TileId) -> Result<Tile, Error>{
+    fn fetch_tile(
+        &self,
+        conn: &Connection,
+        tid: TileId,
+    ) -> Result<Tile, Error> {
         let config = self.tile_config(tid);
         let t = Instant::now();
         let tile = self.query_tile(conn, &config)?;
-        info!("{} {}, fetched {} bytes in {:?}", self.base_name(), tid,
-            tile.compute_size(), t.elapsed());
+        info!(
+            "{} {}, fetched {} bytes in {:?}",
+            self.base_name(),
+            tid,
+            tile.compute_size(),
+            t.elapsed()
+        );
         Ok(tile)
     }
     /// Query one tile from DB
-    fn query_tile(&self, conn: &Connection, config: &TileConfig)
-        -> Result<Tile, Error>
-    {
+    fn query_tile(
+        &self,
+        conn: &Connection,
+        config: &TileConfig,
+    ) -> Result<Tile, Error> {
         let mut tile = Tile::new(self.tile_extent);
         let mut layers = self.create_layers(&tile);
         for table_def in &self.table_defs {
@@ -219,9 +247,13 @@ impl TileMaker {
         Ok(tile)
     }
     /// Query layers for one table
-    fn query_layers(&self, conn: &Connection, table_def: &TableDef,
-         layers: &mut Vec<Layer>, config: &TileConfig) -> Result<(), Error>
-    {
+    fn query_layers(
+        &self,
+        conn: &Connection,
+        table_def: &TableDef,
+        layers: &mut Vec<Layer>,
+        config: &TileConfig,
+    ) -> Result<(), Error> {
         debug!("sql: {}", &table_def.sql);
         let stmt = conn.prepare_cached(&table_def.sql)?;
         let trans = conn.transaction()?;
@@ -255,17 +287,21 @@ impl TileMaker {
         }
     }
     /// Add features to a layer
-    fn add_layer_features(&self, table_def: &TableDef, row: &Row,
-        config: &TileConfig, layers: &mut Vec<Layer>) -> Result<(), Error>
-    {
+    fn add_layer_features(
+        &self,
+        table_def: &TableDef,
+        row: &Row,
+        config: &TileConfig,
+        layers: &mut Vec<Layer>,
+    ) -> Result<(), Error> {
         let table = &table_def.name;
         let grow = GeomRow::new(row, table_def.geom_type, &table_def.id_column);
         // FIXME: can this be done without a temp vec?
         let mut lyrs: Vec<Layer> = layers.drain(..).collect();
         for mut layer in lyrs.drain(..) {
             if let Some(layer_def) = self.find_layer(layer.name()) {
-                if layer_def.check_table(table, config.zoom()) &&
-                    grow.matches_layer(layer_def)
+                if layer_def.check_table(table, config.zoom())
+                    && grow.matches_layer(layer_def)
                 {
                     if let Some(geom) = grow.get_geometry(&config.transform)? {
                         layer = grow.add_feature(layer, layer_def, geom);
@@ -277,18 +313,25 @@ impl TileMaker {
         Ok(())
     }
     /// Write a tile to a file
-    pub fn write_tile(&self, conn: &Connection, xtile: u32, ytile: u32,
-        zoom: u32) -> Result<(), Error>
-    {
+    pub fn write_tile(
+        &self,
+        conn: &Connection,
+        xtile: u32,
+        ytile: u32,
+        zoom: u32,
+    ) -> Result<(), Error> {
         let tid = TileId::new(xtile, ytile, zoom)?;
         let fname = format!("{}/{}.mvt", &self.base_name, tid);
         let mut f = File::create(fname)?;
         self.write_to(conn, tid, &mut f)
     }
     /// Write a tile
-    pub fn write_to(&self, conn: &Connection, tid: TileId, out: &mut dyn Write)
-        -> Result<(), Error>
-    {
+    pub fn write_to(
+        &self,
+        conn: &Connection,
+        tid: TileId,
+        out: &mut dyn Write,
+    ) -> Result<(), Error> {
         let tile = self.fetch_tile(conn, tid)?;
         if tile.num_layers() > 0 {
             tile.write_to(out)?;
@@ -298,9 +341,13 @@ impl TileMaker {
         Ok(())
     }
     /// Write a tile to a buffer
-    pub fn write_buf(&self, conn: &Connection, xtile: u32, ytile: u32,
-        zoom: u32) -> Result<Vec<u8>, Error>
-    {
+    pub fn write_buf(
+        &self,
+        conn: &Connection,
+        xtile: u32,
+        ytile: u32,
+        zoom: u32,
+    ) -> Result<Vec<u8>, Error> {
         let tid = TileId::new(xtile, ytile, zoom)?;
         let tile = self.fetch_tile(conn, tid)?;
         if tile.num_layers() > 0 {

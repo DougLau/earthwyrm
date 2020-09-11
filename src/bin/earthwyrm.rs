@@ -6,9 +6,9 @@
 
 use earthwyrm::{Error, TileMaker, TomlCfg};
 use log::{debug, error, warn};
-use postgres::Connection;
-use r2d2::Pool;
-use r2d2_postgres::{PostgresConnectionManager, TlsMode};
+use postgres::config::Config;
+use postgres::{Client, NoTls};
+use r2d2_postgres::PostgresConnectionManager;
 use serde_derive::Serialize;
 use std::net::SocketAddr;
 use warp::filters::BoxedFilter;
@@ -39,9 +39,8 @@ fn do_main() -> Result<(), Error> {
     let username = whoami::username();
     // Format path for unix domain socket -- not worth using percent_encode
     let uds = format!("postgres://{:}@%2Frun%2Fpostgresql/earthwyrm", username);
-    let manager = PostgresConnectionManager::new(uds, TlsMode::None)?;
-    let pool = r2d2::Pool::new(manager)?;
-    run_server(document_root, sock_addr, makers, pool);
+    let config = uds.parse()?;
+    run_server(document_root, sock_addr, makers, config);
     Ok(())
 }
 
@@ -49,9 +48,9 @@ fn run_server(
     document_root: String,
     sock_addr: SocketAddr,
     makers: Vec<TileMaker>,
-    pool: Pool<PostgresConnectionManager>,
+    config: Config,
 ) {
-    let tiles = tile_route(makers, pool.clone());
+    let tiles = tile_route(makers, config);
     let map = warp::path("map.html")
         .and(warp::fs::file(document_root.to_string() + "/map.html"));
     let files = warp::path("static").and(warp::fs::dir(document_root));
@@ -61,8 +60,10 @@ fn run_server(
 
 fn tile_route(
     makers: Vec<TileMaker>,
-    pool: Pool<PostgresConnectionManager>,
+    config: Config,
 ) -> BoxedFilter<(impl Reply,)> {
+    let manager = PostgresConnectionManager::new(config, NoTls);
+    let pool = r2d2::Pool::new(manager).unwrap();
     warp::get2()
         .and(warp::addr::remote())
         .and(warp::path::param::<String>())
@@ -71,8 +72,8 @@ fn tile_route(
         .and(warp::path::tail())
         .and_then(move |host, base_name, z, x, tail| {
             debug!("request from {:?}", host);
-            if let Some(conn) = pool.try_get() {
-                generate_tile(&makers[..], &conn, base_name, z, x, tail)
+            if let Some(mut conn) = pool.try_get() {
+                generate_tile(&makers[..], &mut conn, base_name, z, x, tail)
             } else {
                 Err(custom(Error::Other("DB connection failed".to_string())))
             }
@@ -82,7 +83,7 @@ fn tile_route(
 
 fn generate_tile(
     makers: &[TileMaker],
-    conn: &Connection,
+    conn: &mut Client,
     base_name: String,
     z: u32,
     x: u32,

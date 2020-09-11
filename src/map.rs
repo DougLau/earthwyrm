@@ -6,12 +6,12 @@ use crate::config::{LayerGroupCfg, TableCfg};
 use crate::geom::{lookup_geom_type, GeomRow};
 use crate::rules::LayerDef;
 use crate::Error;
-use fallible_iterator::FallibleIterator;
 use log::{debug, info, warn};
 use mvt::{BBox, GeomType, Layer, MapGrid, Tile, TileId, Transform};
-use postgres::rows::Row;
+use postgres::fallible_iterator::FallibleIterator;
 use postgres::types::ToSql;
-use postgres::Connection;
+use postgres::Client;
+use postgres::Row;
 use std::fs::File;
 use std::io::Write;
 use std::time::Instant;
@@ -211,7 +211,7 @@ impl TileMaker {
     /// Fetch a tile
     fn fetch_tile(
         &self,
-        conn: &Connection,
+        conn: &mut Client,
         tid: TileId,
     ) -> Result<Tile, Error> {
         let config = self.tile_config(tid);
@@ -229,7 +229,7 @@ impl TileMaker {
     /// Query one tile from DB
     fn query_tile(
         &self,
-        conn: &Connection,
+        conn: &mut Client,
         config: &TileConfig,
     ) -> Result<Tile, Error> {
         let mut tile = Tile::new(self.tile_extent);
@@ -249,32 +249,43 @@ impl TileMaker {
     /// Query layers for one table
     fn query_layers(
         &self,
-        conn: &Connection,
+        conn: &mut Client,
         table_def: &TableDef,
         layers: &mut Vec<Layer>,
         config: &TileConfig,
     ) -> Result<(), Error> {
         debug!("sql: {}", &table_def.sql);
-        let stmt = conn.prepare_cached(&table_def.sql)?;
-        let trans = conn.transaction()?;
+        let mut trans = conn.transaction()?;
+        let stmt = trans.prepare(&table_def.sql)?;
         let x_min = config.bbox.x_min();
         let y_min = config.bbox.y_min();
         let x_max = config.bbox.x_max();
         let y_max = config.bbox.y_max();
         let tol = config.pixel_sz;
         let rad = tol * self.buffer_pixels as f64;
-        let params: Vec<&dyn ToSql> =
+        let params: Vec<&(dyn ToSql + Sync)> =
             vec![&tol, &x_min, &y_min, &x_max, &y_max, &rad];
         debug!("params: {:?}", params);
-        let rows = stmt.lazy_query(&trans, &params[..], self.row_limit())?;
-        let mut i = 0;
-        for row in rows.iterator() {
-            self.add_layer_features(table_def, &row?, config, layers)?;
-            if i == self.query_limit {
-                warn!("table {}, query limit reached: {}", &table_def.name, i);
+        let portal = trans.bind(&stmt, &params[..])?;
+        let mut n_rows = 0;
+        let row_limit = self.row_limit();
+        loop {
+            let start = n_rows;
+            let mut rows = trans.query_portal_raw(&portal, row_limit)?;
+            while let Some(row) = rows.next()? {
+                self.add_layer_features(table_def, &row, config, layers)?;
+                if n_rows == self.query_limit {
+                    warn!(
+                        "table {}, query limit reached: {}",
+                        &table_def.name, n_rows
+                    );
+                    return Ok(());
+                }
+                n_rows += 1;
+            }
+            if start == n_rows {
                 break;
             }
-            i += 1;
         }
         Ok(())
     }
@@ -315,7 +326,7 @@ impl TileMaker {
     /// Write a tile to a file
     pub fn write_tile(
         &self,
-        conn: &Connection,
+        conn: &mut Client,
         xtile: u32,
         ytile: u32,
         zoom: u32,
@@ -328,7 +339,7 @@ impl TileMaker {
     /// Write a tile
     pub fn write_to(
         &self,
-        conn: &Connection,
+        conn: &mut Client,
         tid: TileId,
         out: &mut dyn Write,
     ) -> Result<(), Error> {
@@ -343,7 +354,7 @@ impl TileMaker {
     /// Write a tile to a buffer
     pub fn write_buf(
         &self,
-        conn: &Connection,
+        conn: &mut Client,
         xtile: u32,
         ytile: u32,
         zoom: u32,

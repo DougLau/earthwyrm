@@ -7,8 +7,8 @@ use crate::Error;
 use log::{trace, warn};
 use mvt::{Feature, GeomData, GeomEncoder, GeomType, Layer, Transform};
 use postgis::ewkb;
-use postgres::rows::Row;
 use postgres::types::FromSql;
+use postgres::Row;
 
 type GeomResult = Result<Option<GeomData>, Error>;
 
@@ -62,7 +62,7 @@ fn encode_polygons(g: ewkb::MultiPolygon, t: &Transform) -> GeomResult {
 
 /// Geometry row from a DB query
 pub struct GeomRow<'a> {
-    row: &'a Row<'a>,
+    row: &'a Row,
     geom_type: GeomType,
     id_column: &'a str,
 }
@@ -110,16 +110,16 @@ impl<'a> GeomRow<'a> {
         }
     }
     /// Get geom data from a row
-    fn get_geom_data<T: FromSql>(
+    fn get_geom_data<T: FromSql<'a>>(
         &self,
         t: &Transform,
         enc: &dyn Fn(T, &Transform) -> GeomResult,
     ) -> GeomResult {
         // geom_column is always #1 (see build_query_sql)
-        match self.row.get_opt(1) {
-            Some(Ok(Some(g))) => enc(g, t),
-            Some(Err(e)) => Err(Error::Pg(e)),
-            _ => Ok(None),
+        match self.row.try_get(1) {
+            Ok(Some(g)) => enc(g, t),
+            Ok(None) => Ok(None),
+            Err(e) => Err(Error::Pg(e)),
         }
     }
     /// Add a feature to a layer

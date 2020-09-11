@@ -3,7 +3,7 @@
 // Copyright (c) 2019-2020  Minnesota Department of Transportation
 //
 use earthwyrm::{Error, TomlCfg};
-use postgres::{self, Connection, TlsMode};
+use postgres::{self, Client, NoTls};
 
 const TOML: &str = &r#"
 bind_address = ""
@@ -47,8 +47,8 @@ fn write_tile() -> Result<(), Error> {
     let username = whoami::username();
     // Format path for unix domain socket -- not worth using percent_encode
     let uds = format!("postgres://{:}@%2Frun%2Fpostgresql/earthwyrm", username);
-    let conn = Connection::connect(uds, TlsMode::None)?;
-    maker.write_tile(&conn, 246, 368, 10)
+    let mut conn = Client::connect(&uds, NoTls)?;
+    maker.write_tile(&mut conn, 246, 368, 10)
 }
 
 fn main() {

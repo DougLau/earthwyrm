@@ -3,7 +3,7 @@
 // Copyright (c) 2019-2020  Minnesota Department of Transportation
 //
 use crate::error::Error;
-use crate::map::{Builder, TileMaker};
+use crate::map::TileMaker;
 use serde_derive::Deserialize;
 use std::fs;
 
@@ -79,7 +79,7 @@ impl TomlCfg {
 
     /// Build a `TileMaker`
     fn tile_maker(&self, group: &LayerGroupCfg) -> Result<TileMaker, Error> {
-        let mut builder = Builder::new();
+        let mut builder = TileMaker::builder();
         if let Some(tile_extent) = self.tile_extent {
             builder.set_tile_extent(tile_extent);
         }

@@ -35,7 +35,7 @@ struct TileConfig {
 }
 
 /// Builder for tile maker
-pub struct Builder {
+pub struct TileMakerBuilder {
     tile_extent: u32,
     pixels: u32,
     buffer_pixels: u32,
@@ -101,21 +101,23 @@ impl TileConfig {
     }
 }
 
-impl Builder {
-    /// Create a new builder
-    pub fn new() -> Self {
+impl Default for TileMakerBuilder {
+    /// Create a new TileMaker builder
+    fn default() -> Self {
         let tile_extent = 4096;
         let pixels = 256;
         let buffer_pixels = 0;
         let query_limit = std::u32::MAX;
-        Builder {
+        TileMakerBuilder {
             tile_extent,
             pixels,
             buffer_pixels,
             query_limit,
         }
     }
+}
 
+impl TileMakerBuilder {
     /// Set the tile extent (within MVT files)
     pub fn set_tile_extent(&mut self, tile_extent: u32) {
         self.tile_extent = tile_extent;
@@ -179,6 +181,11 @@ impl Builder {
 }
 
 impl TileMaker {
+    /// Create a builder for TileMaker
+    pub fn builder() -> TileMakerBuilder {
+        TileMakerBuilder::default()
+    }
+
     /// Get the base name
     pub fn base_name(&self) -> &str {
         &self.base_name

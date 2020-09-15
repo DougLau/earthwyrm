@@ -12,4 +12,4 @@ mod rules;
 
 pub use config::TomlCfg;
 pub use error::Error;
-pub use map::{Builder, TileMaker};
+pub use map::{TileMaker, TileMakerBuilder};

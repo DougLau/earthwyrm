@@ -72,10 +72,11 @@ fn tile_route(
         .and(warp::path::tail())
         .and_then(move |host, base_name, z, x, tail| {
             debug!("request from {:?}", host);
-            if let Some(mut conn) = pool.try_get() {
-                generate_tile(&makers[..], &mut conn, base_name, z, x, tail)
-            } else {
-                Err(custom(Error::Other("DB connection failed".to_string())))
+            match pool.get() {
+                Ok(mut conn) => {
+                    generate_tile(&makers[..], &mut conn, base_name, z, x, tail)
+                }
+                Err(e) => Err(custom(Error::R2D2(e))),
             }
         })
         .boxed()
@@ -112,7 +113,6 @@ fn customize_error(err: Rejection) -> Result<impl Reply, Rejection> {
             Error::Mvt(_) => StatusCode::INTERNAL_SERVER_ERROR,
             Error::R2D2(_) => StatusCode::SERVICE_UNAVAILABLE,
             Error::TileEmpty() => StatusCode::NO_CONTENT,
-            Error::Other(_) => StatusCode::INTERNAL_SERVER_ERROR,
             _ => StatusCode::BAD_REQUEST,
         };
         let msg = err.to_string();

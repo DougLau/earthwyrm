@@ -9,14 +9,17 @@ use std::net::AddrParseError;
 use std::{fmt, io};
 use toml;
 
+/// Earthwyrm error types
+#[non_exhaustive]
 #[derive(Debug)]
 pub enum Error {
     Io(io::Error),
     Pg(postgres::Error),
     R2D2(r2d2::Error),
     Mvt(mvt::Error),
+    InvalidAddress(AddrParseError),
+    Toml(toml::de::Error),
     TileEmpty(),
-    Other(String),
 }
 
 impl fmt::Display for Error {
@@ -26,8 +29,9 @@ impl fmt::Display for Error {
             Error::Pg(e) => write!(f, "{}", e.to_string()),
             Error::R2D2(e) => write!(f, "{}", e.to_string()),
             Error::Mvt(e) => write!(f, "{}", e.to_string()),
+            Error::InvalidAddress(e) => write!(f, "{}", e),
+            Error::Toml(e) => write!(f, "{}", e),
             Error::TileEmpty() => write!(f, "Tile empty"),
-            Error::Other(s) => write!(f, "Error {}", s),
         }
     }
 }
@@ -68,14 +72,14 @@ impl From<mvt::Error> for Error {
     }
 }
 
-impl From<toml::de::Error> for Error {
-    fn from(e: toml::de::Error) -> Self {
-        Error::Other(e.to_string())
+impl From<AddrParseError> for Error {
+    fn from(e: AddrParseError) -> Self {
+        Error::InvalidAddress(e)
     }
 }
 
-impl From<AddrParseError> for Error {
-    fn from(e: AddrParseError) -> Self {
-        Error::Other(e.to_string())
+impl From<toml::de::Error> for Error {
+    fn from(e: toml::de::Error) -> Self {
+        Error::Toml(e)
     }
 }

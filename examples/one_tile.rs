@@ -4,6 +4,7 @@
 //
 use earthwyrm::{Error, TomlCfg};
 use postgres::{self, Client, NoTls};
+use std::fs::File;
 
 const TOML: &str = &r#"
 bind_address = ""
@@ -47,10 +48,13 @@ fn write_tile() -> Result<(), Error> {
     let username = whoami::username();
     // Format path for unix domain socket -- not worth using percent_encode
     let uds = format!("postgres://{:}@%2Frun%2Fpostgresql/earthwyrm", username);
+
+    let mut file = File::create("./one_tile.mvt")?;
     let mut conn = Client::connect(&uds, NoTls)?;
-    maker.write_tile(&mut conn, 246, 368, 10)
+    maker.write_tile(&mut file, &mut conn, 246, 368, 10)
 }
 
-fn main() {
-    write_tile().unwrap();
+fn main() -> Result<(), Box<dyn std::error::Error>> {
+    write_tile()?;
+    Ok(())
 }

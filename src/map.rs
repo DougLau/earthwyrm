@@ -12,7 +12,6 @@ use postgres::fallible_iterator::FallibleIterator;
 use postgres::types::ToSql;
 use postgres::Client;
 use postgres::Row;
-use std::fs::File;
 use std::io::Write;
 use std::time::Instant;
 
@@ -230,12 +229,12 @@ impl TileMaker {
     /// Fetch a tile
     fn fetch_tile(
         &self,
-        conn: &mut Client,
+        client: &mut Client,
         tid: TileId,
     ) -> Result<Tile, Error> {
         let config = self.tile_config(tid);
         let t = Instant::now();
-        let tile = self.query_tile(conn, &config)?;
+        let tile = self.query_tile(client, &config)?;
         info!(
             "{} {}, fetched {} bytes in {:?}",
             self.base_name(),
@@ -249,14 +248,14 @@ impl TileMaker {
     /// Query one tile from DB
     fn query_tile(
         &self,
-        conn: &mut Client,
+        client: &mut Client,
         config: &TileConfig,
     ) -> Result<Tile, Error> {
         let mut tile = Tile::new(self.tile_extent);
         let mut layers = self.create_layers(&tile);
         for table_def in &self.table_defs {
             if self.check_layers(table_def, config.zoom()) {
-                self.query_layers(conn, table_def, &mut layers, config)?;
+                self.query_layers(client, table_def, &mut layers, config)?;
             }
         }
         for layer in layers.drain(..) {
@@ -270,13 +269,13 @@ impl TileMaker {
     /// Query layers for one table
     fn query_layers(
         &self,
-        conn: &mut Client,
+        client: &mut Client,
         table_def: &TableDef,
         layers: &mut Vec<Layer>,
         config: &TileConfig,
     ) -> Result<(), Error> {
         debug!("sql: {}", &table_def.sql);
-        let mut trans = conn.transaction()?;
+        let mut trans = client.transaction()?;
         let stmt = trans.prepare(&table_def.sql)?;
         let x_min = config.bbox.x_min();
         let y_min = config.bbox.y_min();
@@ -347,48 +346,20 @@ impl TileMaker {
         Ok(())
     }
 
-    /// Write a tile to a file
-    pub fn write_tile(
+    /// Write a tile
+    pub fn write_tile<W: Write>(
         &self,
-        conn: &mut Client,
+        out: &mut W,
+        client: &mut Client,
         xtile: u32,
         ytile: u32,
         zoom: u32,
     ) -> Result<(), Error> {
         let tid = TileId::new(xtile, ytile, zoom)?;
-        let fname = format!("{}/{}.mvt", &self.base_name, tid);
-        let mut f = File::create(fname)?;
-        self.write_to(conn, tid, &mut f)
-    }
-
-    /// Write a tile
-    pub fn write_to(
-        &self,
-        conn: &mut Client,
-        tid: TileId,
-        out: &mut dyn Write,
-    ) -> Result<(), Error> {
-        let tile = self.fetch_tile(conn, tid)?;
+        let tile = self.fetch_tile(client, tid)?;
         if tile.num_layers() > 0 {
             tile.write_to(out)?;
-        } else {
-            debug!("tile {} not written (no layers)", tid);
-        }
-        Ok(())
-    }
-
-    /// Write a tile to a buffer
-    pub fn write_buf(
-        &self,
-        conn: &mut Client,
-        xtile: u32,
-        ytile: u32,
-        zoom: u32,
-    ) -> Result<Vec<u8>, Error> {
-        let tid = TileId::new(xtile, ytile, zoom)?;
-        let tile = self.fetch_tile(conn, tid)?;
-        if tile.num_layers() > 0 {
-            Ok(tile.to_bytes()?)
+            Ok(())
         } else {
             debug!("tile {} empty (no layers)", tid);
             Err(Error::TileEmpty())

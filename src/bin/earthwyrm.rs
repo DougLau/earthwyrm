@@ -95,8 +95,9 @@ fn generate_tile(
             let mut sp = tail.as_str().splitn(2, '.');
             if let (Some(y), Some("mvt")) = (sp.next(), sp.next()) {
                 if let Ok(y) = y.parse::<u32>() {
-                    return match maker.write_buf(conn, x, y, z) {
-                        Ok(buf) => Ok(buf),
+                    let mut out = vec![];
+                    return match maker.write_tile(&mut out, conn, x, y, z) {
+                        Ok(()) => Ok(out),
                         Err(e) => Err(custom(e)),
                     };
                 }

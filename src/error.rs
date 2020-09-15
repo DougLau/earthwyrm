@@ -3,6 +3,7 @@
 // Copyright (c) 2019-2020  Minnesota Department of Transportation
 //
 use std::net::AddrParseError;
+use std::num::TryFromIntError;
 use std::{fmt, io};
 
 /// Earthwyrm error types
@@ -23,6 +24,8 @@ pub enum Error {
     TileEmpty(),
     /// TOML deserializing error
     Toml(toml::de::Error),
+    /// TryFrom conversion error
+    TryFromInt(TryFromIntError),
 }
 
 impl fmt::Display for Error {
@@ -35,6 +38,7 @@ impl fmt::Display for Error {
             Error::R2D2(e) => e.fmt(f),
             Error::TileEmpty() => write!(f, "Tile empty"),
             Error::Toml(e) => e.fmt(f),
+            Error::TryFromInt(e) => e.fmt(f),
         }
     }
 }
@@ -49,6 +53,7 @@ impl std::error::Error for Error {
             Error::R2D2(e) => Some(e),
             Error::TileEmpty() => None,
             Error::Toml(e) => Some(e),
+            Error::TryFromInt(e) => Some(e),
         }
     }
 }
@@ -86,5 +91,11 @@ impl From<r2d2::Error> for Error {
 impl From<toml::de::Error> for Error {
     fn from(e: toml::de::Error) -> Self {
         Error::Toml(e)
+    }
+}
+
+impl From<TryFromIntError> for Error {
+    fn from(e: TryFromIntError) -> Self {
+        Error::TryFromInt(e)
     }
 }

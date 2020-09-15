@@ -58,11 +58,6 @@ impl TomlCfg {
         &self.document_root
     }
 
-    /// Get the table configurations
-    pub fn tables(&self) -> &[TableCfg] {
-        &self.table
-    }
-
     /// Get the layer group configurations
     pub fn layer_groups(&self) -> &[LayerGroupCfg] {
         &self.layer_group
@@ -79,20 +74,12 @@ impl TomlCfg {
 
     /// Build a `TileMaker`
     fn tile_maker(&self, group: &LayerGroupCfg) -> Result<TileMaker, Error> {
-        let mut builder = TileMaker::builder();
-        if let Some(tile_extent) = self.tile_extent {
-            builder.set_tile_extent(tile_extent);
-        }
-        if let Some(pixels) = self.pixels {
-            builder.set_pixels(pixels);
-        }
-        if let Some(buffer_pixels) = self.buffer_pixels {
-            builder.set_buffer_pixels(buffer_pixels);
-        }
-        if let Some(query_limit) = self.query_limit {
-            builder.set_query_limit(query_limit);
-        }
-        builder.build(self.tables(), group)
+        TileMaker::builder()
+            .with_tile_extent(self.tile_extent)
+            .with_pixels(self.pixels)
+            .with_buffer_pixels(self.buffer_pixels)
+            .with_query_limit(self.query_limit)
+            .build(&self.table, group)
     }
 }
 

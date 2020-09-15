@@ -12,6 +12,7 @@ use postgres::fallible_iterator::FallibleIterator;
 use postgres::types::ToSql;
 use postgres::Client;
 use postgres::Row;
+use std::convert::TryFrom;
 use std::io::Write;
 use std::time::Instant;
 
@@ -34,11 +35,12 @@ struct TileConfig {
 }
 
 /// Builder for tile maker
+#[derive(Default)]
 pub struct TileMakerBuilder {
-    tile_extent: u32,
-    pixels: u32,
-    buffer_pixels: u32,
-    query_limit: u32,
+    tile_extent: Option<u32>,
+    pixels: Option<u32>,
+    buffer_pixels: Option<u32>,
+    query_limit: Option<u32>,
 }
 
 /// Map tile maker
@@ -48,7 +50,7 @@ pub struct TileMaker {
     tile_extent: u32,
     pixels: u32,
     buffer_pixels: u32,
-    query_limit: u32,
+    query_limit: i32,
     grid: MapGrid,
     layer_defs: Vec<LayerDef>,
     table_defs: Vec<TableDef>,
@@ -100,41 +102,29 @@ impl TileConfig {
     }
 }
 
-impl Default for TileMakerBuilder {
-    /// Create a new TileMaker builder
-    fn default() -> Self {
-        let tile_extent = 4096;
-        let pixels = 256;
-        let buffer_pixels = 0;
-        let query_limit = std::u32::MAX;
-        TileMakerBuilder {
-            tile_extent,
-            pixels,
-            buffer_pixels,
-            query_limit,
-        }
-    }
-}
-
 impl TileMakerBuilder {
     /// Set the tile extent (within MVT files)
-    pub fn set_tile_extent(&mut self, tile_extent: u32) {
+    pub fn with_tile_extent(mut self, tile_extent: Option<u32>) -> Self {
         self.tile_extent = tile_extent;
+        self
     }
 
     /// Set the tile pixels
-    pub fn set_pixels(&mut self, pixels: u32) {
+    pub fn with_pixels(mut self, pixels: Option<u32>) -> Self {
         self.pixels = pixels;
+        self
     }
 
     /// Set the buffer pixels (at tile edges)
-    pub fn set_buffer_pixels(&mut self, buffer_pixels: u32) {
+    pub fn with_buffer_pixels(mut self, buffer_pixels: Option<u32>) -> Self {
         self.buffer_pixels = buffer_pixels;
+        self
     }
 
     /// Set the query limit
-    pub fn set_query_limit(&mut self, query_limit: u32) {
+    pub fn with_query_limit(mut self, query_limit: Option<u32>) -> Self {
         self.query_limit = query_limit;
+        self
     }
 
     /// Build the tile maker
@@ -146,10 +136,10 @@ impl TileMakerBuilder {
         let layer_defs = LayerDef::load_all(layer_group.rules_path())?;
         let table_defs = self.build_table_defs(&layer_defs, table_cfgs);
         let base_name = layer_group.base_name().to_string();
-        let tile_extent = self.tile_extent;
-        let pixels = self.pixels;
-        let buffer_pixels = self.buffer_pixels;
-        let query_limit = self.query_limit;
+        let tile_extent = self.tile_extent.unwrap_or(4096);
+        let pixels = self.pixels.unwrap_or(256);
+        let buffer_pixels = self.buffer_pixels.unwrap_or(0);
+        let query_limit = i32::try_from(self.query_limit.unwrap_or(50))?;
         let grid = MapGrid::new_web_mercator();
         Ok(TileMaker {
             base_name,
@@ -312,11 +302,7 @@ impl TileMaker {
 
     /// Get the row limit for a lazy query
     fn row_limit(&self) -> i32 {
-        if self.query_limit < 50 {
-            self.query_limit as i32
-        } else {
-            50
-        }
+        self.query_limit.min(50)
     }
 
     /// Add features to a layer

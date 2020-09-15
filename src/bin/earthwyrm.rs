@@ -24,15 +24,15 @@ struct ErrorMessage {
 
 fn main() {
     env_logger::builder().format_timestamp(None).init();
-    let res = do_main();
+    let res = do_main("/etc/earthwyrm/earthwyrm.toml");
     if let Err(e) = &res {
         error!("{:?}", e);
         res.unwrap();
     }
 }
 
-fn do_main() -> Result<(), Error> {
-    let config = TomlCfg::from_file("/etc/earthwyrm/earthwyrm.toml")?;
+fn do_main(file: &str) -> Result<(), Error> {
+    let config = TomlCfg::from_file(file).expect(file);
     let sock_addr: SocketAddr = config.bind_address().parse()?;
     let document_root = config.document_root().to_string();
     let makers = config.into_tile_makers()?;

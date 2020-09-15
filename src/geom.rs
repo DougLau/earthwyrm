@@ -76,6 +76,7 @@ impl<'a> GeomRow<'a> {
             id_column,
         }
     }
+
     /// Check if a row matches a layer
     pub fn matches_layer(&self, layer_def: &LayerDef) -> bool {
         for pattern in layer_def.patterns() {
@@ -87,11 +88,13 @@ impl<'a> GeomRow<'a> {
         }
         true
     }
+
     /// Get the row ID
     pub fn get_id(&self) -> i64 {
         // id_column is always #0 (see build_query_sql)
         self.row.get::<_, i64>(0)
     }
+
     /// Get one tag value (string)
     fn get_tag_value(&self, col: &str) -> Option<String> {
         if let Some(v) = self.row.get::<_, Option<String>>(col) {
@@ -101,6 +104,7 @@ impl<'a> GeomRow<'a> {
         }
         None
     }
+
     /// Get geometry from a row, encoded as MVT GeomData
     pub fn get_geometry(&self, t: &Transform) -> GeomResult {
         match self.geom_type {
@@ -109,6 +113,7 @@ impl<'a> GeomRow<'a> {
             GeomType::Polygon => self.get_geom_data(t, &encode_polygons),
         }
     }
+
     /// Get geom data from a row
     fn get_geom_data<T: FromSql<'a>>(
         &self,
@@ -122,6 +127,7 @@ impl<'a> GeomRow<'a> {
             Err(e) => Err(Error::Pg(e)),
         }
     }
+
     /// Add a feature to a layer
     pub fn add_feature(
         &self,
@@ -133,6 +139,7 @@ impl<'a> GeomRow<'a> {
         self.get_tags(layer_def, &mut feature);
         feature.into_layer()
     }
+
     /// Get tags from a row and add them to a feature
     fn get_tags(&self, layer_def: &LayerDef, feature: &mut Feature) {
         let fid = self.get_id();

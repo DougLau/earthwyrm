@@ -76,6 +76,7 @@ impl TableDef {
             None
         }
     }
+
     /// Get the tags requested for the table from defined layers
     fn table_tags(name: &str, layer_defs: &[LayerDef]) -> Vec<String> {
         let mut tags = Vec::<String>::new();
@@ -114,22 +115,27 @@ impl Builder {
             query_limit,
         }
     }
+
     /// Set the tile extent (within MVT files)
     pub fn set_tile_extent(&mut self, tile_extent: u32) {
         self.tile_extent = tile_extent;
     }
+
     /// Set the tile pixels
     pub fn set_pixels(&mut self, pixels: u32) {
         self.pixels = pixels;
     }
+
     /// Set the buffer pixels (at tile edges)
     pub fn set_buffer_pixels(&mut self, buffer_pixels: u32) {
         self.buffer_pixels = buffer_pixels;
     }
+
     /// Set the query limit
     pub fn set_query_limit(&mut self, query_limit: u32) {
         self.query_limit = query_limit;
     }
+
     /// Build the tile maker
     pub fn build(
         self,
@@ -155,6 +161,7 @@ impl Builder {
             table_defs,
         })
     }
+
     /// Build the table definitions
     fn build_table_defs(
         &self,
@@ -176,10 +183,12 @@ impl TileMaker {
     pub fn base_name(&self) -> &str {
         &self.base_name
     }
+
     /// Find a layer by name
     fn find_layer(&self, name: &str) -> Option<&LayerDef> {
         self.layer_defs.iter().find(|ld| ld.name() == name)
     }
+
     /// Create all layers for a tile
     fn create_layers(&self, tile: &Tile) -> Vec<Layer> {
         self.layer_defs
@@ -187,11 +196,13 @@ impl TileMaker {
             .map(|ld| tile.create_layer(&ld.name()))
             .collect()
     }
+
     /// Check one table for matching layers
     fn check_layers(&self, table_def: &TableDef, zoom: u32) -> bool {
         let table = &table_def.name;
         self.layer_defs.iter().any(|l| l.check_table(table, zoom))
     }
+
     /// Create tile config for a tile ID
     fn tile_config(&self, tid: TileId) -> TileConfig {
         let bbox = self.grid.tile_bbox(tid);
@@ -208,6 +219,7 @@ impl TileMaker {
             pixel_sz,
         }
     }
+
     /// Fetch a tile
     fn fetch_tile(
         &self,
@@ -226,6 +238,7 @@ impl TileMaker {
         );
         Ok(tile)
     }
+
     /// Query one tile from DB
     fn query_tile(
         &self,
@@ -246,6 +259,7 @@ impl TileMaker {
         }
         Ok(tile)
     }
+
     /// Query layers for one table
     fn query_layers(
         &self,
@@ -289,6 +303,7 @@ impl TileMaker {
         }
         Ok(())
     }
+
     /// Get the row limit for a lazy query
     fn row_limit(&self) -> i32 {
         if self.query_limit < 50 {
@@ -297,6 +312,7 @@ impl TileMaker {
             50
         }
     }
+
     /// Add features to a layer
     fn add_layer_features(
         &self,
@@ -323,6 +339,7 @@ impl TileMaker {
         }
         Ok(())
     }
+
     /// Write a tile to a file
     pub fn write_tile(
         &self,
@@ -336,6 +353,7 @@ impl TileMaker {
         let mut f = File::create(fname)?;
         self.write_to(conn, tid, &mut f)
     }
+
     /// Write a tile
     pub fn write_to(
         &self,
@@ -351,6 +369,7 @@ impl TileMaker {
         }
         Ok(())
     }
+
     /// Write a tile to a buffer
     pub fn write_buf(
         &self,

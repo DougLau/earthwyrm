@@ -66,10 +66,12 @@ impl TagPattern {
             values,
         }
     }
+
     /// Get the tag (key)
     pub fn tag(&self) -> &str {
         &self.key
     }
+
     /// Get key for match patterns only
     pub fn match_key(&self) -> Option<&str> {
         match self.must_match {
@@ -77,6 +79,7 @@ impl TagPattern {
             MustMatch::No => None,
         }
     }
+
     /// Get key for include patterns only
     pub fn include_key(&self) -> Option<&str> {
         match self.include {
@@ -84,6 +87,7 @@ impl TagPattern {
             IncludeValue::No => None,
         }
     }
+
     /// Check if the value matches
     pub fn matches_value(&self, value: Option<String>) -> bool {
         debug_assert!(self.must_match == MustMatch::Yes);
@@ -92,6 +96,7 @@ impl TagPattern {
             Equality::NotEqual => !self.matches_value_option(value),
         }
     }
+
     /// Check if an optional value matches
     fn matches_value_option(&self, value: Option<String>) -> bool {
         debug_assert!(self.must_match == MustMatch::Yes);
@@ -100,6 +105,7 @@ impl TagPattern {
             None => self.values.iter().any(|v| v == &"_"),
         }
     }
+
     /// Parse a tag pattern rule
     fn parse_rule(pat: &str) -> (MustMatch, IncludeValue, &str) {
         if pat.starts_with('.') {
@@ -110,6 +116,7 @@ impl TagPattern {
             (MustMatch::Yes, IncludeValue::No, pat)
         }
     }
+
     /// Parse the equality portion
     fn parse_equality(pat: &str) -> Option<(&str, Equality, &str)> {
         if pat.contains('=') {
@@ -126,10 +133,12 @@ impl TagPattern {
             Some((pat, Equality::NotEqual, &"_"))
         }
     }
+
     /// Parse the value(s) portion
     fn parse_values(val: &str) -> Vec<String> {
         val.split('|').map(|v| v.to_string()).collect()
     }
+
     /// Parse a tag pattern rule
     fn parse(pat: &str) -> Option<TagPattern> {
         let (must_match, include, pat) = TagPattern::parse_rule(pat);
@@ -242,6 +251,7 @@ impl LayerDef {
         info!("{} layers loaded:{}", defs.len(), names);
         Ok(defs)
     }
+
     /// Parse a layer definition rule
     fn parse(c: &mut dyn Iterator<Item = &str>) -> Option<Self> {
         let name = c.next()?.to_string();
@@ -256,22 +266,27 @@ impl LayerDef {
             patterns,
         })
     }
+
     /// Get the layer name
     pub fn name(&self) -> &str {
         &self.name
     }
+
     /// Get the table name
     pub fn table(&self) -> &str {
         &self.table
     }
+
     /// Get a slice of tag patterns
     pub fn patterns(&self) -> &[TagPattern] {
         &self.patterns
     }
+
     /// Check a table definition and zoom level
     pub fn check_table(&self, table: &str, zoom: u32) -> bool {
         self.check_zoom(zoom) && self.table == table
     }
+
     /// Check if zoom level matches
     fn check_zoom(&self, zoom: u32) -> bool {
         zoom >= self.zoom_min && zoom <= self.zoom_max

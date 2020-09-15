@@ -42,26 +42,32 @@ impl TomlCfg {
     pub fn from_str(cfg: &str) -> Result<Self, Error> {
         Ok(toml::from_str(cfg)?)
     }
+
     /// Read from file
     pub fn from_file(fname: &str) -> Result<Self, Error> {
         TomlCfg::from_str(&fs::read_to_string(fname)?)
     }
+
     /// Get the bind address
     pub fn bind_address(&self) -> &str {
         &self.bind_address
     }
+
     /// Get the document root
     pub fn document_root(&self) -> &str {
         &self.document_root
     }
+
     /// Get the table configurations
     pub fn tables(&self) -> &[TableCfg] {
         &self.table
     }
+
     /// Get the layer group configurations
     pub fn layer_groups(&self) -> &[LayerGroupCfg] {
         &self.layer_group
     }
+
     /// Convert into a `Vec` of `TileMaker`s (one for each layer group)
     pub fn into_tile_makers(self) -> Result<Vec<TileMaker>, Error> {
         let mut makers = Vec::new();
@@ -70,6 +76,7 @@ impl TomlCfg {
         }
         Ok(makers)
     }
+
     /// Build a `TileMaker`
     fn tile_maker(&self, group: &LayerGroupCfg) -> Result<TileMaker, Error> {
         let mut builder = Builder::new();
@@ -111,18 +118,22 @@ impl TableCfg {
             geom_type,
         }
     }
+
     /// Get table name
     pub fn name(&self) -> &str {
         &self.name
     }
+
     /// Get ID column
     pub fn id_column(&self) -> &str {
         &self.id_column
     }
+
     /// Get geom type
     pub fn geom_type(&self) -> &str {
         &self.geom_type
     }
+
     /// Build SQL query
     pub fn build_query_sql(&self, tags: &Vec<String>) -> String {
         let mut sql = "SELECT ".to_string();
@@ -156,10 +167,12 @@ impl LayerGroupCfg {
             rules_path,
         }
     }
+
     /// Get base name
     pub fn base_name(&self) -> &str {
         &self.base_name
     }
+
     /// Get rules path
     pub fn rules_path(&self) -> &str {
         &self.rules_path

@@ -1,6 +1,6 @@
 // lib.rs
 //
-// Copyright (c) 2019 Minnesota Department of Transportation
+// Copyright (c) 2019-2020  Minnesota Department of Transportation
 //
 #![forbid(unsafe_code)]
 

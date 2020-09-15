@@ -2,36 +2,39 @@
 //
 // Copyright (c) 2019-2020  Minnesota Department of Transportation
 //
-use mvt;
-use postgres;
-use r2d2;
 use std::net::AddrParseError;
 use std::{fmt, io};
-use toml;
 
 /// Earthwyrm error types
 #[non_exhaustive]
 #[derive(Debug)]
 pub enum Error {
-    Io(io::Error),
-    Pg(postgres::Error),
-    R2D2(r2d2::Error),
-    Mvt(mvt::Error),
+    /// Invalid network address error
     InvalidAddress(AddrParseError),
-    Toml(toml::de::Error),
+    /// I/O error
+    Io(io::Error),
+    /// MVT error
+    Mvt(mvt::Error),
+    /// PostgreSQL error
+    Pg(postgres::Error),
+    /// R2D2 connection pool error
+    R2D2(r2d2::Error),
+    /// Tile empty
     TileEmpty(),
+    /// TOML deserializing error
+    Toml(toml::de::Error),
 }
 
 impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
-            Error::Io(e) => write!(f, "{}", e.to_string()),
-            Error::Pg(e) => write!(f, "{}", e.to_string()),
-            Error::R2D2(e) => write!(f, "{}", e.to_string()),
-            Error::Mvt(e) => write!(f, "{}", e.to_string()),
-            Error::InvalidAddress(e) => write!(f, "{}", e),
-            Error::Toml(e) => write!(f, "{}", e),
+            Error::InvalidAddress(e) => e.fmt(f),
+            Error::Io(e) => e.fmt(f),
+            Error::Mvt(e) => e.fmt(f),
+            Error::Pg(e) => e.fmt(f),
+            Error::R2D2(e) => e.fmt(f),
             Error::TileEmpty() => write!(f, "Tile empty"),
+            Error::Toml(e) => e.fmt(f),
         }
     }
 }
@@ -39,18 +42,32 @@ impl fmt::Display for Error {
 impl std::error::Error for Error {
     fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
         match self {
+            Error::InvalidAddress(e) => Some(e),
             Error::Io(e) => Some(e),
+            Error::Mvt(e) => Some(e),
             Error::Pg(e) => Some(e),
             Error::R2D2(e) => Some(e),
-            Error::Mvt(e) => Some(e),
-            _ => None,
+            Error::TileEmpty() => None,
+            Error::Toml(e) => Some(e),
         }
+    }
+}
+
+impl From<AddrParseError> for Error {
+    fn from(e: AddrParseError) -> Self {
+        Error::InvalidAddress(e)
     }
 }
 
 impl From<io::Error> for Error {
     fn from(e: io::Error) -> Self {
         Error::Io(e)
+    }
+}
+
+impl From<mvt::Error> for Error {
+    fn from(e: mvt::Error) -> Self {
+        Error::Mvt(e)
     }
 }
 
@@ -63,18 +80,6 @@ impl From<postgres::Error> for Error {
 impl From<r2d2::Error> for Error {
     fn from(e: r2d2::Error) -> Self {
         Error::R2D2(e)
-    }
-}
-
-impl From<mvt::Error> for Error {
-    fn from(e: mvt::Error) -> Self {
-        Error::Mvt(e)
-    }
-}
-
-impl From<AddrParseError> for Error {
-    fn from(e: AddrParseError) -> Self {
-        Error::InvalidAddress(e)
     }
 }
 

@@ -142,8 +142,12 @@ impl LayerGroupCfg {
     pub fn to_layer_defs(&self) -> Result<Vec<LayerDef>, Error> {
         let mut layers = vec![];
         for layer in &self.layer {
-            let layer_def = LayerDef::new(&layer.name, &layer.table,
-                &layer.zoom, &layer.tags[..])?;
+            let layer_def = LayerDef::new(
+                &layer.name,
+                &layer.table,
+                &layer.zoom,
+                &layer.tags[..],
+            )?;
             layers.push(layer_def);
         }
         let mut names = String::new();

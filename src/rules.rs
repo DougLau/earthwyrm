@@ -191,9 +191,12 @@ fn parse_patterns(rule: &[String]) -> Result<Vec<TagPattern>, Error> {
 
 impl LayerDef {
     /// Create a new layer definition
-    pub fn new(name: &str, table: &str, zoom: &str, tags: &[String])
-        -> Result<Self, Error>
-    {
+    pub fn new(
+        name: &str,
+        table: &str,
+        zoom: &str,
+        tags: &[String],
+    ) -> Result<Self, Error> {
         let name = name.to_string();
         let table = table.to_string();
         let (zoom_min, zoom_max) = parse_zoom(zoom)?;

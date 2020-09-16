@@ -8,42 +8,61 @@ use crate::rules::LayerDef;
 use serde_derive::Deserialize;
 use std::fs;
 
-/// Base MuON configuration data
+/// Configuration for Earthwyrm tile layers.
 #[derive(Debug, Deserialize)]
 pub struct WyrmCfg {
+    /// Address to bind server
     bind_address: String,
+    /// Document root to server static documents
     document_root: String,
+    /// Extent of tiles for MVT coordinates
     tile_extent: Option<u32>,
+    /// Pixels for snap-to-grid tolerance
     pixels: Option<u32>,
+    /// Buffer pixels outside tile border
     buffer_pixels: Option<u32>,
+    /// Limit of rows per query
     query_limit: Option<u32>,
+    /// Table configuration
     table: Vec<TableCfg>,
+    /// Layer group configuration
     layer_group: Vec<LayerGroupCfg>,
 }
 
-/// Table configuration (names of columns, etc).
+/// Database table configuration (names of columns, etc).
 #[derive(Debug, Deserialize)]
 pub struct TableCfg {
+    /// Name (used by layers)
     name: String,
+    /// DB table
     db_table: String,
+    /// Column for unique ID
     id_column: String,
+    /// Column for PostGIS geometry
     geom_column: String,
+    /// Type for PostGIS geometry (polygon, linestring or point)
     geom_type: String,
 }
 
 /// Layer Group configuration
 #[derive(Debug, Deserialize)]
 pub struct LayerGroupCfg {
+    /// Base layer group name
     base_name: String,
+    /// Layers in group
     layer: Vec<LayerCfg>,
 }
 
 /// Layer configuration
 #[derive(Debug, Deserialize)]
 pub struct LayerCfg {
+    /// Layer name
     name: String,
+    /// Table name
     table: String,
+    /// Zoom range
     zoom: String,
+    /// Tag patterns
     tags: Vec<String>,
 }
 

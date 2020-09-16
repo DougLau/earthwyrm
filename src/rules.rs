@@ -9,41 +9,57 @@ const ZOOM_MAX: u32 = 30;
 /// Tag pattern specification to require matching tag
 #[derive(Copy, Clone, Debug, PartialEq)]
 enum MustMatch {
+    /// Pattern does not require match
     No,
+    /// Pattern must match
     Yes,
 }
 
 /// Tag pattern specification to include tag value in layer
 #[derive(Copy, Clone, Debug)]
 enum IncludeValue {
+    /// Do not include tag value in layer
     No,
+    /// Include tag value in layer
     Yes,
 }
 
 /// Tag pattern specification to match value equal vs. not equal
 #[derive(Copy, Clone, Debug)]
 enum Equality {
+    /// Pattern equals value
     Equal,
+    /// Pattern not equal value
     NotEqual,
 }
 
 /// Tag pattern specification for layer rule
 #[derive(Clone, Debug)]
 pub struct TagPattern {
+    /// Pattern must / must not match
     must_match: MustMatch,
+    /// Should key be included in layer
     include: IncludeValue,
+    /// Key name
     key: String,
+    /// Pattern equality
     equality: Equality,
+    /// Pattern values
     values: Vec<String>,
 }
 
 /// Layer rule definition
 #[derive(Clone, Debug)]
 pub struct LayerDef {
+    /// Layer name
     name: String,
+    /// Table name
     table: String,
+    /// Minimum zoom level
     zoom_min: u32,
+    /// Maximum zoom level
     zoom_max: u32,
+    /// Tag patterns
     patterns: Vec<TagPattern>,
 }
 

@@ -10,6 +10,7 @@ use postgis::ewkb;
 use postgres::types::FromSql;
 use postgres::Row;
 
+/// Geometry result
 type GeomResult = Result<Option<GeomData>, Error>;
 
 /// Encode points into GeomData
@@ -62,8 +63,11 @@ fn encode_polygons(g: ewkb::MultiPolygon, t: &Transform) -> GeomResult {
 
 /// Geometry row from a DB query
 pub struct GeomRow<'a> {
+    /// DB row of query
     row: &'a Row,
+    /// Geometry type
     geom_type: GeomType,
+    /// ID Column
     id_column: &'a str,
 }
 

@@ -19,40 +19,61 @@ use std::time::Instant;
 /// Table definition (tags, sql query, etc)
 #[derive(Clone, Debug)]
 struct TableDef {
+    /// Table name
     name: String,
+    /// ID column
     id_column: String,
+    /// Geometry type
     geom_type: GeomType,
+    /// Tag patterns
     tags: Vec<String>,
+    /// SQL query string
     sql: String,
 }
 
 /// Tile configuration
 struct TileConfig {
+    /// Tile ID
     tid: TileId,
+    /// Bounding box
     bbox: BBox,
+    /// Geometry transform
     transform: Transform,
+    /// Pixel size
     pixel_sz: f64,
 }
 
 /// Builder for layer groups
 #[derive(Default)]
 pub struct LayerGroupBuilder {
+    /// Tile extent
     tile_extent: Option<u32>,
+    /// Pixels in tile
     pixels: Option<u32>,
+    /// Buffer pixels at edges
     buffer_pixels: Option<u32>,
+    /// Query row limit
     query_limit: Option<u32>,
 }
 
 /// Group of layers for making tiles
 #[derive(Clone)]
 pub struct LayerGroup {
+    /// Base name of group
     base_name: String,
+    /// Tile extent
     tile_extent: u32,
+    /// Pixels in tile
     pixels: u32,
+    /// Buffer pixels at edges
     buffer_pixels: u32,
+    /// Query row limit
     query_limit: i32,
+    /// Map grid configuration
     grid: MapGrid,
+    /// Layer definitions
     layer_defs: Vec<LayerDef>,
+    /// Table definitions
     table_defs: Vec<TableDef>,
 }
 

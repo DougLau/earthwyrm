@@ -26,7 +26,8 @@ layer_group: tile
 "#;
 
 fn write_tile() -> Result<(), Error> {
-    let layer_group = &WyrmCfg::from_str(MUON)?.into_layer_groups()?[0];
+    let cfg: WyrmCfg = muon_rs::from_str(MUON)?;
+    let layer_group = &cfg.into_layer_groups()?[0];
     let username = whoami::username();
     // Format path for unix domain socket -- not worth using percent_encode
     let uds = format!("postgres://{:}@%2Frun%2Fpostgresql/earthwyrm", username);

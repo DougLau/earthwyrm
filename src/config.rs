@@ -6,7 +6,6 @@ use crate::error::Error;
 use crate::map::LayerGroup;
 use crate::rules::LayerDef;
 use serde_derive::Deserialize;
-use std::fs;
 
 /// Configuration for Earthwyrm tile layers.
 #[derive(Debug, Deserialize)]
@@ -67,16 +66,6 @@ pub struct LayerCfg {
 }
 
 impl WyrmCfg {
-    /// Parse from string
-    pub fn from_str(cfg: &str) -> Result<Self, Error> {
-        Ok(muon_rs::from_str(cfg)?)
-    }
-
-    /// Read from file
-    pub fn from_file(fname: &str) -> Result<Self, Error> {
-        WyrmCfg::from_str(&fs::read_to_string(fname)?)
-    }
-
     /// Get the bind address
     pub fn bind_address(&self) -> &str {
         &self.bind_address

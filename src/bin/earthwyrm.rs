@@ -10,6 +10,7 @@ use postgres::config::Config;
 use postgres::{Client, NoTls};
 use r2d2_postgres::PostgresConnectionManager;
 use serde_derive::Serialize;
+use std::fs;
 use std::net::SocketAddr;
 use warp::filters::BoxedFilter;
 use warp::http::StatusCode;
@@ -32,7 +33,8 @@ fn main() {
 }
 
 fn do_main(file: &str) -> Result<(), Error> {
-    let config = WyrmCfg::from_file(file).expect(file);
+    let config: WyrmCfg =
+        muon_rs::from_str(&fs::read_to_string(file)?).expect(file);
     let sock_addr: SocketAddr = config.bind_address().parse()?;
     let document_root = config.document_root().to_string();
     let groups = config.into_layer_groups()?;

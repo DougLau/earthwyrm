@@ -3,13 +3,14 @@
 // Copyright (c) 2019-2020  Minnesota Department of Transportation
 //
 use crate::error::Error;
-use crate::map::TileMaker;
+use crate::map::LayerGroup;
+use crate::rules::LayerDef;
 use serde_derive::Deserialize;
 use std::fs;
 
-/// Base TOML configuration data
+/// Base MuON configuration data
 #[derive(Debug, Deserialize)]
-pub struct TomlCfg {
+pub struct MuonCfg {
     bind_address: String,
     document_root: String,
     tile_extent: Option<u32>,
@@ -34,18 +35,27 @@ pub struct TableCfg {
 #[derive(Debug, Deserialize)]
 pub struct LayerGroupCfg {
     base_name: String,
-    rules_path: String,
+    layer: Vec<LayerCfg>,
 }
 
-impl TomlCfg {
+/// Layer configuration
+#[derive(Debug, Deserialize)]
+pub struct LayerCfg {
+    name: String,
+    table: String,
+    zoom: String,
+    tags: Vec<String>,
+}
+
+impl MuonCfg {
     /// Parse from string
     pub fn from_str(cfg: &str) -> Result<Self, Error> {
-        Ok(toml::from_str(cfg)?)
+        Ok(muon_rs::from_str(cfg)?)
     }
 
     /// Read from file
     pub fn from_file(fname: &str) -> Result<Self, Error> {
-        TomlCfg::from_str(&fs::read_to_string(fname)?)
+        MuonCfg::from_str(&fs::read_to_string(fname)?)
     }
 
     /// Get the bind address
@@ -63,18 +73,18 @@ impl TomlCfg {
         &self.layer_group
     }
 
-    /// Convert into a `Vec` of `TileMaker`s (one for each layer group)
-    pub fn into_tile_makers(self) -> Result<Vec<TileMaker>, Error> {
-        let mut makers = Vec::new();
+    /// Convert into a `Vec` of `LayerGroup`s
+    pub fn into_layer_groups(self) -> Result<Vec<LayerGroup>, Error> {
+        let mut groups = vec![];
         for group in self.layer_groups() {
-            makers.push(self.tile_maker(group)?);
+            groups.push(self.layer_group(group)?);
         }
-        Ok(makers)
+        Ok(groups)
     }
 
-    /// Build a `TileMaker`
-    fn tile_maker(&self, group: &LayerGroupCfg) -> Result<TileMaker, Error> {
-        TileMaker::builder()
+    /// Build a `LayerGroup`
+    fn layer_group(&self, group: &LayerGroupCfg) -> Result<LayerGroup, Error> {
+        LayerGroup::builder()
             .with_tile_extent(self.tile_extent)
             .with_pixels(self.pixels)
             .with_buffer_pixels(self.buffer_pixels)
@@ -84,28 +94,6 @@ impl TomlCfg {
 }
 
 impl TableCfg {
-    /// Create a new table configuration
-    pub fn new(
-        name: &str,
-        db_table: &str,
-        id_column: &str,
-        geom_column: &str,
-        geom_type: &str,
-    ) -> Self {
-        let name = name.to_string();
-        let db_table = db_table.to_string();
-        let id_column = id_column.to_string();
-        let geom_column = geom_column.to_string();
-        let geom_type = geom_type.to_string();
-        TableCfg {
-            name,
-            db_table,
-            id_column,
-            geom_column,
-            geom_type,
-        }
-    }
-
     /// Get table name
     pub fn name(&self) -> &str {
         &self.name
@@ -145,23 +133,25 @@ impl TableCfg {
 }
 
 impl LayerGroupCfg {
-    /// Create a new layer group configuration
-    pub fn new(base_name: &str, rules_path: &str) -> Self {
-        let base_name = base_name.to_string();
-        let rules_path = rules_path.to_string();
-        LayerGroupCfg {
-            base_name,
-            rules_path,
-        }
-    }
-
     /// Get base name
     pub fn base_name(&self) -> &str {
         &self.base_name
     }
 
-    /// Get rules path
-    pub fn rules_path(&self) -> &str {
-        &self.rules_path
+    /// Convert to layer defs
+    pub fn to_layer_defs(&self) -> Result<Vec<LayerDef>, Error> {
+        let mut layers = vec![];
+        for layer in &self.layer {
+            let layer_def = LayerDef::new(&layer.name, &layer.table,
+                &layer.zoom, &layer.tags[..])?;
+            layers.push(layer_def);
+        }
+        let mut names = String::new();
+        for layer in &self.layer {
+            names.push_str(&layer.name);
+            names.push_str(" ");
+        }
+        log::info!("{} layers loaded:{}", layers.len(), names);
+        Ok(layers)
     }
 }

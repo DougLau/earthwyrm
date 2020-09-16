@@ -34,18 +34,18 @@ struct TileConfig {
     pixel_sz: f64,
 }
 
-/// Builder for tile maker
+/// Builder for layer groups
 #[derive(Default)]
-pub struct TileMakerBuilder {
+pub struct LayerGroupBuilder {
     tile_extent: Option<u32>,
     pixels: Option<u32>,
     buffer_pixels: Option<u32>,
     query_limit: Option<u32>,
 }
 
-/// Map tile maker
+/// Group of layers for making tiles
 #[derive(Clone)]
-pub struct TileMaker {
+pub struct LayerGroup {
     base_name: String,
     tile_extent: u32,
     pixels: u32,
@@ -102,7 +102,7 @@ impl TileConfig {
     }
 }
 
-impl TileMakerBuilder {
+impl LayerGroupBuilder {
     /// Set the tile extent (within MVT files)
     pub fn with_tile_extent(mut self, tile_extent: Option<u32>) -> Self {
         self.tile_extent = tile_extent;
@@ -127,13 +127,13 @@ impl TileMakerBuilder {
         self
     }
 
-    /// Build the tile maker
+    /// Build the layer group
     pub fn build(
         self,
         table_cfgs: &[TableCfg],
         layer_group: &LayerGroupCfg,
-    ) -> Result<TileMaker, Error> {
-        let layer_defs = LayerDef::load_all(layer_group.rules_path())?;
+    ) -> Result<LayerGroup, Error> {
+        let layer_defs = layer_group.to_layer_defs()?;
         let table_defs = self.build_table_defs(&layer_defs, table_cfgs);
         let base_name = layer_group.base_name().to_string();
         let tile_extent = self.tile_extent.unwrap_or(4096);
@@ -141,7 +141,7 @@ impl TileMakerBuilder {
         let buffer_pixels = self.buffer_pixels.unwrap_or(0);
         let query_limit = i32::try_from(self.query_limit.unwrap_or(50))?;
         let grid = MapGrid::new_web_mercator();
-        Ok(TileMaker {
+        Ok(LayerGroup {
             base_name,
             tile_extent,
             pixels,
@@ -169,10 +169,10 @@ impl TileMakerBuilder {
     }
 }
 
-impl TileMaker {
-    /// Create a builder for TileMaker
-    pub fn builder() -> TileMakerBuilder {
-        TileMakerBuilder::default()
+impl LayerGroup {
+    /// Create a builder for LayerGroup
+    pub fn builder() -> LayerGroupBuilder {
+        LayerGroupBuilder::default()
     }
 
     /// Get the base name

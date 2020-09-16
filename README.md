@@ -37,7 +37,7 @@ GRANT SELECT ON planet_osm_point TO PUBLIC;
 
 * Configure PostgreSQL access for UNIX domain sockets
 
-Edit /var/lib/pgsql/data/pg_hba.conf: change _local_ method to _peer_.
+Edit `/var/lib/pgsql/data/pg_hba.conf`: change _local_ method to _peer_.
 Restart PostgreSQL server.
 
 * Build earthwyrm
@@ -66,9 +66,10 @@ By default, *EarthWyrm* will listen on the IPv4 loopback address.  This means
 clients from other hosts will not be able to reach the server.  There are a
 couple of options:
 
-* Update *bind_address* in /etc/earthwyrm/earthwyrm.toml
+* Update `bind_address` in `/etc/earthwyrm/earthwyrm.muon`
 * (Preferred option!)  Set up a reverse proxy, such as
   [nginx](https://nginx.org/en/).  This has the advantage that caching can be
   enabled to improve latency.
 
-In either case, the url in /var/lib/earthwyrm/map.js will need to be updated.
+In either case, the url in `/var/local/earthwyrm/static/map.js` will need to be
+updated.

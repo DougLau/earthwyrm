@@ -3,9 +3,6 @@
 // Copyright (c) 2019-2020  Minnesota Department of Transportation
 //
 use crate::Error;
-use log::{debug, error, info};
-use std::fs::File;
-use std::io::{BufRead, BufReader};
 
 const ZOOM_MAX: u32 = 30;
 
@@ -118,19 +115,19 @@ impl TagPattern {
     }
 
     /// Parse the equality portion
-    fn parse_equality(pat: &str) -> Option<(&str, Equality, &str)> {
-        if pat.contains('=') {
-            let mut kv = pat.splitn(2, '=');
-            let key = kv.next()?;
-            let val = kv.next()?;
+    fn parse_equality(pat: &str) -> (&str, Equality, &str) {
+        let kv: Vec<&str> = pat.splitn(2, '=').collect();
+        if kv.len() > 1 {
+            let key = kv[0];
+            let val = kv[1];
             if key.ends_with('!') {
-                let key = &key[..key.len() - 1];
-                Some((key, Equality::NotEqual, val))
+                let len = key.len() - 1;
+                (&key[..len], Equality::NotEqual, val)
             } else {
-                Some((key, Equality::Equal, val))
+                (key, Equality::Equal, val)
             }
         } else {
-            Some((pat, Equality::NotEqual, &"_"))
+            (pat, Equality::NotEqual, &"_")
         }
     }
 
@@ -140,125 +137,69 @@ impl TagPattern {
     }
 
     /// Parse a tag pattern rule
-    fn parse(pat: &str) -> Option<TagPattern> {
+    fn parse(pat: &str) -> TagPattern {
         let (must_match, include, pat) = TagPattern::parse_rule(pat);
-        let (key, equality, values) = TagPattern::parse_equality(pat)?;
+        let (key, equality, values) = TagPattern::parse_equality(pat);
         let key = key.to_string();
         let values = TagPattern::parse_values(values);
-        Some(TagPattern {
+        TagPattern {
             must_match,
             include,
             key,
             equality,
             values,
-        })
+        }
     }
 }
 
 /// Parse the zoom portion of a layer rule
-fn parse_zoom(z: &str) -> Option<(u32, u32)> {
-    if z.ends_with('+') {
+fn parse_zoom(z: &str) -> Result<(u32, u32), Error> {
+    let zz: Vec<&str> = z.splitn(2, '-').collect();
+    if zz.len() > 1 {
+        let zoom_min = zz[0].parse()?;
+        let zoom_max = zz[1].parse()?;
+        Ok((zoom_min, zoom_max))
+    } else if z.ends_with('+') {
         let c = z.len() - 1;
-        let zoom_min = parse_u32(&z[..c])?;
-        Some((zoom_min, ZOOM_MAX))
-    } else if z.contains('-') {
-        let mut s = z.splitn(2, '-');
-        let zoom_min = parse_u32(s.next()?)?;
-        let zoom_max = parse_u32(s.next()?)?;
-        Some((zoom_min, zoom_max))
+        let zoom_min = z[..c].parse()?;
+        Ok((zoom_min, ZOOM_MAX))
     } else {
-        let z = parse_u32(z)?;
-        Some((z, z))
-    }
-}
-
-/// Parse a u32 value
-fn parse_u32(v: &str) -> Option<u32> {
-    match v.parse::<u32>() {
-        Ok(v) => Some(v),
-        Err(_) => None,
+        let z = z.parse()?;
+        Ok((z, z))
     }
 }
 
 /// Parse tag patterns of a layer rule
-fn parse_patterns(
-    c: &mut dyn Iterator<Item = &str>,
-) -> Option<Vec<TagPattern>> {
+fn parse_patterns(rule: &[String]) -> Result<Vec<TagPattern>, Error> {
     let mut patterns = Vec::<TagPattern>::new();
-    loop {
-        if let Some(p) = c.next() {
-            let p = TagPattern::parse(p)?;
-            let key = p.tag();
-            if let Some(d) = patterns.iter().find(|p| p.tag() == key) {
-                error!("duplicate pattern {:?}", d);
-                return None;
-            }
-            patterns.push(p);
-        } else {
-            break;
+    for pat in rule {
+        let p = TagPattern::parse(pat);
+        let key = p.tag();
+        if let Some(_) = patterns.iter().find(|p| p.tag() == key) {
+            return Err(Error::DuplicatePattern(pat.to_string()));
         }
+        log::debug!("tag pattern: {:?}", &p);
+        patterns.push(p);
     }
     if patterns.len() > 0 {
         if !patterns.iter().any(|p| &p.tag() == &"name") {
             patterns.push(TagPattern::new_name());
         }
-        Some(patterns)
-    } else {
-        None
     }
-}
-
-/// Parse one layer definition
-fn parse_layer_def(line: &str) -> Option<LayerDef> {
-    let line = if let Some(hash) = line.find('#') {
-        &line[..hash]
-    } else {
-        &line
-    };
-    let c: Vec<&str> = line.split_whitespace().collect();
-    match c.len() {
-        0 => None,
-        1..=3 => {
-            error!("Invalid rule (not enough columns): {}", line);
-            None
-        }
-        _ => {
-            let ld = LayerDef::parse(&mut c.into_iter());
-            if ld.is_none() {
-                error!("parsing \"{}\"", line);
-            }
-            ld
-        }
-    }
+    Ok(patterns)
 }
 
 impl LayerDef {
-    /// Load layer rule definition file
-    pub fn load_all(rules_path: &str) -> Result<Vec<LayerDef>, Error> {
-        let mut defs = vec![];
-        let f = BufReader::new(File::open(rules_path)?);
-        for line in f.lines() {
-            if let Some(ld) = parse_layer_def(&line?) {
-                debug!("LayerDef: {:?}", &ld);
-                defs.push(ld);
-            }
-        }
-        let mut names = String::new();
-        for ld in &defs {
-            names.push(' ');
-            names.push_str(&ld.name);
-        }
-        info!("{} layers loaded:{}", defs.len(), names);
-        Ok(defs)
-    }
-
-    /// Parse a layer definition rule
-    fn parse(c: &mut dyn Iterator<Item = &str>) -> Option<Self> {
-        let name = c.next()?.to_string();
-        let table = c.next()?.to_string();
-        let (zoom_min, zoom_max) = parse_zoom(c.next()?)?;
-        let patterns = parse_patterns(c)?;
-        Some(LayerDef {
+    /// Create a new layer definition
+    pub fn new(name: &str, table: &str, zoom: &str, tags: &[String])
+        -> Result<Self, Error>
+    {
+        let name = name.to_string();
+        let table = table.to_string();
+        let (zoom_min, zoom_max) = parse_zoom(zoom)?;
+        log::debug!("zoom: {}-{}", zoom_min, zoom_max);
+        let patterns = parse_patterns(tags)?;
+        Ok(LayerDef {
             name,
             table,
             zoom_min,

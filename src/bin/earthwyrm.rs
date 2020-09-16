@@ -4,7 +4,7 @@
 //
 #![forbid(unsafe_code)]
 
-use earthwyrm::{Error, TileMaker, TomlCfg};
+use earthwyrm::{Error, LayerGroup, MuonCfg};
 use log::{debug, error, warn};
 use postgres::config::Config;
 use postgres::{Client, NoTls};
@@ -24,7 +24,7 @@ struct ErrorMessage {
 
 fn main() {
     env_logger::builder().format_timestamp(None).init();
-    let res = do_main("/etc/earthwyrm/earthwyrm.toml");
+    let res = do_main("/etc/earthwyrm/earthwyrm.muon");
     if let Err(e) = &res {
         error!("{:?}", e);
         res.unwrap();
@@ -32,34 +32,35 @@ fn main() {
 }
 
 fn do_main(file: &str) -> Result<(), Error> {
-    let config = TomlCfg::from_file(file).expect(file);
+    let config = MuonCfg::from_file(file).expect(file);
     let sock_addr: SocketAddr = config.bind_address().parse()?;
     let document_root = config.document_root().to_string();
-    let makers = config.into_tile_makers()?;
+    let groups = config.into_layer_groups()?;
     let username = whoami::username();
     // Format path for unix domain socket -- not worth using percent_encode
     let uds = format!("postgres://{:}@%2Frun%2Fpostgresql/earthwyrm", username);
     let config = uds.parse()?;
-    run_server(document_root, sock_addr, makers, config);
+    run_server(document_root, sock_addr, groups, config);
     Ok(())
 }
 
 fn run_server(
     document_root: String,
     sock_addr: SocketAddr,
-    makers: Vec<TileMaker>,
+    groups: Vec<LayerGroup>,
     config: Config,
 ) {
-    let tiles = tile_route(makers, config);
-    let map = warp::path("map.html")
-        .and(warp::fs::file(document_root.to_string() + "/map.html"));
-    let files = warp::path("static").and(warp::fs::dir(document_root));
+    let tiles = tile_route(groups, config);
+    let map = warp::path("index.html")
+        .and(warp::fs::file(document_root.to_string() + "/index.html"));
+    let files = warp::path("static")
+        .and(warp::fs::dir(document_root.to_string() + "/static"));
     let routes = tiles.or(map).or(files).recover(customize_error);
     warp::serve(routes).run(sock_addr);
 }
 
 fn tile_route(
-    makers: Vec<TileMaker>,
+    groups: Vec<LayerGroup>,
     config: Config,
 ) -> BoxedFilter<(impl Reply,)> {
     let manager = PostgresConnectionManager::new(config, NoTls);
@@ -74,7 +75,7 @@ fn tile_route(
             debug!("request from {:?}", host);
             match pool.get() {
                 Ok(mut conn) => {
-                    generate_tile(&makers[..], &mut conn, base_name, z, x, tail)
+                    generate_tile(&groups[..], &mut conn, base_name, z, x, tail)
                 }
                 Err(e) => Err(custom(Error::R2D2(e))),
             }
@@ -83,20 +84,20 @@ fn tile_route(
 }
 
 fn generate_tile(
-    makers: &[TileMaker],
+    groups: &[LayerGroup],
     conn: &mut Client,
     base_name: String,
     z: u32,
     x: u32,
     tail: filters::path::Tail,
 ) -> Result<Vec<u8>, Rejection> {
-    for maker in makers {
-        if base_name == maker.base_name() {
+    for group in groups {
+        if base_name == group.base_name() {
             let mut sp = tail.as_str().splitn(2, '.');
             if let (Some(y), Some("mvt")) = (sp.next(), sp.next()) {
                 if let Ok(y) = y.parse::<u32>() {
                     let mut out = vec![];
-                    return match maker.write_tile(&mut out, conn, x, y, z) {
+                    return match group.write_tile(&mut out, conn, x, y, z) {
                         Ok(()) => Ok(out),
                         Err(e) => Err(custom(e)),
                     };

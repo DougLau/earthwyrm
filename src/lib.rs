@@ -10,6 +10,6 @@ mod geom;
 mod map;
 mod rules;
 
-pub use config::TomlCfg;
+pub use config::MuonCfg;
 pub use error::Error;
-pub use map::{TileMaker, TileMakerBuilder};
+pub use map::{LayerGroup, LayerGroupBuilder};

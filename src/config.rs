@@ -10,7 +10,7 @@ use std::fs;
 
 /// Base MuON configuration data
 #[derive(Debug, Deserialize)]
-pub struct MuonCfg {
+pub struct WyrmCfg {
     bind_address: String,
     document_root: String,
     tile_extent: Option<u32>,
@@ -47,7 +47,7 @@ pub struct LayerCfg {
     tags: Vec<String>,
 }
 
-impl MuonCfg {
+impl WyrmCfg {
     /// Parse from string
     pub fn from_str(cfg: &str) -> Result<Self, Error> {
         Ok(muon_rs::from_str(cfg)?)
@@ -55,7 +55,7 @@ impl MuonCfg {
 
     /// Read from file
     pub fn from_file(fname: &str) -> Result<Self, Error> {
-        MuonCfg::from_str(&fs::read_to_string(fname)?)
+        WyrmCfg::from_str(&fs::read_to_string(fname)?)
     }
 
     /// Get the bind address

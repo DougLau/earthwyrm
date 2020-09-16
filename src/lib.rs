@@ -10,6 +10,6 @@ mod geom;
 mod map;
 mod rules;
 
-pub use config::MuonCfg;
+pub use config::WyrmCfg;
 pub use error::Error;
 pub use map::{LayerGroup, LayerGroupBuilder};

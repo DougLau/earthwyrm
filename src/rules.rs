@@ -7,21 +7,21 @@ use crate::Error;
 const ZOOM_MAX: u32 = 30;
 
 /// Tag pattern specification to require matching tag
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Copy, Clone, Debug, PartialEq)]
 enum MustMatch {
     No,
     Yes,
 }
 
 /// Tag pattern specification to include tag value in layer
-#[derive(Clone, Debug)]
+#[derive(Copy, Clone, Debug)]
 enum IncludeValue {
     No,
     Yes,
 }
 
 /// Tag pattern specification to match value equal vs. not equal
-#[derive(Clone, Debug)]
+#[derive(Copy, Clone, Debug)]
 enum Equality {
     Equal,
     NotEqual,
@@ -47,9 +47,8 @@ pub struct LayerDef {
     patterns: Vec<TagPattern>,
 }
 
-impl TagPattern {
-    /// Create a new "name" tag pattern
-    fn new_name() -> Self {
+impl Default for TagPattern {
+    fn default() -> Self {
         let must_match = MustMatch::No;
         let include = IncludeValue::Yes;
         let key = "name".to_string();
@@ -63,7 +62,9 @@ impl TagPattern {
             values,
         }
     }
+}
 
+impl TagPattern {
     /// Get the tag (key)
     pub fn tag(&self) -> &str {
         &self.key
@@ -182,8 +183,9 @@ fn parse_patterns(rule: &[String]) -> Result<Vec<TagPattern>, Error> {
         patterns.push(p);
     }
     if patterns.len() > 0 {
+        // Add default pattern if no "name" patterns exist
         if !patterns.iter().any(|p| &p.tag() == &"name") {
-            patterns.push(TagPattern::new_name());
+            patterns.push(TagPattern::default());
         }
     }
     Ok(patterns)
@@ -195,13 +197,13 @@ impl LayerDef {
         name: &str,
         table: &str,
         zoom: &str,
-        tags: &[String],
+        patterns: &[String],
     ) -> Result<Self, Error> {
         let name = name.to_string();
         let table = table.to_string();
         let (zoom_min, zoom_max) = parse_zoom(zoom)?;
         log::debug!("zoom: {}-{}", zoom_min, zoom_max);
-        let patterns = parse_patterns(tags)?;
+        let patterns = parse_patterns(patterns)?;
         Ok(LayerDef {
             name,
             table,

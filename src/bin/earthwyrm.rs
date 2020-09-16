@@ -4,7 +4,7 @@
 //
 #![forbid(unsafe_code)]
 
-use earthwyrm::{Error, LayerGroup, MuonCfg};
+use earthwyrm::{Error, LayerGroup, WyrmCfg};
 use log::{debug, error, warn};
 use postgres::config::Config;
 use postgres::{Client, NoTls};
@@ -32,7 +32,7 @@ fn main() {
 }
 
 fn do_main(file: &str) -> Result<(), Error> {
-    let config = MuonCfg::from_file(file).expect(file);
+    let config = WyrmCfg::from_file(file).expect(file);
     let sock_addr: SocketAddr = config.bind_address().parse()?;
     let document_root = config.document_root().to_string();
     let groups = config.into_layer_groups()?;

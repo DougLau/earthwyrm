@@ -1,9 +1,11 @@
 # EarthWyrm ![Logo](./earthwyrm.svg)
 
 *EarthWyrm* is an open-source map server developed for the Minnesota Department
-of Transportation (MnDOT).  It can serve
-[OpenStreetMap](https://www.openstreetmap.org/about) (and other) data in
-[MVT](https://github.com/mapbox/vector-tile-spec) format.
+of Transportation (MnDOT).  It can serve [OpenStreetMap] or other GIS data in
+[MVT] format.
+
+EarthWyrm uses the pervasive [Web Mercator] projection (EPSG:3857), along with
+the typical `Z/X/Y.mvt` tile naming convention.
 
 ## Setup
 
@@ -15,8 +17,7 @@ of Transportation (MnDOT).  It can serve
   - **nginx** (optional)
 
 * Download OpenStreetMap data in _.osm.pbf_ (OSM protobuf) format.  See the
-  [OSM wiki](https://wiki.openstreetmap.org/wiki/Downloading_data) for download
-  options, such as [Geofabrik](http://download.geofabrik.de/).
+  [OSM wiki] for download options, such as [Geofabrik].
 
 * Create database and import data
 ```
@@ -67,9 +68,15 @@ clients from other hosts will not be able to reach the server.  There are a
 couple of options:
 
 * Update `bind_address` in `/etc/earthwyrm/earthwyrm.muon`
-* (Preferred option!)  Set up a reverse proxy, such as
-  [nginx](https://nginx.org/en/).  This has the advantage that caching can be
-  enabled to improve latency.
+* (Preferred option!)  Set up a reverse proxy, such as [nginx].  This has the
+  advantage that caching can be enabled to improve latency.
 
 In either case, the url in `/var/local/earthwyrm/static/map.js` will need to be
 updated.
+
+[Geofabrik]: http://download.geofabrik.de/
+[MVT]: https://github.com/mapbox/vector-tile-spec
+[nginx]: https://nginx.org/en/
+[OpenStreetMap]: https://www.openstreetmap.org/about
+[OSM wiki]: https://wiki.openstreetmap.org/wiki/Downloading_data
+[Web Mercator]: https://en.wikipedia.org/wiki/Web_Mercator_projection

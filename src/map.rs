@@ -38,8 +38,8 @@ struct TileConfig {
     bbox: BBox,
     /// Geometry transform
     transform: Transform,
-    /// Pixel size
-    pixel_sz: f64,
+    /// Tolerance for snapping geometry to grid and simplifying
+    tolerance: f64,
 }
 
 /// Builder for layer groups
@@ -47,7 +47,7 @@ struct TileConfig {
 pub struct LayerGroupBuilder {
     /// Tile extent
     tile_extent: Option<u32>,
-    /// Pixels in tile
+    /// Snapping grid extent
     pixels: Option<u32>,
     /// Buffer pixels at edges
     buffer_pixels: Option<u32>,
@@ -224,15 +224,16 @@ impl LayerGroup {
         let bbox = self.grid.tile_bbox(tid);
         let tile_sz =
             (bbox.x_max() - bbox.x_min()).max(bbox.y_max() - bbox.y_min());
-        let pixel_sz = tile_sz / self.pixels as f64;
-        debug!("tile {}, pixel_sz {:?}", tid, pixel_sz);
+        // FIXME: is tolerance the same for all tiles?
+        let tolerance = tile_sz / self.pixels as f64;
+        debug!("tile {}, tolerance {:?}", tid, tolerance);
         let ts = self.tile_extent as f64;
         let transform = self.grid.tile_transform(tid).scale(ts, ts);
         TileConfig {
             tid,
             bbox,
             transform,
-            pixel_sz,
+            tolerance,
         }
     }
 
@@ -291,10 +292,10 @@ impl LayerGroup {
         let y_min = config.bbox.y_min();
         let x_max = config.bbox.x_max();
         let y_max = config.bbox.y_max();
-        let tol = config.pixel_sz;
-        let rad = tol * self.buffer_pixels as f64;
+        let tolerance = config.tolerance;
+        let radius = tolerance * self.buffer_pixels as f64;
         let params: Vec<&(dyn ToSql + Sync)> =
-            vec![&tol, &x_min, &y_min, &x_max, &y_max, &rad];
+            vec![&tolerance, &x_min, &y_min, &x_max, &y_max, &radius];
         debug!("params: {:?}", params);
         let portal = trans.bind(&stmt, &params[..])?;
         let mut remaining_limit = self.query_limit;

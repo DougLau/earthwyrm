@@ -24,8 +24,6 @@ pub enum Error {
     ParseInt(ParseIntError),
     /// PostgreSQL error
     Pg(postgres::Error),
-    /// R2D2 connection pool error
-    R2D2(r2d2::Error),
     /// Tile empty
     TileEmpty(),
     /// TryFrom conversion error
@@ -42,7 +40,6 @@ impl fmt::Display for Error {
             Error::Mvt(e) => e.fmt(f),
             Error::ParseInt(e) => e.fmt(f),
             Error::Pg(e) => e.fmt(f),
-            Error::R2D2(e) => e.fmt(f),
             Error::TileEmpty() => write!(f, "Tile empty"),
             Error::TryFromInt(e) => e.fmt(f),
         }
@@ -59,7 +56,6 @@ impl std::error::Error for Error {
             Error::Mvt(e) => Some(e),
             Error::ParseInt(e) => Some(e),
             Error::Pg(e) => Some(e),
-            Error::R2D2(e) => Some(e),
             Error::TileEmpty() => None,
             Error::TryFromInt(e) => Some(e),
         }
@@ -99,12 +95,6 @@ impl From<ParseIntError> for Error {
 impl From<postgres::Error> for Error {
     fn from(e: postgres::Error) -> Self {
         Error::Pg(e)
-    }
-}
-
-impl From<r2d2::Error> for Error {
-    fn from(e: r2d2::Error) -> Self {
-        Error::R2D2(e)
     }
 }
 

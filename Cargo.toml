@@ -17,10 +17,9 @@ log = "0.4"
 mvt = "0.5"
 postgis = "0.7"
 postgres = "0.17"
-r2d2 = "0.8"
-r2d2_postgres = "0.16"
 serde = "1.0"
 serde_derive = "1.0"
 muon-rs = "0.2"
-warp = "0.1"
 whoami = "0.9"
+
+[workspace]

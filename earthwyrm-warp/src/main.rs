@@ -33,8 +33,7 @@ fn main() {
 }
 
 fn do_main(file: &str) -> Result<(), Error> {
-    let config: WyrmCfg =
-        muon_rs::from_str(&fs::read_to_string(file)?).expect(file);
+    let config: WyrmCfg = muon_rs::from_str(&fs::read_to_string(file)?)?;
     let sock_addr: SocketAddr = config.bind_address().parse()?;
     let document_root = config.document_root().to_string();
     let groups = config.into_layer_groups()?;
@@ -79,7 +78,7 @@ fn tile_route(
                 Ok(mut conn) => {
                     generate_tile(&groups[..], &mut conn, base_name, z, x, tail)
                 }
-                Err(e) => Err(custom(Error::R2D2(e))),
+                Err(e) => Err(custom(e)),
             }
         })
         .boxed()
@@ -115,7 +114,6 @@ fn customize_error(err: Rejection) -> Result<impl Reply, Rejection> {
         let code = match err {
             Error::Pg(_) => StatusCode::INTERNAL_SERVER_ERROR,
             Error::Mvt(_) => StatusCode::INTERNAL_SERVER_ERROR,
-            Error::R2D2(_) => StatusCode::SERVICE_UNAVAILABLE,
             Error::TileEmpty() => StatusCode::NO_CONTENT,
             _ => StatusCode::BAD_REQUEST,
         };

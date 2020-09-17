@@ -58,8 +58,8 @@ pub struct LayerGroupBuilder {
 /// Group of layers for making tiles
 #[derive(Clone)]
 pub struct LayerGroup {
-    /// Base name of group
-    base_name: String,
+    /// Name of group
+    name: String,
     /// Tile extent
     tile_extent: u32,
     /// Pixels in tile
@@ -155,14 +155,14 @@ impl LayerGroupBuilder {
     ) -> Result<LayerGroup, Error> {
         let layer_defs = layer_group.to_layer_defs()?;
         let table_defs = self.build_table_defs(&layer_defs, table_cfgs);
-        let base_name = layer_group.base_name().to_string();
+        let name = layer_group.name().to_string();
         let tile_extent = self.tile_extent.unwrap_or(4096);
         let pixels = self.pixels.unwrap_or(256);
         let buffer_pixels = self.buffer_pixels.unwrap_or(0);
         let query_limit = self.query_limit.unwrap_or(u32::MAX);
         let grid = MapGrid::default();
         Ok(LayerGroup {
-            base_name,
+            name,
             tile_extent,
             pixels,
             buffer_pixels,
@@ -195,9 +195,9 @@ impl LayerGroup {
         LayerGroupBuilder::default()
     }
 
-    /// Get the base name
-    pub fn base_name(&self) -> &str {
-        &self.base_name
+    /// Get the group name
+    pub fn name(&self) -> &str {
+        &self.name
     }
 
     /// Find a layer by name
@@ -247,7 +247,7 @@ impl LayerGroup {
         let tile = self.query_tile(client, &config)?;
         info!(
             "{} {}, fetched {} bytes in {:?}",
-            self.base_name(),
+            self.name(),
             tid,
             tile.compute_size(),
             t.elapsed()

@@ -46,8 +46,8 @@ pub struct TableCfg {
 /// Layer Group configuration
 #[derive(Debug, Deserialize)]
 pub struct LayerGroupCfg {
-    /// Base layer group name
-    base_name: String,
+    /// Layer group name
+    name: String,
     /// Layers in group
     layer: Vec<LayerCfg>,
 }
@@ -141,9 +141,9 @@ impl TableCfg {
 }
 
 impl LayerGroupCfg {
-    /// Get base name
-    pub fn base_name(&self) -> &str {
-        &self.base_name
+    /// Get the group name
+    pub fn name(&self) -> &str {
+        &self.name
     }
 
     /// Convert to layer defs

@@ -72,11 +72,11 @@ fn tile_route(
         .and(warp::path::param::<u32>())
         .and(warp::path::param::<u32>())
         .and(warp::path::tail())
-        .and_then(move |host, base_name, z, x, tail| {
+        .and_then(move |host, name, z, x, tail| {
             debug!("request from {:?}", host);
             match pool.get() {
                 Ok(mut conn) => {
-                    generate_tile(&groups[..], &mut conn, base_name, z, x, tail)
+                    generate_tile(&groups[..], &mut conn, name, z, x, tail)
                 }
                 Err(e) => Err(custom(e)),
             }
@@ -87,13 +87,13 @@ fn tile_route(
 fn generate_tile(
     groups: &[LayerGroup],
     conn: &mut Client,
-    base_name: String,
+    name: String,
     z: u32,
     x: u32,
     tail: filters::path::Tail,
 ) -> Result<Vec<u8>, Rejection> {
     for group in groups {
-        if base_name == group.base_name() {
+        if name == group.name() {
             let mut sp = tail.as_str().splitn(2, '.');
             if let (Some(y), Some("mvt")) = (sp.next(), sp.next()) {
                 if let Ok(y) = y.parse::<u32>() {

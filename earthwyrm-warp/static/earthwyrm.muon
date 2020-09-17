@@ -48,7 +48,7 @@ table: point
   geom_type: point
 
 # Layer groups are collections of MVT files containing related layers.
-#   - base_name: Base path name for URI
+#   - name: Base URI path name
 layer_group: tile
   # Layer definition
   #

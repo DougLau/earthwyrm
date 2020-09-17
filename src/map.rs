@@ -12,7 +12,6 @@ use postgres::fallible_iterator::FallibleIterator;
 use postgres::types::ToSql;
 use postgres::Client;
 use postgres::Row;
-use std::convert::TryFrom;
 use std::io::Write;
 use std::time::Instant;
 
@@ -68,7 +67,7 @@ pub struct LayerGroup {
     /// Buffer pixels at edges
     buffer_pixels: u32,
     /// Query row limit
-    query_limit: i32,
+    query_limit: u32,
     /// Map grid configuration
     grid: MapGrid,
     /// Layer definitions
@@ -160,7 +159,7 @@ impl LayerGroupBuilder {
         let tile_extent = self.tile_extent.unwrap_or(4096);
         let pixels = self.pixels.unwrap_or(256);
         let buffer_pixels = self.buffer_pixels.unwrap_or(0);
-        let query_limit = i32::try_from(self.query_limit.unwrap_or(50))?;
+        let query_limit = self.query_limit.unwrap_or(u32::MAX);
         let grid = MapGrid::new_web_mercator();
         Ok(LayerGroup {
             base_name,
@@ -298,32 +297,26 @@ impl LayerGroup {
             vec![&tol, &x_min, &y_min, &x_max, &y_max, &rad];
         debug!("params: {:?}", params);
         let portal = trans.bind(&stmt, &params[..])?;
-        let mut n_rows = 0;
-        let row_limit = self.row_limit();
-        loop {
-            let start = n_rows;
-            let mut rows = trans.query_portal_raw(&portal, row_limit)?;
+        let mut remaining_limit = self.query_limit;
+        while remaining_limit > 0 {
+            let before_limit = remaining_limit;
+            // Fetch next set of rows from portal
+            let mut rows = trans.query_portal_raw(&portal, 50)?;
             while let Some(row) = rows.next()? {
                 self.add_layer_features(table_def, &row, config, layers)?;
-                if n_rows == self.query_limit {
-                    warn!(
-                        "table {}, query limit reached: {}",
-                        &table_def.name, n_rows
-                    );
-                    return Ok(());
-                }
-                n_rows += 1;
+                remaining_limit -= 1;
             }
-            if start == n_rows {
+            if before_limit == remaining_limit {
                 break;
             }
         }
+        if remaining_limit == 0 {
+            warn!(
+                "table {}, query limit reached: {}",
+                &table_def.name, self.query_limit
+            );
+        }
         Ok(())
-    }
-
-    /// Get the row limit for a lazy query
-    fn row_limit(&self) -> i32 {
-        self.query_limit.min(50)
     }
 
     /// Add features to a layer

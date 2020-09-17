@@ -3,7 +3,7 @@
 // Copyright (c) 2019-2020  Minnesota Department of Transportation
 //
 use std::net::AddrParseError;
-use std::num::{ParseIntError, TryFromIntError};
+use std::num::ParseIntError;
 use std::{fmt, io};
 
 /// Earthwyrm error types
@@ -26,8 +26,6 @@ pub enum Error {
     Pg(postgres::Error),
     /// Tile empty
     TileEmpty(),
-    /// TryFrom conversion error
-    TryFromInt(TryFromIntError),
 }
 
 impl fmt::Display for Error {
@@ -41,7 +39,6 @@ impl fmt::Display for Error {
             Error::ParseInt(e) => e.fmt(f),
             Error::Pg(e) => e.fmt(f),
             Error::TileEmpty() => write!(f, "Tile empty"),
-            Error::TryFromInt(e) => e.fmt(f),
         }
     }
 }
@@ -57,7 +54,6 @@ impl std::error::Error for Error {
             Error::ParseInt(e) => Some(e),
             Error::Pg(e) => Some(e),
             Error::TileEmpty() => None,
-            Error::TryFromInt(e) => Some(e),
         }
     }
 }
@@ -95,11 +91,5 @@ impl From<ParseIntError> for Error {
 impl From<postgres::Error> for Error {
     fn from(e: postgres::Error) -> Self {
         Error::Pg(e)
-    }
-}
-
-impl From<TryFromIntError> for Error {
-    fn from(e: TryFromIntError) -> Self {
-        Error::TryFromInt(e)
     }
 }

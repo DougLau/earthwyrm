@@ -160,7 +160,7 @@ impl LayerGroupBuilder {
         let pixels = self.pixels.unwrap_or(256);
         let buffer_pixels = self.buffer_pixels.unwrap_or(0);
         let query_limit = self.query_limit.unwrap_or(u32::MAX);
-        let grid = MapGrid::new_web_mercator();
+        let grid = MapGrid::default();
         Ok(LayerGroup {
             base_name,
             tile_extent,
@@ -329,19 +329,17 @@ impl LayerGroup {
     ) -> Result<(), Error> {
         let table = &table_def.name;
         let grow = GeomRow::new(row, table_def.geom_type, &table_def.id_column);
-        // FIXME: can this be done without a temp vec?
-        let mut lyrs: Vec<Layer> = layers.drain(..).collect();
-        for mut layer in lyrs.drain(..) {
+        for layer in layers {
             if let Some(layer_def) = self.find_layer(layer.name()) {
                 if layer_def.check_table(table, config.zoom())
                     && grow.matches_layer(layer_def)
                 {
                     if let Some(geom) = grow.get_geometry(&config.transform)? {
-                        layer = grow.add_feature(layer, layer_def, geom);
+                        let lyr = std::mem::replace(layer, Layer::default());
+                        *layer = grow.add_feature(lyr, layer_def, geom);
                     }
                 }
             }
-            layers.push(layer);
         }
         Ok(())
     }

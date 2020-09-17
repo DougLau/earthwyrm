@@ -10,6 +10,6 @@ format.
 * Library [documentation]
 
 [documentation]: https://docs.rs/earthwyrm
-[EarthWyrm-warp]: earthwyrm-warp/README.html
+[EarthWyrm-warp]: earthwyrm-warp/
 [MVT]: https://github.com/mapbox/vector-tile-spec
 [OpenStreetMap]: https://www.openstreetmap.org/about

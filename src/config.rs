@@ -15,11 +15,11 @@ pub struct WyrmCfg {
     /// Document root to server static documents
     document_root: String,
     /// Tile extent; width and height
-    tile_extent: Option<u32>,
+    tile_extent: u32,
     /// Extent outside tile edges
-    edge_extent: Option<u32>,
+    edge_extent: u32,
     /// Limit of rows per query
-    query_limit: Option<u32>,
+    query_limit: u32,
     /// Table configuration
     table: Vec<TableCfg>,
     /// Layer group configuration
@@ -75,7 +75,7 @@ impl WyrmCfg {
     }
 
     /// Get the layer group configurations
-    pub fn layer_groups(&self) -> &[LayerGroupCfg] {
+    fn layer_groups(&self) -> &[LayerGroupCfg] {
         &self.layer_group
     }
 
@@ -83,18 +83,14 @@ impl WyrmCfg {
     pub fn into_wyrm(self) -> Result<Wyrm, Error> {
         let mut groups = vec![];
         for group in self.layer_groups() {
-            groups.push(self.layer_group(group)?);
+            groups.push(LayerGroup::from_cfg(group, &self.table)?);
         }
-        Ok(Wyrm::new(groups))
-    }
-
-    /// Build a `LayerGroup`
-    fn layer_group(&self, group: &LayerGroupCfg) -> Result<LayerGroup, Error> {
-        LayerGroup::builder()
-            .with_tile_extent(self.tile_extent)
-            .with_edge_extent(self.edge_extent)
-            .with_query_limit(self.query_limit)
-            .build(&self.table, group)
+        Ok(Wyrm::new(
+            self.tile_extent,
+            self.edge_extent,
+            self.query_limit,
+            groups,
+        ))
     }
 }
 

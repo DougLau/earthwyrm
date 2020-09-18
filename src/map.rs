@@ -31,7 +31,13 @@ struct TableDef {
 }
 
 /// Tile configuration
-struct TileConfig {
+struct TileCfg {
+    /// Tile extent; width and height
+    tile_extent: u32,
+    /// Extent outside tile edges
+    edge_extent: u32,
+    /// Query row limit
+    query_limit: u32,
     /// Tile ID
     tid: TileId,
     /// Bounding box
@@ -42,39 +48,34 @@ struct TileConfig {
     tolerance: f64,
 }
 
-/// Builder for layer groups
-#[derive(Default)]
-pub struct LayerGroupBuilder {
-    /// Tile extent; width and height
-    tile_extent: Option<u32>,
-    /// Extent outside tile edges
-    edge_extent: Option<u32>,
-    /// Query row limit
-    query_limit: Option<u32>,
-}
-
 /// Group of layers for making tiles
 #[derive(Clone)]
 pub struct LayerGroup {
     /// Name of group
     name: String,
-    /// Tile extent; width and height
-    tile_extent: u32,
-    /// Extent outside tile edges
-    edge_extent: u32,
-    /// Query row limit
-    query_limit: u32,
-    /// Map grid configuration
-    grid: MapGrid,
     /// Layer definitions
     layer_defs: Vec<LayerDef>,
     /// Table definitions
     table_defs: Vec<TableDef>,
 }
 
-/// Wyrm tile fetcher
+/// Wyrm tile fetcher.
+///
+/// To create:
+/// * Use `serde` to deserialize a [WyrmCfg]
+/// * `let wyrm = wyrm_cfg.try_into::<Wyrm>()?;`
+///
+/// [WyrmCfg]: struct.WyrmCfg.html
 #[derive(Clone)]
 pub struct Wyrm {
+    /// Map grid configuration
+    grid: MapGrid,
+    /// Tile extent; width and height
+    tile_extent: u32,
+    /// Extent outside tile edges
+    edge_extent: u32,
+    /// Query row limit
+    query_limit: u32,
     /// Tile layer groups
     groups: Vec<LayerGroup>,
 }
@@ -150,51 +151,24 @@ impl TableDef {
     }
 }
 
-impl TileConfig {
+impl TileCfg {
     /// Get the zoom level
     fn zoom(&self) -> u32 {
         self.tid.z()
     }
 }
 
-impl LayerGroupBuilder {
-    /// Set the tile extent; width and height
-    pub fn with_tile_extent(mut self, tile_extent: Option<u32>) -> Self {
-        self.tile_extent = tile_extent;
-        self
-    }
-
-    /// Set the extent outside tile edges
-    pub fn with_edge_extent(mut self, edge_extent: Option<u32>) -> Self {
-        self.edge_extent = edge_extent;
-        self
-    }
-
-    /// Set the query limit
-    pub fn with_query_limit(mut self, query_limit: Option<u32>) -> Self {
-        self.query_limit = query_limit;
-        self
-    }
-
-    /// Build the layer group
-    pub fn build(
-        self,
+impl LayerGroup {
+    /// Build a `LayerGroup`
+    pub fn from_cfg(
+        group_cfg: &LayerGroupCfg,
         table_cfgs: &[TableCfg],
-        layer_group: &LayerGroupCfg,
-    ) -> Result<LayerGroup, Error> {
-        let layer_defs = layer_group.to_layer_defs()?;
-        let table_defs = self.build_table_defs(&layer_defs, table_cfgs);
-        let name = layer_group.name().to_string();
-        let tile_extent = self.tile_extent.unwrap_or(256);
-        let edge_extent = self.edge_extent.unwrap_or(6);
-        let query_limit = self.query_limit.unwrap_or(u32::MAX);
-        let grid = MapGrid::default();
+    ) -> Result<Self, Error> {
+        let layer_defs = group_cfg.to_layer_defs()?;
+        let table_defs = LayerGroup::build_table_defs(&layer_defs, table_cfgs);
+        let name = group_cfg.name().to_string();
         Ok(LayerGroup {
             name,
-            tile_extent,
-            edge_extent,
-            query_limit,
-            grid,
             layer_defs,
             table_defs,
         })
@@ -202,7 +176,6 @@ impl LayerGroupBuilder {
 
     /// Build the table definitions
     fn build_table_defs(
-        &self,
         layer_defs: &[LayerDef],
         table_cfgs: &[TableCfg],
     ) -> Vec<TableDef> {
@@ -213,13 +186,6 @@ impl LayerGroupBuilder {
             }
         }
         table_defs
-    }
-}
-
-impl LayerGroup {
-    /// Create a builder for LayerGroup
-    pub fn builder() -> LayerGroupBuilder {
-        LayerGroupBuilder::default()
     }
 
     /// Get the group name
@@ -246,35 +212,18 @@ impl LayerGroup {
         self.layer_defs.iter().any(|l| l.check_table(table, zoom))
     }
 
-    /// Create tile config for a tile ID
-    fn tile_config(&self, tid: TileId) -> TileConfig {
-        let bbox = self.grid.tile_bbox(tid);
-        let tile_sz = bbox.x_max() - bbox.x_min();
-        let tolerance = tile_sz / self.tile_extent as f64;
-        debug!("tile {}, tolerance {:?}", tid, tolerance);
-        let ts = self.tile_extent as f64;
-        let transform = self.grid.tile_transform(tid).scale(ts, ts);
-        TileConfig {
-            tid,
-            bbox,
-            transform,
-            tolerance,
-        }
-    }
-
     /// Fetch a tile
     fn fetch_tile(
         &self,
         client: &mut Client,
-        tid: TileId,
+        tile_cfg: &TileCfg,
     ) -> Result<Tile, Error> {
-        let config = self.tile_config(tid);
         let t = Instant::now();
-        let tile = self.query_tile(client, &config)?;
+        let tile = self.query_tile(client, tile_cfg)?;
         info!(
             "{} {}, fetched {} bytes in {:?}",
             self.name(),
-            tid,
+            tile_cfg.tid,
             tile.compute_size(),
             t.elapsed()
         );
@@ -285,13 +234,13 @@ impl LayerGroup {
     fn query_tile(
         &self,
         client: &mut Client,
-        config: &TileConfig,
+        tile_cfg: &TileCfg,
     ) -> Result<Tile, Error> {
-        let mut tile = Tile::new(self.tile_extent);
+        let mut tile = Tile::new(tile_cfg.tile_extent);
         let mut layers = self.create_layers(&tile);
         for table_def in &self.table_defs {
-            if self.check_layers(table_def, config.zoom()) {
-                self.query_layers(client, table_def, &mut layers, config)?;
+            if self.check_layers(table_def, tile_cfg.zoom()) {
+                self.query_layers(client, table_def, &mut layers, tile_cfg)?;
             }
         }
         for layer in layers.drain(..) {
@@ -308,28 +257,28 @@ impl LayerGroup {
         client: &mut Client,
         table_def: &TableDef,
         layers: &mut Vec<Layer>,
-        config: &TileConfig,
+        tile_cfg: &TileCfg,
     ) -> Result<(), Error> {
         debug!("sql: {}", &table_def.sql);
         let mut trans = client.transaction()?;
         let stmt = trans.prepare(&table_def.sql)?;
-        let x_min = config.bbox.x_min();
-        let y_min = config.bbox.y_min();
-        let x_max = config.bbox.x_max();
-        let y_max = config.bbox.y_max();
-        let tolerance = config.tolerance;
-        let radius = tolerance * self.edge_extent as f64;
+        let x_min = tile_cfg.bbox.x_min();
+        let y_min = tile_cfg.bbox.y_min();
+        let x_max = tile_cfg.bbox.x_max();
+        let y_max = tile_cfg.bbox.y_max();
+        let tolerance = tile_cfg.tolerance;
+        let radius = tolerance * tile_cfg.edge_extent as f64;
         let params: Vec<&(dyn ToSql + Sync)> =
             vec![&tolerance, &x_min, &y_min, &x_max, &y_max, &radius];
         debug!("params: {:?}", params);
         let portal = trans.bind(&stmt, &params[..])?;
-        let mut remaining_limit = self.query_limit;
+        let mut remaining_limit = tile_cfg.query_limit;
         while remaining_limit > 0 {
             let before_limit = remaining_limit;
             // Fetch next set of rows from portal
             let mut rows = trans.query_portal_raw(&portal, 50)?;
             while let Some(row) = rows.next()? {
-                self.add_layer_features(table_def, &row, config, layers)?;
+                self.add_layer_features(table_def, &row, tile_cfg, layers)?;
                 remaining_limit -= 1;
             }
             if before_limit == remaining_limit {
@@ -339,7 +288,7 @@ impl LayerGroup {
         if remaining_limit == 0 {
             warn!(
                 "table {}, query limit reached: {}",
-                &table_def.name, self.query_limit
+                &table_def.name, tile_cfg.query_limit
             );
         }
         Ok(())
@@ -350,17 +299,19 @@ impl LayerGroup {
         &self,
         table_def: &TableDef,
         row: &Row,
-        config: &TileConfig,
+        tile_cfg: &TileCfg,
         layers: &mut Vec<Layer>,
     ) -> Result<(), Error> {
         let table = &table_def.name;
         let grow = GeomRow::new(row, table_def.geom_type, &table_def.id_column);
         for layer in layers {
             if let Some(layer_def) = self.find_layer(layer.name()) {
-                if layer_def.check_table(table, config.zoom())
+                if layer_def.check_table(table, tile_cfg.zoom())
                     && grow.matches_layer(layer_def)
                 {
-                    if let Some(geom) = grow.get_geometry(&config.transform)? {
+                    if let Some(geom) =
+                        grow.get_geometry(&tile_cfg.transform)?
+                    {
                         let lyr = std::mem::replace(layer, Layer::default());
                         *layer = grow.add_feature(lyr, layer_def, geom);
                     }
@@ -375,14 +326,14 @@ impl LayerGroup {
         &self,
         out: &mut W,
         client: &mut Client,
-        tid: TileId,
+        tile_cfg: TileCfg,
     ) -> Result<(), Error> {
-        let tile = self.fetch_tile(client, tid)?;
+        let tile = self.fetch_tile(client, &tile_cfg)?;
         if tile.num_layers() > 0 {
             tile.write_to(out)?;
             Ok(())
         } else {
-            debug!("tile {} empty (no layers)", tid);
+            debug!("tile {} empty (no layers)", tile_cfg.tid);
             Err(Error::TileEmpty())
         }
     }
@@ -390,11 +341,28 @@ impl LayerGroup {
 
 impl Wyrm {
     /// Create a new Wyrm tile fetcher
-    pub(crate) fn new(groups: Vec<LayerGroup>) -> Self {
-        Wyrm { groups }
+    pub(crate) fn new(
+        tile_extent: u32,
+        edge_extent: u32,
+        query_limit: u32,
+        groups: Vec<LayerGroup>,
+    ) -> Self {
+        let grid = MapGrid::default();
+        Wyrm {
+            grid,
+            tile_extent,
+            edge_extent,
+            query_limit,
+            groups,
+        }
     }
 
-    /// Fetch one file from a DB client
+    /// Fetch one tile from a DB client.
+    ///
+    /// * `out` Writer to write MVT data.
+    /// * `client` Postgres database client.
+    /// * `group_name` Name of layer group.
+    /// * `tid` Tile ID.
     pub fn fetch_tile<W: Write>(
         &self,
         out: &mut W,
@@ -404,10 +372,31 @@ impl Wyrm {
     ) -> Result<(), Error> {
         for group in &self.groups {
             if group_name == group.name() {
-                group.write_tile(out, client, tid)?;
+                let tile_cfg = self.tile_config(tid);
+                group.write_tile(out, client, tile_cfg)?;
                 return Ok(());
             }
         }
         Err(Error::UnknownGroupName())
+    }
+
+    /// Create tile config for a tile ID
+    fn tile_config(&self, tid: TileId) -> TileCfg {
+        let tile_extent = self.tile_extent;
+        let bbox = self.grid.tile_bbox(tid);
+        let tile_sz = bbox.x_max() - bbox.x_min();
+        let tolerance = tile_sz / tile_extent as f64;
+        debug!("tile {}, tolerance {:?}", tid, tolerance);
+        let ts = tile_extent as f64;
+        let transform = self.grid.tile_transform(tid).scale(ts, ts);
+        TileCfg {
+            tile_extent,
+            edge_extent: self.edge_extent,
+            query_limit: self.query_limit,
+            tid,
+            bbox,
+            transform,
+            tolerance,
+        }
     }
 }

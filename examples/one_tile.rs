@@ -9,10 +9,9 @@ use std::fs::File;
 const MUON: &str = &r#"
 bind_address:
 document_root:
-tile_extent: 4096
-pixels: 256
-buffer_pixels: 5
-query_limit: 460000
+tile_extent: 256
+edge_extent: 6
+query_limit: 500000
 table: polygon
   db_table: planet_osm_polygon
   id_column: osm_id

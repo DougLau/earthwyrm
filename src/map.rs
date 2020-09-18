@@ -45,12 +45,10 @@ struct TileConfig {
 /// Builder for layer groups
 #[derive(Default)]
 pub struct LayerGroupBuilder {
-    /// Tile extent
+    /// Tile extent; width and height
     tile_extent: Option<u32>,
-    /// Snapping grid extent
-    pixels: Option<u32>,
-    /// Buffer pixels at edges
-    buffer_pixels: Option<u32>,
+    /// Extent outside tile edges
+    edge_extent: Option<u32>,
     /// Query row limit
     query_limit: Option<u32>,
 }
@@ -60,12 +58,10 @@ pub struct LayerGroupBuilder {
 pub struct LayerGroup {
     /// Name of group
     name: String,
-    /// Tile extent
+    /// Tile extent; width and height
     tile_extent: u32,
-    /// Pixels in tile
-    pixels: u32,
-    /// Buffer pixels at edges
-    buffer_pixels: u32,
+    /// Extent outside tile edges
+    edge_extent: u32,
     /// Query row limit
     query_limit: u32,
     /// Map grid configuration
@@ -123,21 +119,15 @@ impl TileConfig {
 }
 
 impl LayerGroupBuilder {
-    /// Set the tile extent (within MVT files)
+    /// Set the tile extent; width and height
     pub fn with_tile_extent(mut self, tile_extent: Option<u32>) -> Self {
         self.tile_extent = tile_extent;
         self
     }
 
-    /// Set the tile pixels
-    pub fn with_pixels(mut self, pixels: Option<u32>) -> Self {
-        self.pixels = pixels;
-        self
-    }
-
-    /// Set the buffer pixels (at tile edges)
-    pub fn with_buffer_pixels(mut self, buffer_pixels: Option<u32>) -> Self {
-        self.buffer_pixels = buffer_pixels;
+    /// Set the extent outside tile edges
+    pub fn with_edge_extent(mut self, edge_extent: Option<u32>) -> Self {
+        self.edge_extent = edge_extent;
         self
     }
 
@@ -156,16 +146,14 @@ impl LayerGroupBuilder {
         let layer_defs = layer_group.to_layer_defs()?;
         let table_defs = self.build_table_defs(&layer_defs, table_cfgs);
         let name = layer_group.name().to_string();
-        let tile_extent = self.tile_extent.unwrap_or(4096);
-        let pixels = self.pixels.unwrap_or(256);
-        let buffer_pixels = self.buffer_pixels.unwrap_or(0);
+        let tile_extent = self.tile_extent.unwrap_or(256);
+        let edge_extent = self.edge_extent.unwrap_or(6);
         let query_limit = self.query_limit.unwrap_or(u32::MAX);
         let grid = MapGrid::default();
         Ok(LayerGroup {
             name,
             tile_extent,
-            pixels,
-            buffer_pixels,
+            edge_extent,
             query_limit,
             grid,
             layer_defs,
@@ -222,10 +210,8 @@ impl LayerGroup {
     /// Create tile config for a tile ID
     fn tile_config(&self, tid: TileId) -> TileConfig {
         let bbox = self.grid.tile_bbox(tid);
-        let tile_sz =
-            (bbox.x_max() - bbox.x_min()).max(bbox.y_max() - bbox.y_min());
-        // FIXME: is tolerance the same for all tiles?
-        let tolerance = tile_sz / self.pixels as f64;
+        let tile_sz = bbox.x_max() - bbox.x_min();
+        let tolerance = tile_sz / self.tile_extent as f64;
         debug!("tile {}, tolerance {:?}", tid, tolerance);
         let ts = self.tile_extent as f64;
         let transform = self.grid.tile_transform(tid).scale(ts, ts);
@@ -293,7 +279,7 @@ impl LayerGroup {
         let x_max = config.bbox.x_max();
         let y_max = config.bbox.y_max();
         let tolerance = config.tolerance;
-        let radius = tolerance * self.buffer_pixels as f64;
+        let radius = tolerance * self.edge_extent as f64;
         let params: Vec<&(dyn ToSql + Sync)> =
             vec![&tolerance, &x_min, &y_min, &x_max, &y_max, &radius];
         debug!("params: {:?}", params);

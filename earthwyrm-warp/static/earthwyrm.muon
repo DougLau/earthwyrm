@@ -7,14 +7,12 @@ document_root: /var/local/earthwyrm
 
 # Tile properties
 #
-# Tile extent (within MVT files)
-tile_extent: 4096
-# Tile pixels
-pixels: 256
-# Buffer pixels around tile edges
-buffer_pixels: 5
+# Tile extent; width and height
+tile_extent: 256
+# Extent outside tile edges
+edge_extent: 6
 # Per-tile query limit
-query_limit: 1000
+query_limit: 500000
 
 # Table definitions are available to use in layers
 #   - name: Table name, as used in layers

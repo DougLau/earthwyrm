@@ -14,12 +14,10 @@ pub struct WyrmCfg {
     bind_address: String,
     /// Document root to server static documents
     document_root: String,
-    /// Extent of tiles for MVT coordinates
+    /// Tile extent; width and height
     tile_extent: Option<u32>,
-    /// Pixels for snap-to-grid tolerance
-    pixels: Option<u32>,
-    /// Buffer pixels outside tile border
-    buffer_pixels: Option<u32>,
+    /// Extent outside tile edges
+    edge_extent: Option<u32>,
     /// Limit of rows per query
     query_limit: Option<u32>,
     /// Table configuration
@@ -94,8 +92,7 @@ impl WyrmCfg {
     fn layer_group(&self, group: &LayerGroupCfg) -> Result<LayerGroup, Error> {
         LayerGroup::builder()
             .with_tile_extent(self.tile_extent)
-            .with_pixels(self.pixels)
-            .with_buffer_pixels(self.buffer_pixels)
+            .with_edge_extent(self.edge_extent)
             .with_query_limit(self.query_limit)
             .build(&self.table, group)
     }

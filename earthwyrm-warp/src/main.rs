@@ -32,7 +32,7 @@ fn main() {
     }
 }
 
-fn do_main(file: &str) -> Result<(), Error> {
+fn do_main(file: &str) -> Result<(), Box<dyn std::error::Error>> {
     let config: WyrmCfg = muon_rs::from_str(&fs::read_to_string(file)?)?;
     let sock_addr: SocketAddr = config.bind_address().parse()?;
     let document_root = config.document_root().to_string();

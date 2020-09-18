@@ -12,13 +12,14 @@ keywords = ["cartography", "gis", "osm", "server"]
 edition = "2018"
 
 [dependencies]
-env_logger = "0.7"
 log = "0.4"
 mvt = "0.5"
 postgis = "0.7"
 postgres = "0.17"
 serde = "1.0"
 serde_derive = "1.0"
+
+[dev-dependencies]
 muon-rs = "0.2"
 whoami = "0.9"
 

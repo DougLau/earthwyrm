@@ -2,7 +2,7 @@
 //
 // Copyright (c) 2019-2020  Minnesota Department of Transportation
 //
-use earthwyrm::{Error, WyrmCfg};
+use earthwyrm::WyrmCfg;
 use postgres::{self, Client, NoTls};
 use std::fs::File;
 
@@ -25,7 +25,7 @@ layer_group: tile
     tags: boundary=administrative admin_level=8 ?population
 "#;
 
-fn write_tile() -> Result<(), Error> {
+fn write_tile() -> Result<(), Box<dyn std::error::Error>> {
     let cfg: WyrmCfg = muon_rs::from_str(MUON)?;
     let layer_group = &cfg.into_layer_groups()?[0];
     let username = whoami::username();
@@ -33,7 +33,8 @@ fn write_tile() -> Result<(), Error> {
     let uds = format!("postgres://{:}@%2Frun%2Fpostgresql/earthwyrm", username);
     let mut file = File::create("./one_tile.mvt")?;
     let mut conn = Client::connect(&uds, NoTls)?;
-    layer_group.write_tile(&mut file, &mut conn, 246, 368, 10)
+    layer_group.write_tile(&mut file, &mut conn, 246, 368, 10)?;
+    Ok(())
 }
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {

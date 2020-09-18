@@ -16,8 +16,6 @@ pub enum Error {
     InvalidAddress(AddrParseError),
     /// I/O error
     Io(io::Error),
-    /// MuON deserializing error
-    Muon(muon_rs::Error),
     /// MVT error
     Mvt(mvt::Error),
     /// Parse int error
@@ -34,7 +32,6 @@ impl fmt::Display for Error {
             Error::DuplicatePattern(v) => write!(f, "Duplicate patterm: {}", v),
             Error::InvalidAddress(e) => e.fmt(f),
             Error::Io(e) => e.fmt(f),
-            Error::Muon(e) => e.fmt(f),
             Error::Mvt(e) => e.fmt(f),
             Error::ParseInt(e) => e.fmt(f),
             Error::Pg(e) => e.fmt(f),
@@ -49,7 +46,6 @@ impl std::error::Error for Error {
             Error::DuplicatePattern(_) => None,
             Error::InvalidAddress(e) => Some(e),
             Error::Io(e) => Some(e),
-            Error::Muon(e) => Some(e),
             Error::Mvt(e) => Some(e),
             Error::ParseInt(e) => Some(e),
             Error::Pg(e) => Some(e),
@@ -67,12 +63,6 @@ impl From<AddrParseError> for Error {
 impl From<io::Error> for Error {
     fn from(e: io::Error) -> Self {
         Error::Io(e)
-    }
-}
-
-impl From<muon_rs::Error> for Error {
-    fn from(e: muon_rs::Error) -> Self {
-        Error::Muon(e)
     }
 }
 

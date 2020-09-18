@@ -351,8 +351,8 @@ impl Wyrm {
         Ok(Wyrm {
             grid,
             tile_extent: wyrm_cfg.tile_extent,
-            edge_extent: wyrm_cfg.tile_extent,
-            query_limit: wyrm_cfg.tile_extent,
+            edge_extent: wyrm_cfg.edge_extent,
+            query_limit: wyrm_cfg.query_limit,
             groups,
         })
     }

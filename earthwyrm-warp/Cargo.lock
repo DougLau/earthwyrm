@@ -261,15 +261,12 @@ checksum = "134951f4028bdadb9b84baf4232681efbf277da25144b9b0ad65df75946c422b"
 name = "earthwyrm"
 version = "0.3.1"
 dependencies = [
- "env_logger",
  "log 0.4.11",
- "muon-rs",
  "mvt",
  "postgis",
  "postgres",
  "serde",
  "serde_derive",
- "whoami",
 ]
 
 [[package]]
@@ -877,9 +874,9 @@ dependencies = [
 
 [[package]]
 name = "mvt"
-version = "0.5.4"
+version = "0.6.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "544b45f17255483b273a1ef8b59cfd5524f8c6fb16fb2611e6163b13396c79fc"
+checksum = "03fa1cefd1df06c55ee4ac23fb563e4bdb336da33f6c8a3ed4dca1e738757d17"
 dependencies = [
  "log 0.4.11",
  "protobuf",

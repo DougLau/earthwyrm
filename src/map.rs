@@ -72,6 +72,13 @@ pub struct LayerGroup {
     table_defs: Vec<TableDef>,
 }
 
+/// Wyrm tile fetcher
+#[derive(Clone)]
+pub struct Wyrm {
+    /// Tile layer groups
+    groups: Vec<LayerGroup>,
+}
+
 impl TableDef {
     /// Create a new table definition
     fn new(table_cfg: &TableCfg, layer_defs: &[LayerDef]) -> Option<Self> {
@@ -81,7 +88,7 @@ impl TableDef {
         let tags = TableDef::table_tags(name, layer_defs);
         if tags.len() > 0 {
             let name = name.to_string();
-            let sql = table_cfg.build_query_sql(&tags);
+            let sql = TableDef::build_query_sql(table_cfg, &tags);
             Some(TableDef {
                 name,
                 id_column,
@@ -108,6 +115,38 @@ impl TableDef {
             }
         }
         tags
+    }
+
+    /// Build SQL query.
+    ///
+    /// * `tags` Columns to query.
+    ///
+    /// Query parameters:
+    /// * `$1` Simplification tolerance
+    /// * `$2` Minimum X
+    /// * `$3` Minimum Y
+    /// * `$4` Maximum X
+    /// * `$5` Maximum Y
+    /// * `$6` Edge buffer tolerance
+    fn build_query_sql(table_cfg: &TableCfg, tags: &Vec<String>) -> String {
+        let mut sql = "SELECT ".to_string();
+        // id_column must be first (#0)
+        sql.push_str(table_cfg.id_column());
+        sql.push_str(",ST_Multi(ST_SimplifyPreserveTopology(ST_SnapToGrid(");
+        // geom_column must be second (#1)
+        sql.push_str(table_cfg.geom_column());
+        sql.push_str(",$1),$1))");
+        for tag in tags {
+            sql.push_str(",\"");
+            sql.push_str(tag);
+            sql.push('"');
+        }
+        sql.push_str(" FROM ");
+        sql.push_str(table_cfg.db_table());
+        sql.push_str(" WHERE ");
+        sql.push_str(table_cfg.geom_column());
+        sql.push_str(" && ST_Buffer(ST_MakeEnvelope($2,$3,$4,$5,3857),$6)");
+        sql
     }
 }
 
@@ -332,7 +371,7 @@ impl LayerGroup {
     }
 
     /// Write a tile
-    pub fn write_tile<W: Write>(
+    fn write_tile<W: Write>(
         &self,
         out: &mut W,
         client: &mut Client,
@@ -346,5 +385,29 @@ impl LayerGroup {
             debug!("tile {} empty (no layers)", tid);
             Err(Error::TileEmpty())
         }
+    }
+}
+
+impl Wyrm {
+    /// Create a new Wyrm tile fetcher
+    pub(crate) fn new(groups: Vec<LayerGroup>) -> Self {
+        Wyrm { groups }
+    }
+
+    /// Fetch one file from a DB client
+    pub fn fetch_tile<W: Write>(
+        &self,
+        out: &mut W,
+        client: &mut Client,
+        group_name: &str,
+        tid: TileId,
+    ) -> Result<(), Error> {
+        for group in &self.groups {
+            if group_name == group.name() {
+                group.write_tile(out, client, tid)?;
+                return Ok(());
+            }
+        }
+        Err(Error::UnknownGroupName())
     }
 }

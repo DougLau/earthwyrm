@@ -25,15 +25,15 @@ layer_group: tile
 "#;
 
 fn write_tile() -> Result<(), Box<dyn std::error::Error>> {
-    let cfg: WyrmCfg = muon_rs::from_str(MUON)?;
-    let layer_group = &cfg.into_layer_groups()?[0];
+    let wyrm_cfg: WyrmCfg = muon_rs::from_str(MUON)?;
+    let wyrm = wyrm_cfg.into_wyrm()?;
     let username = whoami::username();
     // Format path for unix domain socket -- not worth using percent_encode
     let uds = format!("postgres://{:}@%2Frun%2Fpostgresql/earthwyrm", username);
     let mut file = File::create("./one_tile.mvt")?;
     let mut conn = Client::connect(&uds, NoTls)?;
     let tid = TileId::new(246, 368, 10)?;
-    layer_group.write_tile(&mut file, &mut conn, tid)?;
+    wyrm.fetch_tile(&mut file, &mut conn, "tile", tid)?;
     Ok(())
 }
 

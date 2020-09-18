@@ -1,13 +1,13 @@
-// earthwyrm.rs
+// main.rs
 //
 // Copyright (c) 2019-2020  Minnesota Department of Transportation
 //
 #![forbid(unsafe_code)]
 
-use earthwyrm::{Error, LayerGroup, TileId, WyrmCfg};
+use earthwyrm::{Error, TileId, Wyrm, WyrmCfg};
 use log::{debug, error, warn};
 use postgres::config::Config;
-use postgres::{Client, NoTls};
+use postgres::NoTls;
 use r2d2_postgres::PostgresConnectionManager;
 use serde_derive::Serialize;
 use std::fs;
@@ -33,36 +33,35 @@ fn main() {
 }
 
 fn do_main(file: &str) -> Result<(), Box<dyn std::error::Error>> {
-    let wyrm: WyrmCfg = muon_rs::from_str(&fs::read_to_string(file)?)?;
-    let sock_addr: SocketAddr = wyrm.bind_address().parse()?;
-    let document_root = wyrm.document_root().to_string();
-    let groups = wyrm.into_layer_groups()?;
+    let wyrm_cfg: WyrmCfg = muon_rs::from_str(&fs::read_to_string(file)?)?;
     let username = whoami::username();
     // Format path for unix domain socket -- not worth using percent_encode
     let uds = format!("postgres://{:}@%2Frun%2Fpostgresql/earthwyrm", username);
     let config = uds.parse()?;
-    run_server(document_root, sock_addr, groups, config);
+    run_server(config, wyrm_cfg)?;
     Ok(())
 }
 
 fn run_server(
-    document_root: String,
-    sock_addr: SocketAddr,
-    groups: Vec<LayerGroup>,
     config: Config,
-) {
-    let tiles = tile_route(groups, config);
+    wyrm_cfg: WyrmCfg,
+) -> Result<(), Box<dyn std::error::Error>> {
+    let doc_root = wyrm_cfg.document_root().to_string();
+    let sock_addr: SocketAddr = wyrm_cfg.bind_address().parse()?;
+    let wyrm = wyrm_cfg.into_wyrm()?;
+    let tiles = tile_route(config, wyrm);
     let map = warp::path("index.html")
-        .and(warp::fs::file(document_root.to_string() + "/index.html"));
+        .and(warp::fs::file(doc_root.clone() + "/index.html"));
     let files = warp::path("static")
-        .and(warp::fs::dir(document_root.to_string() + "/static"));
+        .and(warp::fs::dir(doc_root + "/static"));
     let routes = tiles.or(map).or(files).recover(customize_error);
     warp::serve(routes).run(sock_addr);
+    Ok(())
 }
 
 fn tile_route(
-    groups: Vec<LayerGroup>,
     config: Config,
+    wyrm: Wyrm,
 ) -> BoxedFilter<(impl Reply,)> {
     let manager = PostgresConnectionManager::new(config, NoTls);
     let pool = r2d2::Pool::new(manager).unwrap();
@@ -74,10 +73,15 @@ fn tile_route(
         .and(warp::path::tail())
         .and_then(move |host, name, z, x, tail| {
             debug!("request from {:?}", host);
+            let tid = parse_tile_id(z, x, tail)?;
             match pool.get() {
-                Ok(mut conn) => {
-                    let tid = parse_tile_id(z, x, tail)?;
-                    generate_tile(&groups[..], &mut conn, name, tid)
+                Ok(mut client) => {
+                    let mut out = vec![];
+                    let group: &String = &name;
+                    match wyrm.fetch_tile(&mut out, &mut client, group, tid) {
+                        Ok(()) => Ok(out),
+                        Err(e) => Err(custom(e)),
+                    }
                 }
                 Err(e) => Err(custom(e)),
             }
@@ -96,24 +100,6 @@ fn parse_tile_id(
             if let Ok(tid) = TileId::new(x, y, z) {
                 return Ok(tid);
             }
-        }
-    }
-    Err(not_found())
-}
-
-fn generate_tile(
-    groups: &[LayerGroup],
-    conn: &mut Client,
-    name: String,
-    tid: TileId,
-) -> Result<Vec<u8>, Rejection> {
-    for group in groups {
-        if name == group.name() {
-            let mut out = vec![];
-            return match group.write_tile(&mut out, conn, tid) {
-                Ok(()) => Ok(out),
-                Err(e) => Err(custom(e)),
-            };
         }
     }
     Err(not_found())

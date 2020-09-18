@@ -3,7 +3,7 @@
 // Copyright (c) 2019-2020  Minnesota Department of Transportation
 //
 use crate::error::Error;
-use crate::map::LayerGroup;
+use crate::map::{LayerGroup, Wyrm};
 use crate::rules::LayerDef;
 use serde_derive::Deserialize;
 
@@ -79,13 +79,13 @@ impl WyrmCfg {
         &self.layer_group
     }
 
-    /// Convert into a `Vec` of `LayerGroup`s
-    pub fn into_layer_groups(self) -> Result<Vec<LayerGroup>, Error> {
+    /// Convert into a `Wyrm`
+    pub fn into_wyrm(self) -> Result<Wyrm, Error> {
         let mut groups = vec![];
         for group in self.layer_groups() {
             groups.push(self.layer_group(group)?);
         }
-        Ok(groups)
+        Ok(Wyrm::new(groups))
     }
 
     /// Build a `LayerGroup`
@@ -104,36 +104,24 @@ impl TableCfg {
         &self.name
     }
 
+    /// Get DB table
+    pub fn db_table(&self) -> &str {
+        &self.db_table
+    }
+
     /// Get ID column
     pub fn id_column(&self) -> &str {
         &self.id_column
     }
 
+    /// Get geom column
+    pub fn geom_column(&self) -> &str {
+        &self.geom_column
+    }
+
     /// Get geom type
     pub fn geom_type(&self) -> &str {
         &self.geom_type
-    }
-
-    /// Build SQL query
-    pub fn build_query_sql(&self, tags: &Vec<String>) -> String {
-        let mut sql = "SELECT ".to_string();
-        // id_column must be first (#0)
-        sql.push_str(&self.id_column);
-        sql.push_str(",ST_Multi(ST_SimplifyPreserveTopology(ST_SnapToGrid(");
-        // geom_column must be second (#1)
-        sql.push_str(&self.geom_column);
-        sql.push_str(",$1),$1))");
-        for tag in tags {
-            sql.push_str(",\"");
-            sql.push_str(tag);
-            sql.push('"');
-        }
-        sql.push_str(" FROM ");
-        sql.push_str(&self.db_table);
-        sql.push_str(" WHERE ");
-        sql.push_str(&self.geom_column);
-        sql.push_str(" && ST_Buffer(ST_MakeEnvelope($2,$3,$4,$5,3857),$6)");
-        sql
     }
 }
 

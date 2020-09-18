@@ -24,6 +24,8 @@ pub enum Error {
     Pg(postgres::Error),
     /// Tile empty
     TileEmpty(),
+    /// Unknown layer group name
+    UnknownGroupName(),
 }
 
 impl fmt::Display for Error {
@@ -36,6 +38,7 @@ impl fmt::Display for Error {
             Error::ParseInt(e) => e.fmt(f),
             Error::Pg(e) => e.fmt(f),
             Error::TileEmpty() => write!(f, "Tile empty"),
+            Error::UnknownGroupName() => write!(f, "Unknown group name"),
         }
     }
 }
@@ -50,6 +53,7 @@ impl std::error::Error for Error {
             Error::ParseInt(e) => Some(e),
             Error::Pg(e) => Some(e),
             Error::TileEmpty() => None,
+            Error::UnknownGroupName() => None,
         }
     }
 }

@@ -2,6 +2,7 @@
 //
 // Copyright (c) 2019-2020  Minnesota Department of Transportation
 //
+use crate::config::LayerGroupCfg;
 use crate::Error;
 
 const ZOOM_MAX: u32 = 30;
@@ -209,7 +210,7 @@ fn parse_patterns(rule: &[String]) -> Result<Vec<TagPattern>, Error> {
 
 impl LayerDef {
     /// Create a new layer definition
-    pub fn new(
+    fn new(
         name: &str,
         table: &str,
         zoom: &str,
@@ -252,5 +253,22 @@ impl LayerDef {
     /// Check if zoom level matches
     fn check_zoom(&self, zoom: u32) -> bool {
         zoom >= self.zoom_min && zoom <= self.zoom_max
+    }
+
+    /// Convert layer group config to layer defs
+    pub fn from_group_cfg(
+        group_cfg: &LayerGroupCfg,
+    ) -> Result<Vec<LayerDef>, Error> {
+        let mut layers = vec![];
+        for layer in &group_cfg.layer {
+            let layer_def = LayerDef::new(
+                &layer.name,
+                &layer.table,
+                &layer.zoom,
+                &layer.tags[..],
+            )?;
+            layers.push(layer_def);
+        }
+        Ok(layers)
     }
 }

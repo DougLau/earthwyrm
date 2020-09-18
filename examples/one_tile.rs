@@ -2,7 +2,7 @@
 //
 // Copyright (c) 2019-2020  Minnesota Department of Transportation
 //
-use earthwyrm::{TileId, WyrmCfg};
+use earthwyrm::{TileId, Wyrm, WyrmCfg};
 use postgres::{self, Client, NoTls};
 use std::fs::File;
 
@@ -26,7 +26,7 @@ layer_group: tile
 
 fn write_tile() -> Result<(), Box<dyn std::error::Error>> {
     let wyrm_cfg: WyrmCfg = muon_rs::from_str(MUON)?;
-    let wyrm = wyrm_cfg.into_wyrm()?;
+    let wyrm = Wyrm::from_cfg(&wyrm_cfg)?;
     let username = whoami::username();
     // Format path for unix domain socket -- not worth using percent_encode
     let uds = format!("postgres://{:}@%2Frun%2Fpostgresql/earthwyrm", username);

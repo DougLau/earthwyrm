@@ -46,9 +46,9 @@ fn run_server(
     config: Config,
     wyrm_cfg: WyrmCfg,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    let doc_root = wyrm_cfg.document_root().to_string();
-    let sock_addr: SocketAddr = wyrm_cfg.bind_address().parse()?;
-    let wyrm = wyrm_cfg.into_wyrm()?;
+    let doc_root = wyrm_cfg.document_root.to_string();
+    let sock_addr: SocketAddr = wyrm_cfg.bind_address.parse()?;
+    let wyrm = Wyrm::from_cfg(&wyrm_cfg)?;
     let tiles = tile_route(config, wyrm);
     let map = warp::path("index.html")
         .and(warp::fs::file(doc_root.clone() + "/index.html"));

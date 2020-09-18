@@ -2,7 +2,7 @@
 //
 // Copyright (c) 2019-2020  Minnesota Department of Transportation
 //
-use crate::config::{LayerGroupCfg, TableCfg};
+use crate::config::{LayerGroupCfg, TableCfg, WyrmCfg};
 use crate::geom::{lookup_geom_type, GeomRow};
 use crate::rules::LayerDef;
 use crate::Error;
@@ -63,7 +63,7 @@ pub struct LayerGroup {
 ///
 /// To create:
 /// * Use `serde` to deserialize a [WyrmCfg]
-/// * `let wyrm = wyrm_cfg.try_into::<Wyrm>()?;`
+/// * `let wyrm = Wyrm::from_cfg(wyrm_cfg)?;`
 ///
 /// [WyrmCfg]: struct.WyrmCfg.html
 #[derive(Clone)]
@@ -83,9 +83,9 @@ pub struct Wyrm {
 impl TableDef {
     /// Create a new table definition
     fn new(table_cfg: &TableCfg, layer_defs: &[LayerDef]) -> Option<Self> {
-        let name = &table_cfg.name();
-        let id_column = table_cfg.id_column().to_string();
-        let geom_type = lookup_geom_type(&table_cfg.geom_type())?;
+        let name = &table_cfg.name;
+        let id_column = table_cfg.id_column.to_string();
+        let geom_type = lookup_geom_type(&table_cfg.geom_type)?;
         let tags = TableDef::table_tags(name, layer_defs);
         if tags.len() > 0 {
             let name = name.to_string();
@@ -132,10 +132,10 @@ impl TableDef {
     fn build_query_sql(table_cfg: &TableCfg, tags: &Vec<String>) -> String {
         let mut sql = "SELECT ".to_string();
         // id_column must be first (#0)
-        sql.push_str(table_cfg.id_column());
+        sql.push_str(&table_cfg.id_column);
         sql.push_str(",ST_Multi(ST_SimplifyPreserveTopology(ST_SnapToGrid(");
         // geom_column must be second (#1)
-        sql.push_str(table_cfg.geom_column());
+        sql.push_str(&table_cfg.geom_column);
         sql.push_str(",$1),$1))");
         for tag in tags {
             sql.push_str(",\"");
@@ -143,9 +143,9 @@ impl TableDef {
             sql.push('"');
         }
         sql.push_str(" FROM ");
-        sql.push_str(table_cfg.db_table());
+        sql.push_str(&table_cfg.db_table);
         sql.push_str(" WHERE ");
-        sql.push_str(table_cfg.geom_column());
+        sql.push_str(&table_cfg.geom_column);
         sql.push_str(" && ST_Buffer(ST_MakeEnvelope($2,$3,$4,$5,3857),$6)");
         sql
     }
@@ -160,13 +160,14 @@ impl TileCfg {
 
 impl LayerGroup {
     /// Build a `LayerGroup`
-    pub fn from_cfg(
+    fn from_cfg(
         group_cfg: &LayerGroupCfg,
         table_cfgs: &[TableCfg],
     ) -> Result<Self, Error> {
-        let layer_defs = group_cfg.to_layer_defs()?;
+        let layer_defs = LayerDef::from_group_cfg(group_cfg)?;
+        info!("{} layers in {}", layer_defs.len(), group_cfg);
         let table_defs = LayerGroup::build_table_defs(&layer_defs, table_cfgs);
-        let name = group_cfg.name().to_string();
+        let name = group_cfg.name.to_string();
         Ok(LayerGroup {
             name,
             layer_defs,
@@ -341,20 +342,19 @@ impl LayerGroup {
 
 impl Wyrm {
     /// Create a new Wyrm tile fetcher
-    pub(crate) fn new(
-        tile_extent: u32,
-        edge_extent: u32,
-        query_limit: u32,
-        groups: Vec<LayerGroup>,
-    ) -> Self {
+    pub fn from_cfg(wyrm_cfg: &WyrmCfg) -> Result<Self, Error> {
         let grid = MapGrid::default();
-        Wyrm {
-            grid,
-            tile_extent,
-            edge_extent,
-            query_limit,
-            groups,
+        let mut groups = vec![];
+        for group in &wyrm_cfg.layer_group {
+            groups.push(LayerGroup::from_cfg(group, &wyrm_cfg.table)?);
         }
+        Ok(Wyrm {
+            grid,
+            tile_extent: wyrm_cfg.tile_extent,
+            edge_extent: wyrm_cfg.tile_extent,
+            query_limit: wyrm_cfg.tile_extent,
+            groups,
+        })
     }
 
     /// Fetch one tile from a DB client.

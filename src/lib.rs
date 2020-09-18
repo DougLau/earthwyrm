@@ -10,7 +10,7 @@ mod geom;
 mod map;
 mod rules;
 
-pub use config::WyrmCfg;
+pub use config::{LayerCfg, LayerGroupCfg, TableCfg, WyrmCfg};
 pub use error::Error;
 pub use map::Wyrm;
 pub use mvt::TileId;

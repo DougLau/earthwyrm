@@ -2,7 +2,7 @@
 //
 // Copyright (c) 2019-2020  Minnesota Department of Transportation
 //
-use earthwyrm::WyrmCfg;
+use earthwyrm::{TileId, WyrmCfg};
 use postgres::{self, Client, NoTls};
 use std::fs::File;
 
@@ -32,7 +32,8 @@ fn write_tile() -> Result<(), Box<dyn std::error::Error>> {
     let uds = format!("postgres://{:}@%2Frun%2Fpostgresql/earthwyrm", username);
     let mut file = File::create("./one_tile.mvt")?;
     let mut conn = Client::connect(&uds, NoTls)?;
-    layer_group.write_tile(&mut file, &mut conn, 246, 368, 10)?;
+    let tid = TileId::new(246, 368, 10)?;
+    layer_group.write_tile(&mut file, &mut conn, tid)?;
     Ok(())
 }
 

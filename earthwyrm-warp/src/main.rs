@@ -4,7 +4,7 @@
 //
 #![forbid(unsafe_code)]
 
-use earthwyrm::{Error, LayerGroup, WyrmCfg};
+use earthwyrm::{Error, LayerGroup, TileId, WyrmCfg};
 use log::{debug, error, warn};
 use postgres::config::Config;
 use postgres::{Client, NoTls};
@@ -33,10 +33,10 @@ fn main() {
 }
 
 fn do_main(file: &str) -> Result<(), Box<dyn std::error::Error>> {
-    let config: WyrmCfg = muon_rs::from_str(&fs::read_to_string(file)?)?;
-    let sock_addr: SocketAddr = config.bind_address().parse()?;
-    let document_root = config.document_root().to_string();
-    let groups = config.into_layer_groups()?;
+    let wyrm: WyrmCfg = muon_rs::from_str(&fs::read_to_string(file)?)?;
+    let sock_addr: SocketAddr = wyrm.bind_address().parse()?;
+    let document_root = wyrm.document_root().to_string();
+    let groups = wyrm.into_layer_groups()?;
     let username = whoami::username();
     // Format path for unix domain socket -- not worth using percent_encode
     let uds = format!("postgres://{:}@%2Frun%2Fpostgresql/earthwyrm", username);
@@ -76,7 +76,8 @@ fn tile_route(
             debug!("request from {:?}", host);
             match pool.get() {
                 Ok(mut conn) => {
-                    generate_tile(&groups[..], &mut conn, name, z, x, tail)
+                    let tid = parse_tile_id(z, x, tail)?;
+                    generate_tile(&groups[..], &mut conn, name, tid)
                 }
                 Err(e) => Err(custom(e)),
             }
@@ -84,26 +85,35 @@ fn tile_route(
         .boxed()
 }
 
+fn parse_tile_id(
+    z: u32,
+    x: u32,
+    tail: filters::path::Tail,
+) -> Result<TileId, Rejection> {
+    let mut sp = tail.as_str().splitn(2, '.');
+    if let (Some(y), Some("mvt")) = (sp.next(), sp.next()) {
+        if let Ok(y) = y.parse::<u32>() {
+            if let Ok(tid) = TileId::new(x, y, z) {
+                return Ok(tid);
+            }
+        }
+    }
+    Err(not_found())
+}
+
 fn generate_tile(
     groups: &[LayerGroup],
     conn: &mut Client,
     name: String,
-    z: u32,
-    x: u32,
-    tail: filters::path::Tail,
+    tid: TileId,
 ) -> Result<Vec<u8>, Rejection> {
     for group in groups {
         if name == group.name() {
-            let mut sp = tail.as_str().splitn(2, '.');
-            if let (Some(y), Some("mvt")) = (sp.next(), sp.next()) {
-                if let Ok(y) = y.parse::<u32>() {
-                    let mut out = vec![];
-                    return match group.write_tile(&mut out, conn, x, y, z) {
-                        Ok(()) => Ok(out),
-                        Err(e) => Err(custom(e)),
-                    };
-                }
-            }
+            let mut out = vec![];
+            return match group.write_tile(&mut out, conn, tid) {
+                Ok(()) => Ok(out),
+                Err(e) => Err(custom(e)),
+            };
         }
     }
     Err(not_found())

@@ -13,3 +13,4 @@ mod rules;
 pub use config::WyrmCfg;
 pub use error::Error;
 pub use map::{LayerGroup, LayerGroupBuilder};
+pub use mvt::TileId;

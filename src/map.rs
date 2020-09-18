@@ -336,11 +336,8 @@ impl LayerGroup {
         &self,
         out: &mut W,
         client: &mut Client,
-        xtile: u32,
-        ytile: u32,
-        zoom: u32,
+        tid: TileId,
     ) -> Result<(), Error> {
-        let tid = TileId::new(xtile, ytile, zoom)?;
         let tile = self.fetch_tile(client, tid)?;
         if tile.num_layers() > 0 {
             tile.write_to(out)?;

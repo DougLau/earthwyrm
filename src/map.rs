@@ -15,19 +15,6 @@ use postgres::Row;
 use std::io::Write;
 use std::time::Instant;
 
-/// Query definition for one table (id_column, sql, etc)
-#[derive(Clone, Debug)]
-struct QueryDef {
-    /// Table name
-    name: String,
-    /// ID column
-    id_column: String,
-    /// Geometry type
-    geom_type: GeomType,
-    /// SQL query string
-    sql: String,
-}
-
 /// Tile configuration
 struct TileCfg {
     /// Tile extent; width and height
@@ -44,6 +31,19 @@ struct TileCfg {
     transform: Transform,
     /// Tolerance for snapping geometry to grid and simplifying
     tolerance: f64,
+}
+
+/// Query definition for one table (id_column, sql, etc)
+#[derive(Clone, Debug)]
+struct QueryDef {
+    /// Table name
+    name: String,
+    /// ID column
+    id_column: String,
+    /// Geometry type
+    geom_type: GeomType,
+    /// SQL query string
+    sql: String,
 }
 
 /// Group of layers for making tiles

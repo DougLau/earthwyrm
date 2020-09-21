@@ -95,7 +95,7 @@ impl<'a> GeomRow<'a> {
 
     /// Get the row ID
     pub fn get_id(&self) -> i64 {
-        // id_column is always #0 (see build_query_sql)
+        // id_column is always #0 (see QueryDef::build_sql)
         self.row.get::<_, i64>(0)
     }
 
@@ -124,7 +124,7 @@ impl<'a> GeomRow<'a> {
         t: &Transform,
         enc: &dyn Fn(T, &Transform) -> GeomResult,
     ) -> GeomResult {
-        // geom_column is always #1 (see build_query_sql)
+        // geom_column is always #1 (see QueryDef::build_sql)
         match self.row.try_get(1) {
             Ok(Some(g)) => enc(g, t),
             Ok(None) => Ok(None),

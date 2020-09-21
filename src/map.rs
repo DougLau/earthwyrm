@@ -15,17 +15,15 @@ use postgres::Row;
 use std::io::Write;
 use std::time::Instant;
 
-/// Table definition (tags, sql query, etc)
+/// Query definition for one table (id_column, sql, etc)
 #[derive(Clone, Debug)]
-struct TableDef {
+struct QueryDef {
     /// Table name
     name: String,
     /// ID column
     id_column: String,
     /// Geometry type
     geom_type: GeomType,
-    /// Tag patterns
-    tags: Vec<String>,
     /// SQL query string
     sql: String,
 }
@@ -55,8 +53,8 @@ pub struct LayerGroup {
     name: String,
     /// Layer definitions
     layer_defs: Vec<LayerDef>,
-    /// Table definitions
-    table_defs: Vec<TableDef>,
+    /// Query definitions
+    queries: Vec<QueryDef>,
 }
 
 /// Wyrm tile fetcher.
@@ -80,21 +78,19 @@ pub struct Wyrm {
     groups: Vec<LayerGroup>,
 }
 
-impl TableDef {
-    /// Create a new table definition
+impl QueryDef {
+    /// Create a new query definition
     fn new(table_cfg: &TableCfg, layer_defs: &[LayerDef]) -> Option<Self> {
-        let name = &table_cfg.name;
-        let id_column = table_cfg.id_column.to_string();
         let geom_type = lookup_geom_type(&table_cfg.geom_type)?;
-        let tags = TableDef::table_tags(name, layer_defs);
+        let tags = QueryDef::table_tags(table_cfg, layer_defs);
         if tags.len() > 0 {
-            let name = name.to_string();
-            let sql = TableDef::build_query_sql(table_cfg, &tags);
-            Some(TableDef {
+            let name = table_cfg.name.to_string();
+            let id_column = table_cfg.id_column.to_string();
+            let sql = QueryDef::build_sql(table_cfg, &tags);
+            Some(QueryDef {
                 name,
                 id_column,
                 geom_type,
-                tags,
                 sql,
             })
         } else {
@@ -102,15 +98,18 @@ impl TableDef {
         }
     }
 
-    /// Get the tags requested for the table from defined layers
-    fn table_tags(name: &str, layer_defs: &[LayerDef]) -> Vec<String> {
-        let mut tags = Vec::<String>::new();
+    /// Get the requested tags for the table from defined layers
+    fn table_tags<'a>(
+        table_cfg: &TableCfg,
+        layer_defs: &'a [LayerDef],
+    ) -> Vec<&'a str> {
+        let mut tags = vec![];
         for ld in layer_defs {
-            if ld.table() == name {
+            if ld.table() == table_cfg.name {
                 for pattern in ld.patterns() {
                     let tag = pattern.tag();
-                    if !tags.iter().any(|t| t == tag) {
-                        tags.push(tag.to_string());
+                    if !tags.iter().any(|t| *t == tag) {
+                        tags.push(tag);
                     }
                 }
             }
@@ -129,7 +128,7 @@ impl TableDef {
     /// * `$4` Maximum X
     /// * `$5` Maximum Y
     /// * `$6` Edge buffer tolerance
-    fn build_query_sql(table_cfg: &TableCfg, tags: &Vec<String>) -> String {
+    fn build_sql(table_cfg: &TableCfg, tags: &[&str]) -> String {
         let mut sql = "SELECT ".to_string();
         // id_column must be first (#0)
         sql.push_str(&table_cfg.id_column);
@@ -166,27 +165,27 @@ impl LayerGroup {
     ) -> Result<Self, Error> {
         let layer_defs = LayerDef::from_group_cfg(group_cfg)?;
         info!("{} layers in {}", layer_defs.len(), group_cfg);
-        let table_defs = LayerGroup::build_table_defs(&layer_defs, table_cfgs);
+        let queries = LayerGroup::build_queries(&layer_defs, table_cfgs);
         let name = group_cfg.name.to_string();
         Ok(LayerGroup {
             name,
             layer_defs,
-            table_defs,
+            queries,
         })
     }
 
-    /// Build the table definitions
-    fn build_table_defs(
+    /// Build the queries
+    fn build_queries(
         layer_defs: &[LayerDef],
         table_cfgs: &[TableCfg],
-    ) -> Vec<TableDef> {
-        let mut table_defs = vec![];
+    ) -> Vec<QueryDef> {
+        let mut queries = vec![];
         for table_cfg in table_cfgs {
-            if let Some(table_def) = TableDef::new(table_cfg, layer_defs) {
-                table_defs.push(table_def);
+            if let Some(query_def) = QueryDef::new(table_cfg, layer_defs) {
+                queries.push(query_def);
             }
         }
-        table_defs
+        queries
     }
 
     /// Get the group name
@@ -207,9 +206,9 @@ impl LayerGroup {
             .collect()
     }
 
-    /// Check one table for matching layers
-    fn check_layers(&self, table_def: &TableDef, zoom: u32) -> bool {
-        let table = &table_def.name;
+    /// Check one query for matching layers
+    fn check_layers(&self, query_def: &QueryDef, zoom: u32) -> bool {
+        let table = &query_def.name;
         self.layer_defs.iter().any(|l| l.check_table(table, zoom))
     }
 
@@ -239,9 +238,9 @@ impl LayerGroup {
     ) -> Result<Tile, Error> {
         let mut tile = Tile::new(tile_cfg.tile_extent);
         let mut layers = self.create_layers(&tile);
-        for table_def in &self.table_defs {
-            if self.check_layers(table_def, tile_cfg.zoom()) {
-                self.query_layers(client, table_def, &mut layers, tile_cfg)?;
+        for query_def in &self.queries {
+            if self.check_layers(query_def, tile_cfg.zoom()) {
+                self.query_layers(client, query_def, &mut layers, tile_cfg)?;
             }
         }
         for layer in layers.drain(..) {
@@ -256,13 +255,13 @@ impl LayerGroup {
     fn query_layers(
         &self,
         client: &mut Client,
-        table_def: &TableDef,
+        query_def: &QueryDef,
         layers: &mut Vec<Layer>,
         tile_cfg: &TileCfg,
     ) -> Result<(), Error> {
-        debug!("sql: {}", &table_def.sql);
+        debug!("sql: {}", &query_def.sql);
         let mut trans = client.transaction()?;
-        let stmt = trans.prepare(&table_def.sql)?;
+        let stmt = trans.prepare(&query_def.sql)?;
         let x_min = tile_cfg.bbox.x_min();
         let y_min = tile_cfg.bbox.y_min();
         let x_max = tile_cfg.bbox.x_max();
@@ -279,7 +278,7 @@ impl LayerGroup {
             // Fetch next set of rows from portal
             let mut rows = trans.query_portal_raw(&portal, 50)?;
             while let Some(row) = rows.next()? {
-                self.add_layer_features(table_def, &row, tile_cfg, layers)?;
+                self.add_layer_features(query_def, &row, tile_cfg, layers)?;
                 remaining_limit -= 1;
             }
             if before_limit == remaining_limit {
@@ -289,7 +288,7 @@ impl LayerGroup {
         if remaining_limit == 0 {
             warn!(
                 "table {}, query limit reached: {}",
-                &table_def.name, tile_cfg.query_limit
+                &query_def.name, tile_cfg.query_limit
             );
         }
         Ok(())
@@ -298,13 +297,13 @@ impl LayerGroup {
     /// Add features to a layer
     fn add_layer_features(
         &self,
-        table_def: &TableDef,
+        query_def: &QueryDef,
         row: &Row,
         tile_cfg: &TileCfg,
         layers: &mut Vec<Layer>,
     ) -> Result<(), Error> {
-        let table = &table_def.name;
-        let grow = GeomRow::new(row, table_def.geom_type, &table_def.id_column);
+        let table = &query_def.name;
+        let grow = GeomRow::new(row, query_def.geom_type, &query_def.id_column);
         for layer in layers {
             if let Some(layer_def) = self.find_layer(layer.name()) {
                 if layer_def.check_table(table, tile_cfg.zoom())

@@ -117,7 +117,7 @@ impl QueryDef {
         tags
     }
 
-    /// Build SQL query.
+    /// Build a SQL query for one table.
     ///
     /// * `tags` Columns to query.
     ///
@@ -262,12 +262,13 @@ impl LayerGroup {
         debug!("sql: {}", &query_def.sql);
         let mut trans = client.transaction()?;
         let stmt = trans.prepare(&query_def.sql)?;
-        let x_min = tile_cfg.bbox.x_min();
-        let y_min = tile_cfg.bbox.y_min();
-        let x_max = tile_cfg.bbox.x_max();
-        let y_max = tile_cfg.bbox.y_max();
-        let tolerance = tile_cfg.tolerance;
-        let radius = tolerance * tile_cfg.edge_extent as f64;
+        // Build query parameters
+        let tolerance = tile_cfg.tolerance; // $1
+        let x_min = tile_cfg.bbox.x_min(); // $2
+        let y_min = tile_cfg.bbox.y_min(); // $3
+        let x_max = tile_cfg.bbox.x_max(); // $4
+        let y_max = tile_cfg.bbox.y_max(); // $5
+        let radius = tolerance * tile_cfg.edge_extent as f64; // $6
         let params: Vec<&(dyn ToSql + Sync)> =
             vec![&tolerance, &x_min, &y_min, &x_max, &y_max, &radius];
         debug!("params: {:?}", params);

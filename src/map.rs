@@ -38,9 +38,9 @@ struct TileCfg {
     query_limit: u32,
     /// Tile ID
     tid: TileId,
-    /// Bounding box
+    /// Bounding box of tile
     bbox: BBox,
-    /// Geometry transform
+    /// Transform from spatial to tile coordinates
     transform: Transform,
     /// Tolerance for snapping geometry to grid and simplifying
     tolerance: f64,
@@ -167,8 +167,8 @@ impl QueryDef {
         let x_max = tile_cfg.bbox.x_max(); // $4
         let y_max = tile_cfg.bbox.y_max(); // $5
         let radius = tolerance * tile_cfg.edge_extent as f64; // $6
-        let params: Vec<&(dyn ToSql + Sync)> =
-            vec![&tolerance, &x_min, &y_min, &x_max, &y_max, &radius];
+        let params: [&(dyn ToSql + Sync); 6] =
+            [&tolerance, &x_min, &y_min, &x_max, &y_max, &radius];
         debug!("params: {:?}", params);
         let portal = trans.bind(&stmt, &params[..])?;
         let mut remaining_limit = tile_cfg.query_limit;
@@ -373,10 +373,10 @@ impl Wyrm {
         for group in &self.groups {
             if group_name == group.name() {
                 let tile_cfg = self.tile_config(tid);
-                group.write_tile(out, client, tile_cfg)?;
-                return Ok(());
+                return group.write_tile(out, client, tile_cfg);
             }
         }
+        debug!("unknown group name: {}", group_name);
         Err(Error::UnknownGroupName())
     }
 

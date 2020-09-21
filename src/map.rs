@@ -80,13 +80,17 @@ pub struct Wyrm {
 
 impl QueryDef {
     /// Create a new query definition
-    fn new(table_cfg: &TableCfg, layer_defs: &[LayerDef]) -> Option<Self> {
+    fn new(
+        table_cfg: &TableCfg,
+        srid: i32,
+        layer_defs: &[LayerDef],
+    ) -> Option<Self> {
         let geom_type = lookup_geom_type(&table_cfg.geom_type)?;
         let tags = QueryDef::table_tags(table_cfg, layer_defs);
         if tags.len() > 0 {
             let name = table_cfg.name.to_string();
             let id_column = table_cfg.id_column.to_string();
-            let sql = QueryDef::build_sql(table_cfg, &tags);
+            let sql = QueryDef::build_sql(table_cfg, srid, &tags);
             Some(QueryDef {
                 name,
                 id_column,
@@ -119,6 +123,8 @@ impl QueryDef {
 
     /// Build a SQL query for one table.
     ///
+    /// * `table_cfg` Table configuration.
+    /// * `srid` Spatial reference ID.
     /// * `tags` Columns to query.
     ///
     /// Query parameters:
@@ -128,7 +134,7 @@ impl QueryDef {
     /// * `$4` Maximum X
     /// * `$5` Maximum Y
     /// * `$6` Edge buffer tolerance
-    fn build_sql(table_cfg: &TableCfg, tags: &[&str]) -> String {
+    fn build_sql(table_cfg: &TableCfg, srid: i32, tags: &[&str]) -> String {
         let mut sql = "SELECT ".to_string();
         // id_column must be first (#0)
         sql.push_str(&table_cfg.id_column);
@@ -145,7 +151,9 @@ impl QueryDef {
         sql.push_str(&table_cfg.db_table);
         sql.push_str(" WHERE ");
         sql.push_str(&table_cfg.geom_column);
-        sql.push_str(" && ST_Buffer(ST_MakeEnvelope($2,$3,$4,$5,3857),$6)");
+        sql.push_str(" && ST_Buffer(ST_MakeEnvelope($2,$3,$4,$5,");
+        sql.push_str(&srid.to_string());
+        sql.push_str("),$6)");
         sql
     }
 
@@ -231,12 +239,13 @@ impl TileCfg {
 impl LayerGroup {
     /// Build a `LayerGroup`
     fn from_cfg(
-        group_cfg: &LayerGroupCfg,
         table_cfgs: &[TableCfg],
+        srid: i32,
+        group_cfg: &LayerGroupCfg,
     ) -> Result<Self, Error> {
         let layer_defs = LayerDef::from_group_cfg(group_cfg)?;
         info!("{} layers in {}", layer_defs.len(), group_cfg);
-        let queries = LayerGroup::build_queries(&layer_defs, table_cfgs);
+        let queries = LayerGroup::build_queries(table_cfgs, srid, &layer_defs);
         let name = group_cfg.name.to_string();
         Ok(LayerGroup {
             name,
@@ -247,12 +256,14 @@ impl LayerGroup {
 
     /// Build the queries
     fn build_queries(
-        layer_defs: &[LayerDef],
         table_cfgs: &[TableCfg],
+        srid: i32,
+        layer_defs: &[LayerDef],
     ) -> Vec<QueryDef> {
         let mut queries = vec![];
         for table_cfg in table_cfgs {
-            if let Some(query_def) = QueryDef::new(table_cfg, layer_defs) {
+            if let Some(query_def) = QueryDef::new(table_cfg, srid, layer_defs)
+            {
                 queries.push(query_def);
             }
         }
@@ -343,10 +354,15 @@ impl LayerGroup {
 impl Wyrm {
     /// Create a new Wyrm tile fetcher
     pub fn from_cfg(wyrm_cfg: &WyrmCfg) -> Result<Self, Error> {
+        // Only Web Mercator supported for now
         let grid = MapGrid::default();
         let mut groups = vec![];
         for group in &wyrm_cfg.layer_group {
-            groups.push(LayerGroup::from_cfg(group, &wyrm_cfg.table)?);
+            groups.push(LayerGroup::from_cfg(
+                &wyrm_cfg.table,
+                grid.srid(),
+                group,
+            )?);
         }
         Ok(Wyrm {
             grid,

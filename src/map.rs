@@ -148,6 +148,77 @@ impl QueryDef {
         sql.push_str(" && ST_Buffer(ST_MakeEnvelope($2,$3,$4,$5,3857),$6)");
         sql
     }
+
+    /// Query layers for one table
+    fn query_layers(
+        &self,
+        client: &mut Client,
+        tile_cfg: &TileCfg,
+        layer_group: &LayerGroup,
+        layers: &mut Vec<Layer>,
+    ) -> Result<(), Error> {
+        debug!("sql: {}", &self.sql);
+        let mut trans = client.transaction()?;
+        let stmt = trans.prepare(&self.sql)?;
+        // Build query parameters
+        let tolerance = tile_cfg.tolerance; // $1
+        let x_min = tile_cfg.bbox.x_min(); // $2
+        let y_min = tile_cfg.bbox.y_min(); // $3
+        let x_max = tile_cfg.bbox.x_max(); // $4
+        let y_max = tile_cfg.bbox.y_max(); // $5
+        let radius = tolerance * tile_cfg.edge_extent as f64; // $6
+        let params: Vec<&(dyn ToSql + Sync)> =
+            vec![&tolerance, &x_min, &y_min, &x_max, &y_max, &radius];
+        debug!("params: {:?}", params);
+        let portal = trans.bind(&stmt, &params[..])?;
+        let mut remaining_limit = tile_cfg.query_limit;
+        while remaining_limit > 0 {
+            let before_limit = remaining_limit;
+            // Fetch next set of rows from portal
+            let mut rows = trans.query_portal_raw(&portal, 50)?;
+            while let Some(row) = rows.next()? {
+                self.add_layer_features(&row, tile_cfg, layer_group, layers)?;
+                remaining_limit -= 1;
+            }
+            if before_limit == remaining_limit {
+                break;
+            }
+        }
+        if remaining_limit == 0 {
+            warn!(
+                "table {}, query limit reached: {}",
+                &self.name, tile_cfg.query_limit
+            );
+        }
+        Ok(())
+    }
+
+    /// Add features to layers in group
+    fn add_layer_features(
+        &self,
+        row: &Row,
+        tile_cfg: &TileCfg,
+        layer_group: &LayerGroup,
+        layers: &mut Vec<Layer>,
+    ) -> Result<(), Error> {
+        let table = &self.name;
+        let grow = GeomRow::new(row, self.geom_type, &self.id_column);
+        for layer in layers {
+            if let Some(layer_def) = layer_group.find_layer(layer.name()) {
+                if layer_def.check_table(table, tile_cfg.zoom())
+                    && grow.matches_layer(layer_def)
+                {
+                    if let Some(geom) =
+                        grow.get_geometry(&tile_cfg.transform)?
+                    {
+                        let lyr = std::mem::replace(layer, Layer::default());
+                        *layer = grow.add_feature(lyr, layer_def, geom);
+                    }
+                }
+            }
+        }
+        Ok(())
+    }
 }
 
 impl TileCfg {
@@ -240,7 +311,7 @@ impl LayerGroup {
         let mut layers = self.create_layers(&tile);
         for query_def in &self.queries {
             if self.check_layers(query_def, tile_cfg.zoom()) {
-                self.query_layers(client, query_def, &mut layers, tile_cfg)?;
+                query_def.query_layers(client, tile_cfg, self, &mut layers)?;
             }
         }
         for layer in layers.drain(..) {
@@ -249,77 +320,6 @@ impl LayerGroup {
             }
         }
         Ok(tile)
-    }
-
-    /// Query layers for one table
-    fn query_layers(
-        &self,
-        client: &mut Client,
-        query_def: &QueryDef,
-        layers: &mut Vec<Layer>,
-        tile_cfg: &TileCfg,
-    ) -> Result<(), Error> {
-        debug!("sql: {}", &query_def.sql);
-        let mut trans = client.transaction()?;
-        let stmt = trans.prepare(&query_def.sql)?;
-        // Build query parameters
-        let tolerance = tile_cfg.tolerance; // $1
-        let x_min = tile_cfg.bbox.x_min(); // $2
-        let y_min = tile_cfg.bbox.y_min(); // $3
-        let x_max = tile_cfg.bbox.x_max(); // $4
-        let y_max = tile_cfg.bbox.y_max(); // $5
-        let radius = tolerance * tile_cfg.edge_extent as f64; // $6
-        let params: Vec<&(dyn ToSql + Sync)> =
-            vec![&tolerance, &x_min, &y_min, &x_max, &y_max, &radius];
-        debug!("params: {:?}", params);
-        let portal = trans.bind(&stmt, &params[..])?;
-        let mut remaining_limit = tile_cfg.query_limit;
-        while remaining_limit > 0 {
-            let before_limit = remaining_limit;
-            // Fetch next set of rows from portal
-            let mut rows = trans.query_portal_raw(&portal, 50)?;
-            while let Some(row) = rows.next()? {
-                self.add_layer_features(query_def, &row, tile_cfg, layers)?;
-                remaining_limit -= 1;
-            }
-            if before_limit == remaining_limit {
-                break;
-            }
-        }
-        if remaining_limit == 0 {
-            warn!(
-                "table {}, query limit reached: {}",
-                &query_def.name, tile_cfg.query_limit
-            );
-        }
-        Ok(())
-    }
-
-    /// Add features to a layer
-    fn add_layer_features(
-        &self,
-        query_def: &QueryDef,
-        row: &Row,
-        tile_cfg: &TileCfg,
-        layers: &mut Vec<Layer>,
-    ) -> Result<(), Error> {
-        let table = &query_def.name;
-        let grow = GeomRow::new(row, query_def.geom_type, &query_def.id_column);
-        for layer in layers {
-            if let Some(layer_def) = self.find_layer(layer.name()) {
-                if layer_def.check_table(table, tile_cfg.zoom())
-                    && grow.matches_layer(layer_def)
-                {
-                    if let Some(geom) =
-                        grow.get_geometry(&tile_cfg.transform)?
-                    {
-                        let lyr = std::mem::replace(layer, Layer::default());
-                        *layer = grow.add_feature(lyr, layer_def, geom);
-                    }
-                }
-            }
-        }
-        Ok(())
     }
 
     /// Write a tile

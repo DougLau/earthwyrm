@@ -1,13 +1,18 @@
 # EarthWyrm ![Logo](./earthwyrm.svg)
 
-*EarthWyrm* is a Rust library developed for the Minnesota Department of
-Transportation (MnDOT).  It can serve [OpenStreetMap] or other GIS data in [MVT]
-format.
+*EarthWyrm* is a Rust library for generating vector tiles in [MVT] format.
+It can serve [OpenStreetMap] or other GIS data.
 
-### Links
+## Links
 
 * [EarthWyrm-warp] map server
 * Library [documentation]
+
+## Database tables
+
+GIS data is stored in a PostgreSQL database, using the PostGIS extension.
+Geometry columns can be points, linestrings or polygons.  The `osm2pgsql` tool
+creates tables in the proper format.
 
 [documentation]: https://docs.rs/earthwyrm
 [EarthWyrm-warp]: earthwyrm-warp/

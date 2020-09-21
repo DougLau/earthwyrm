@@ -2,7 +2,7 @@
 //
 // Copyright (c) 2019-2020  Minnesota Department of Transportation
 //
-use crate::rules::LayerDef;
+use crate::layer::LayerDef;
 use crate::Error;
 use log::{trace, warn};
 use mvt::{Feature, GeomData, GeomEncoder, GeomType, Layer, Transform};

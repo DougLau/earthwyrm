@@ -4,7 +4,7 @@
 //
 use crate::config::{LayerGroupCfg, TableCfg, WyrmCfg};
 use crate::geom::{lookup_geom_type, GeomRow};
-use crate::rules::LayerDef;
+use crate::layer::LayerDef;
 use crate::Error;
 use log::{debug, info, warn};
 use mvt::{BBox, GeomType, Layer, MapGrid, Tile, TileId, Transform};

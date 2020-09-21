@@ -7,8 +7,8 @@
 mod config;
 mod error;
 mod geom;
+mod layer;
 mod map;
-mod rules;
 
 pub use config::{LayerCfg, LayerGroupCfg, TableCfg, WyrmCfg};
 pub use error::Error;

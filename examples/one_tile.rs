@@ -4,6 +4,7 @@
 //
 use earthwyrm::{TileId, Wyrm, WyrmCfg};
 use postgres::{self, Client, NoTls};
+use std::env;
 use std::fs::File;
 
 const MUON: &str = &r#"
@@ -24,7 +25,7 @@ layer_group: tile
     tags: boundary=administrative admin_level=8 ?population
 "#;
 
-fn write_tile() -> Result<(), Box<dyn std::error::Error>> {
+fn write_tile(x: u32, y: u32, z: u32) -> Result<(), Box<dyn std::error::Error>> {
     let wyrm_cfg: WyrmCfg = muon_rs::from_str(MUON)?;
     let wyrm = Wyrm::from_cfg(&wyrm_cfg)?;
     let username = whoami::username();
@@ -32,12 +33,17 @@ fn write_tile() -> Result<(), Box<dyn std::error::Error>> {
     let uds = format!("postgres://{:}@%2Frun%2Fpostgresql/earthwyrm", username);
     let mut file = File::create("./one_tile.mvt")?;
     let mut conn = Client::connect(&uds, NoTls)?;
-    let tid = TileId::new(246, 368, 10)?;
+    let tid = TileId::new(x, y, z)?;
     wyrm.fetch_tile(&mut file, &mut conn, "tile", tid)?;
     Ok(())
 }
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    write_tile()?;
+    let mut args = env::args();
+    args.next().unwrap();
+    let x = args.next().expect("missing x").parse()?;
+    let y = args.next().expect("missing y").parse()?;
+    let z = args.next().expect("missing z").parse()?;
+    write_tile(x, y, z)?;
     Ok(())
 }

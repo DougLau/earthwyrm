@@ -117,7 +117,7 @@ impl TagPattern {
         debug_assert!(self.must_match == MustMatch::Yes);
         match value {
             Some(val) => self.values.iter().any(|v| v == &val),
-            None => self.values.iter().any(|v| v == &"_"),
+            None => self.values.iter().any(|v| v == "_"),
         }
     }
 
@@ -193,15 +193,15 @@ fn parse_patterns(rule: &[String]) -> Result<Vec<TagPattern>, Error> {
     for pat in rule {
         let p = TagPattern::parse(pat);
         let key = p.tag();
-        if let Some(_) = patterns.iter().find(|p| p.tag() == key) {
+        if patterns.iter().any(|p| p.tag() == key) {
             return Err(Error::DuplicatePattern(pat.to_string()));
         }
         log::debug!("tag pattern: {:?}", &p);
         patterns.push(p);
     }
-    if patterns.len() > 0 {
+    if !patterns.is_empty() {
         // Add default pattern if no "name" patterns exist
-        if !patterns.iter().any(|p| &p.tag() == &"name") {
+        if !patterns.iter().any(|p| p.tag() == "name") {
             patterns.push(TagPattern::default());
         }
     }

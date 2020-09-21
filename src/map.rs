@@ -87,7 +87,7 @@ impl QueryDef {
     ) -> Option<Self> {
         let geom_type = lookup_geom_type(&table_cfg.geom_type)?;
         let tags = QueryDef::table_tags(table_cfg, layer_defs);
-        if tags.len() > 0 {
+        if !tags.is_empty() {
             let name = table_cfg.name.to_string();
             let id_column = table_cfg.id_column.to_string();
             let sql = QueryDef::build_sql(table_cfg, srid, &tags);
@@ -219,7 +219,7 @@ impl QueryDef {
                     if let Some(geom) =
                         grow.get_geometry(&tile_cfg.transform)?
                     {
-                        let lyr = std::mem::replace(layer, Layer::default());
+                        let lyr = std::mem::take(layer);
                         *layer = grow.add_feature(lyr, layer_def, geom);
                     }
                 }

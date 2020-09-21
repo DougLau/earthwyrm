@@ -15,7 +15,7 @@ type GeomResult = Result<Option<GeomData>, Error>;
 
 /// Encode points into GeomData
 fn encode_points(g: ewkb::MultiPoint, t: &Transform) -> GeomResult {
-    if g.points.len() == 0 {
+    if g.points.is_empty() {
         return Ok(None);
     }
     let mut ge = GeomEncoder::new(GeomType::Point, *t);
@@ -27,7 +27,7 @@ fn encode_points(g: ewkb::MultiPoint, t: &Transform) -> GeomResult {
 
 /// Encode linestrings into GeomData
 fn encode_linestrings(g: ewkb::MultiLineString, t: &Transform) -> GeomResult {
-    if g.lines.len() == 0 {
+    if g.lines.is_empty() {
         return Ok(None);
     }
     let mut ge = GeomEncoder::new(GeomType::Linestring, *t);
@@ -42,7 +42,7 @@ fn encode_linestrings(g: ewkb::MultiLineString, t: &Transform) -> GeomResult {
 
 /// Encode polygons into GeomData
 fn encode_polygons(g: ewkb::MultiPolygon, t: &Transform) -> GeomResult {
-    if g.polygons.len() == 0 {
+    if g.polygons.is_empty() {
         return Ok(None);
     }
     let mut ge = GeomEncoder::new(GeomType::Polygon, *t);
@@ -102,7 +102,7 @@ impl<'a> GeomRow<'a> {
     /// Get one tag value (string)
     fn get_tag_value(&self, col: &str) -> Option<String> {
         if let Some(v) = self.row.get::<_, Option<String>>(col) {
-            if v.len() > 0 {
+            if !v.is_empty() {
                 return Some(v);
             }
         }

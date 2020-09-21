@@ -25,7 +25,11 @@ layer_group: tile
     tags: boundary=administrative admin_level=8 ?population
 "#;
 
-fn write_tile(x: u32, y: u32, z: u32) -> Result<(), Box<dyn std::error::Error>> {
+fn write_tile(
+    x: u32,
+    y: u32,
+    z: u32,
+) -> Result<(), Box<dyn std::error::Error>> {
     let wyrm_cfg: WyrmCfg = muon_rs::from_str(MUON)?;
     let wyrm = Wyrm::from_cfg(&wyrm_cfg)?;
     let username = whoami::username();

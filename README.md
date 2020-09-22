@@ -11,8 +11,9 @@ It can serve [OpenStreetMap] or other GIS data.
 ## Database tables
 
 GIS data is stored in a PostgreSQL database, using the PostGIS extension.
-Geometry columns can be points, linestrings or polygons.  The `osm2pgsql` tool
-creates tables in the proper format.
+Each table contains one column containing `point`, `linestring` or `polygon`
+data.  The geometry must use Web Mercator (EPSG:3857) projection.  The
+`osm2pgsql` tool creates tables in the proper format.
 
 [documentation]: https://docs.rs/earthwyrm
 [EarthWyrm-warp]: earthwyrm-warp/

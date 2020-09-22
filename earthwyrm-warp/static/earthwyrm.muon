@@ -59,8 +59,11 @@ layer_group: tile
   #     - range (ex. 8-12)
   #     - minimum (ex. 10+)
   #
-  # tags: Whitespace separated tag patterns for the layer -- all must match for
-  #       a feature to be included.  Each pattern consists of up to 4 parts:
+  # tags: Whitespace separated patterns for the layer -- all must match for a
+  #       feature to be included.  See https://wiki.openstreetmap.org/wiki/Tags
+  #       for usage in OpenStreetMap data.
+  #
+  #       Each pattern consists of up to 4 parts:
   #       rule, key, equality, and value(s).  The only required part is the key.
   #
   #       Rule: controls how the key/values are matched/included:

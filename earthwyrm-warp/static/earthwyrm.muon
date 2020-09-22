@@ -133,24 +133,28 @@ layer_group: tile
     tags: highway=motorway|motorway_link
   layer: trunk
     table: roads
-    zoom: 10+
+    zoom: 9+
     tags: highway=trunk|trunk_link
   layer: primary
     table: roads
-    zoom: 11+
+    zoom: 10+
     tags: highway=primary|primary_link
   layer: secondary
     table: roads
-    zoom: 13+
+    zoom: 12+
     tags: highway=secondary|secondary_link
   layer: tertiary
     table: line
-    zoom: 14+
+    zoom: 13+
     tags: highway=tertiary|tertiary_link
   layer: roads
     table: line
+    zoom: 14+
+    tags: highway=unclassified|residential|living_street|service|road
+  layer: paths
+    table: line
     zoom: 15+
-    tags: highway!=motorway|motorway_link|trunk|trunk_link|primary|primary_link|secondary|secondary_link|tertiary|tertiary_link|_
+    tags: highway=pedestrian|footway|track|bridleway|steps|corridor|cycleway|path
   layer: parking
     table: polygon
     zoom: 15+

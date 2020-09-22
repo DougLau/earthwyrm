@@ -11,6 +11,7 @@ useradd --system earthwyrm &&
 mkdir $DST1 &&
 cp $SRC/earthwyrm.muon $DST1 &&
 mkdir $DST2 &&
+cp $SRC/index.html $DST2 &&
 cp $SRC/map.* $DST2 &&
 chown --recursive earthwyrm.earthwyrm $DST2 &&
 cp $SRC/earthwyrm.service $DST3 &&

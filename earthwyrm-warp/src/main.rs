@@ -50,11 +50,10 @@ fn run_server(
     let sock_addr: SocketAddr = wyrm_cfg.bind_address.parse()?;
     let wyrm = Wyrm::from_cfg(&wyrm_cfg)?;
     let tiles = tile_route(config, wyrm);
-    let map = warp::path("index.html")
+    let index = warp::path::end()
         .and(warp::fs::file(doc_root.clone() + "/index.html"));
-    let files = warp::path("static")
-        .and(warp::fs::dir(doc_root + "/static"));
-    let routes = tiles.or(map).or(files).recover(customize_error);
+    let files = warp::fs::dir(doc_root);
+    let routes = tiles.or(index).or(files).recover(customize_error);
     warp::serve(routes).run(sock_addr);
     Ok(())
 }

@@ -45,7 +45,7 @@ function init_map() {
         fillOpacity: 0.7,
         fillColor: "#bca9a9",
         weight: 0.7,
-        color: "#bca9a9",
+        color: "#baa",
     };
     var retail = {
         fill: true,
@@ -102,7 +102,7 @@ function init_map() {
         if (change) {
             highlight = osm_id;
             layers.setFeatureStyle(highlight, highlight_style);
-            var name = e.layer.properties.name;
+            var name = e.layer.properties.ref || e.layer.properties.name;
             if (typeof name != "undefined") {
                 L.popup({ closeButton: false})
                  .setContent(name)

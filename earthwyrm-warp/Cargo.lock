@@ -263,6 +263,7 @@ version = "0.4.0"
 dependencies = [
  "log 0.4.11",
  "mvt",
+ "pointy",
  "postgis",
  "postgres",
  "serde",
@@ -874,11 +875,12 @@ dependencies = [
 
 [[package]]
 name = "mvt"
-version = "0.6.0"
+version = "0.7.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "03fa1cefd1df06c55ee4ac23fb563e4bdb336da33f6c8a3ed4dca1e738757d17"
+checksum = "137403895b2731e6d750405e0ce012a5d5cdf6c15229eb656362cf236a0dac8c"
 dependencies = [
  "log 0.4.11",
+ "pointy",
  "protobuf",
 ]
 
@@ -1067,6 +1069,12 @@ name = "pin-utils"
 version = "0.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "8b870d8c151b6f2fb93e84a13146138f05d02ed11c7e7c54f8826aaaf7c9f184"
+
+[[package]]
+name = "pointy"
+version = "0.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f864eb749012c0042cdfbbd7d9b73bb931a9f02721a836fef20f8160ed7ef7bc"
 
 [[package]]
 name = "postgis"

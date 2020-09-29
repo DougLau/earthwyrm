@@ -7,7 +7,8 @@ use crate::geom::{lookup_geom_type, GeomRow};
 use crate::layer::LayerDef;
 use crate::Error;
 use log::{debug, info, warn};
-use mvt::{BBox, GeomType, Layer, MapGrid, Tile, TileId, Transform};
+use mvt::{BBox, GeomType, Layer, MapGrid, Tile, TileId};
+use pointy::Transform64;
 use postgres::fallible_iterator::FallibleIterator;
 use postgres::types::ToSql;
 use postgres::Client;
@@ -28,7 +29,7 @@ struct TileCfg {
     /// Bounding box of tile
     bbox: BBox,
     /// Transform from spatial to tile coordinates
-    transform: Transform,
+    transform: Transform64,
     /// Tolerance for snapping geometry to grid and simplifying
     tolerance: f64,
 }

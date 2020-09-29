@@ -5,7 +5,8 @@
 use crate::layer::LayerDef;
 use crate::Error;
 use log::{trace, warn};
-use mvt::{Feature, GeomData, GeomEncoder, GeomType, Layer, Transform};
+use mvt::{Feature, GeomData, GeomEncoder, GeomType, Layer};
+use pointy::Transform64;
 use postgis::ewkb;
 use postgres::types::FromSql;
 use postgres::Row;
@@ -14,7 +15,7 @@ use postgres::Row;
 type GeomResult = Result<Option<GeomData>, Error>;
 
 /// Encode points into GeomData
-fn encode_points(g: ewkb::MultiPoint, t: &Transform) -> GeomResult {
+fn encode_points(g: ewkb::MultiPoint, t: &Transform64) -> GeomResult {
     if g.points.is_empty() {
         return Ok(None);
     }
@@ -26,7 +27,7 @@ fn encode_points(g: ewkb::MultiPoint, t: &Transform) -> GeomResult {
 }
 
 /// Encode linestrings into GeomData
-fn encode_linestrings(g: ewkb::MultiLineString, t: &Transform) -> GeomResult {
+fn encode_linestrings(g: ewkb::MultiLineString, t: &Transform64) -> GeomResult {
     if g.lines.is_empty() {
         return Ok(None);
     }
@@ -41,7 +42,7 @@ fn encode_linestrings(g: ewkb::MultiLineString, t: &Transform) -> GeomResult {
 }
 
 /// Encode polygons into GeomData
-fn encode_polygons(g: ewkb::MultiPolygon, t: &Transform) -> GeomResult {
+fn encode_polygons(g: ewkb::MultiPolygon, t: &Transform64) -> GeomResult {
     if g.polygons.is_empty() {
         return Ok(None);
     }
@@ -110,7 +111,7 @@ impl<'a> GeomRow<'a> {
     }
 
     /// Get geometry from a row, encoded as MVT GeomData
-    pub fn get_geometry(&self, t: &Transform) -> GeomResult {
+    pub fn get_geometry(&self, t: &Transform64) -> GeomResult {
         match self.geom_type {
             GeomType::Point => self.get_geom_data(t, &encode_points),
             GeomType::Linestring => self.get_geom_data(t, &encode_linestrings),
@@ -121,8 +122,8 @@ impl<'a> GeomRow<'a> {
     /// Get geom data from a row
     fn get_geom_data<T: FromSql<'a>>(
         &self,
-        t: &Transform,
-        enc: &dyn Fn(T, &Transform) -> GeomResult,
+        t: &Transform64,
+        enc: &dyn Fn(T, &Transform64) -> GeomResult,
     ) -> GeomResult {
         // geom_column is always #1 (see QueryDef::build_sql)
         match self.row.try_get(1) {

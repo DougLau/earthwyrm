@@ -154,8 +154,11 @@ impl QueryDef {
         sql.push_str(" WHERE ");
         match &table_cfg.zoom_column {
             Some(zoom_column) => {
+                sql.push('(');
                 sql.push_str(zoom_column);
-                sql.push_str("=$3::INTEGER AND ");
+                sql.push_str("=$3::INTEGER OR ");
+                sql.push_str(zoom_column);
+                sql.push_str(" IS NULL) AND ");
             }
             None => sql.push_str("$3::INTEGER IS NOT NULL AND "),
         }

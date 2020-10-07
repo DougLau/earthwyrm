@@ -259,7 +259,7 @@ checksum = "134951f4028bdadb9b84baf4232681efbf277da25144b9b0ad65df75946c422b"
 
 [[package]]
 name = "earthwyrm"
-version = "0.4.0"
+version = "0.4.2"
 dependencies = [
  "log 0.4.11",
  "mvt",

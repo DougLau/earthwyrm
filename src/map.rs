@@ -130,11 +130,12 @@ impl QueryDef {
     ///
     /// Query parameters:
     /// * `$1` Simplification tolerance
-    /// * `$2` Minimum X
-    /// * `$3` Minimum Y
-    /// * `$4` Maximum X
-    /// * `$5` Maximum Y
-    /// * `$6` Edge buffer tolerance
+    /// * `$2` Edge buffer tolerance
+    /// * `$3` Zoom level
+    /// * `$4` Minimum X
+    /// * `$5` Minimum Y
+    /// * `$6` Maximum X
+    /// * `$7` Maximum Y
     fn build_sql(table_cfg: &TableCfg, srid: i32, tags: &[&str]) -> String {
         let mut sql = "SELECT ".to_string();
         // id_column must be first (#0)
@@ -151,10 +152,17 @@ impl QueryDef {
         sql.push_str(" FROM ");
         sql.push_str(&table_cfg.db_table);
         sql.push_str(" WHERE ");
+        match &table_cfg.zoom_column {
+            Some(zoom_column) => {
+                sql.push_str(zoom_column);
+                sql.push_str("=$3::INTEGER AND ");
+            }
+            None => sql.push_str("$3::INTEGER IS NOT NULL AND "),
+        }
         sql.push_str(&table_cfg.geom_column);
-        sql.push_str(" && ST_Buffer(ST_MakeEnvelope($2,$3,$4,$5,");
+        sql.push_str(" && ST_Buffer(ST_MakeEnvelope($4,$5,$6,$7,");
         sql.push_str(&srid.to_string());
-        sql.push_str("),$6)");
+        sql.push_str("),$2)");
         sql
     }
 
@@ -171,13 +179,14 @@ impl QueryDef {
         let stmt = trans.prepare(&self.sql)?;
         // Build query parameters
         let tolerance = tile_cfg.tolerance; // $1
-        let x_min = tile_cfg.bbox.x_min(); // $2
-        let y_min = tile_cfg.bbox.y_min(); // $3
-        let x_max = tile_cfg.bbox.x_max(); // $4
-        let y_max = tile_cfg.bbox.y_max(); // $5
-        let radius = tolerance * tile_cfg.edge_extent as f64; // $6
-        let params: [&(dyn ToSql + Sync); 6] =
-            [&tolerance, &x_min, &y_min, &x_max, &y_max, &radius];
+        let radius = tolerance * tile_cfg.edge_extent as f64; // $2
+        let zoom = tile_cfg.zoom() as i32; // $3
+        let x_min = tile_cfg.bbox.x_min(); // $4
+        let y_min = tile_cfg.bbox.y_min(); // $5
+        let x_max = tile_cfg.bbox.x_max(); // $6
+        let y_max = tile_cfg.bbox.y_max(); // $7
+        let params: [&(dyn ToSql + Sync); 7] =
+            [&tolerance, &radius, &zoom, &x_min, &y_min, &x_max, &y_max];
         debug!("params: {:?}", params);
         let portal = trans.bind(&stmt, &params[..])?;
         let mut remaining_limit = tile_cfg.query_limit;

@@ -1,6 +1,6 @@
 [package]
 name = "earthwyrm"
-version = "0.4.1"
+version = "0.4.2"
 authors = ["Douglas Lau <doug.lau@state.mn.us>"]
 description = "Vector tile map server for openstreetmap data"
 license = "MIT OR Apache-2.0"

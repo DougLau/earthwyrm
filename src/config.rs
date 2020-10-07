@@ -33,6 +33,8 @@ pub struct TableCfg {
     pub db_table: String,
     /// Column for unique ID
     pub id_column: String,
+    /// Column for zoom level
+    pub zoom_column: Option<String>,
     /// Column for PostGIS geometry
     pub geom_column: String,
     /// Type for PostGIS geometry (`polygon`, `linestring` or `point`)

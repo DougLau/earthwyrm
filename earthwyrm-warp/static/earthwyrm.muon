@@ -18,6 +18,7 @@ query_limit: 500000
 #   - name: Table name, as used in layers
 #   - db_table: Database table (may include schema)
 #   - id_column: Database column to uniquely identify features
+#   - zoom_column: Database column to identify zoom level (optional)
 #   - geom_column: Database column for PostGIS feature geometry
 #   - geom_type: Type of PostGIS geometry (polygon, linestring or point)
 #

@@ -22,7 +22,7 @@ the typical `Z/X/Y.mvt` tile naming convention.
 ```
 createdb earthwyrm
 psql earthwyrm -c 'CREATE EXTENSION postgis'
-time osm2pgsql -v --number-processes=8 -d earthwyrm --multi-geometry -s --drop ./[map-data].osm.pbf
+time osm2pgsql -v --number-processes=8 -d earthwyrm -S static/earthwyrm.style --multi-geometry -s --drop ./[map-data].osm.pbf
 ```
 
 * Grant select permissions to public

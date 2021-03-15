@@ -16,6 +16,6 @@ serde = "1.0"
 serde_derive = "1.0"
 muon-rs = "0.2"
 warp = "0.1"
-whoami = "0.9"
+whoami = "1.1"
 
 [workspace]

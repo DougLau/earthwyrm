@@ -1,6 +1,6 @@
 // layer.rs
 //
-// Copyright (c) 2019-2020  Minnesota Department of Transportation
+// Copyright (c) 2019-2021  Minnesota Department of Transportation
 //
 use crate::config::LayerGroupCfg;
 use crate::Error;
@@ -123,10 +123,10 @@ impl TagPattern {
 
     /// Parse a tag pattern rule
     fn parse_rule(pat: &str) -> (MustMatch, IncludeValue, &str) {
-        if pat.starts_with('.') {
-            (MustMatch::Yes, IncludeValue::Yes, &pat[1..])
-        } else if pat.starts_with('?') {
-            (MustMatch::No, IncludeValue::Yes, &pat[1..])
+        if let Some(pats) = pat.strip_prefix('.') {
+            (MustMatch::Yes, IncludeValue::Yes, pats)
+        } else if let Some(pats) = pat.strip_prefix('?') {
+            (MustMatch::No, IncludeValue::Yes, pats)
         } else {
             (MustMatch::Yes, IncludeValue::No, pat)
         }
@@ -145,7 +145,7 @@ impl TagPattern {
                 (key, Equality::Equal, val)
             }
         } else {
-            (pat, Equality::NotEqual, &"_")
+            (pat, Equality::NotEqual, "_")
         }
     }
 

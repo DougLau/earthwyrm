@@ -1,6 +1,6 @@
 // map.rs
 //
-// Copyright (c) 2019-2020  Minnesota Department of Transportation
+// Copyright (c) 2019-2021  Minnesota Department of Transportation
 //
 use crate::config::{LayerGroupCfg, TableCfg, WyrmCfg};
 use crate::geom::{lookup_geom_type, GeomRow};
@@ -297,7 +297,7 @@ impl LayerGroup {
     fn create_layers(&self, tile: &Tile) -> Vec<Layer> {
         self.layer_defs
             .iter()
-            .map(|ld| tile.create_layer(&ld.name()))
+            .map(|ld| tile.create_layer(ld.name()))
             .collect()
     }
 

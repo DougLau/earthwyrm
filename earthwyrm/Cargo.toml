@@ -1,0 +1,24 @@
+[package]
+name = "earthwyrm"
+version = "0.4.3"
+description = "Vector tile map server for openstreetmap data"
+license = "MIT OR Apache-2.0"
+documentation = "https://docs.rs/earthwyrm"
+homepage = "https://github.com/DougLau/earthwyrm"
+repository = "https://github.com/DougLau/earthwyrm"
+readme = "README.md"
+keywords = ["cartography", "gis", "osm", "server"]
+edition = "2018"
+
+[dependencies]
+log = "0.4"
+mvt = { version = "0.7", path = "../../mvt/" }
+pointy = "0.3"
+postgis = "0.7"
+postgres = "0.17"
+serde = "1.0"
+serde_derive = "1.0"
+
+[dev-dependencies]
+muon-rs = "0.2"
+whoami = "1.1"

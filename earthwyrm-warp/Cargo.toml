@@ -4,7 +4,7 @@ version = "0.1.2"
 edition = "2018"
 
 [dependencies]
-earthwyrm = { path = "../" }
+earthwyrm = { version = "0.4", path = "../earthwyrm" }
 env_logger = "0.7"
 log = "0.4"
 postgis = "0.7"
@@ -16,5 +16,3 @@ serde_derive = "1.0"
 muon-rs = "0.2"
 warp = "0.1"
 whoami = "1.1"
-
-[workspace]

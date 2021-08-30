@@ -1,12 +1,12 @@
 // geom.rs
 //
-// Copyright (c) 2019-2020  Minnesota Department of Transportation
+// Copyright (c) 2019-2021  Minnesota Department of Transportation
 //
 use crate::layer::LayerDef;
 use crate::Error;
 use log::{trace, warn};
 use mvt::{Feature, GeomData, GeomEncoder, GeomType, Layer};
-use pointy::Transform64;
+use pointy::Transform;
 use postgis::ewkb;
 use postgres::types::FromSql;
 use postgres::Row;
@@ -15,7 +15,7 @@ use postgres::Row;
 type GeomResult = Result<Option<GeomData>, Error>;
 
 /// Encode points into GeomData
-fn encode_points(g: ewkb::MultiPoint, t: &Transform64) -> GeomResult {
+fn encode_points(g: ewkb::MultiPoint, t: &Transform<f64>) -> GeomResult {
     if g.points.is_empty() {
         return Ok(None);
     }
@@ -27,7 +27,7 @@ fn encode_points(g: ewkb::MultiPoint, t: &Transform64) -> GeomResult {
 }
 
 /// Encode linestrings into GeomData
-fn encode_linestrings(g: ewkb::MultiLineString, t: &Transform64) -> GeomResult {
+fn encode_linestrings(g: ewkb::MultiLineString, t: &Transform<f64>) -> GeomResult {
     if g.lines.is_empty() {
         return Ok(None);
     }
@@ -42,7 +42,7 @@ fn encode_linestrings(g: ewkb::MultiLineString, t: &Transform64) -> GeomResult {
 }
 
 /// Encode polygons into GeomData
-fn encode_polygons(g: ewkb::MultiPolygon, t: &Transform64) -> GeomResult {
+fn encode_polygons(g: ewkb::MultiPolygon, t: &Transform<f64>) -> GeomResult {
     if g.polygons.is_empty() {
         return Ok(None);
     }
@@ -111,7 +111,7 @@ impl<'a> GeomRow<'a> {
     }
 
     /// Get geometry from a row, encoded as MVT GeomData
-    pub fn get_geometry(&self, t: &Transform64) -> GeomResult {
+    pub fn get_geometry(&self, t: &Transform<f64>) -> GeomResult {
         match self.geom_type {
             GeomType::Point => self.get_geom_data(t, &encode_points),
             GeomType::Linestring => self.get_geom_data(t, &encode_linestrings),
@@ -122,8 +122,8 @@ impl<'a> GeomRow<'a> {
     /// Get geom data from a row
     fn get_geom_data<T: FromSql<'a>>(
         &self,
-        t: &Transform64,
-        enc: &dyn Fn(T, &Transform64) -> GeomResult,
+        t: &Transform<f64>,
+        enc: &dyn Fn(T, &Transform<f64>) -> GeomResult,
     ) -> GeomResult {
         // geom_column is always #1 (see QueryDef::build_sql)
         match self.row.try_get(1) {

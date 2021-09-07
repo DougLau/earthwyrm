@@ -11,11 +11,14 @@ keywords = ["cartography", "gis", "osm", "server"]
 edition = "2018"
 
 [dependencies]
+loam = "0.1"
 log = "0.4"
-mvt = { version = "0.7", path = "../../mvt/" }
+mvt = "0.7"
+osmpbfreader = "0.15"
 pointy = "0.3"
 postgis = "0.7"
 postgres = "0.17"
+rosewood = "0.1"
 serde = "1.0"
 serde_derive = "1.0"
 

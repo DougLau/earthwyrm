@@ -27,7 +27,10 @@ fn encode_points(g: ewkb::MultiPoint, t: &Transform<f64>) -> GeomResult {
 }
 
 /// Encode linestrings into GeomData
-fn encode_linestrings(g: ewkb::MultiLineString, t: &Transform<f64>) -> GeomResult {
+fn encode_linestrings(
+    g: ewkb::MultiLineString,
+    t: &Transform<f64>,
+) -> GeomResult {
     if g.lines.is_empty() {
         return Ok(None);
     }

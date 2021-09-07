@@ -1,6 +1,6 @@
 // error.rs
 //
-// Copyright (c) 2019-2020  Minnesota Department of Transportation
+// Copyright (c) 2019-2021  Minnesota Department of Transportation
 //
 use std::net::AddrParseError;
 use std::num::ParseIntError;
@@ -16,8 +16,12 @@ pub enum Error {
     InvalidAddress(AddrParseError),
     /// I/O error
     Io(io::Error),
+    /// Loam error
+    Loam(loam::Error),
     /// MVT error
     Mvt(mvt::Error),
+    /// OSM reader error
+    OsmReader(osmpbfreader::Error),
     /// Parse int error
     ParseInt(ParseIntError),
     /// PostgreSQL error
@@ -34,7 +38,9 @@ impl fmt::Display for Error {
             Error::DuplicatePattern(v) => write!(f, "Duplicate patterm: {}", v),
             Error::InvalidAddress(e) => e.fmt(f),
             Error::Io(e) => e.fmt(f),
+            Error::Loam(e) => e.fmt(f),
             Error::Mvt(e) => e.fmt(f),
+            Error::OsmReader(e) => e.fmt(f),
             Error::ParseInt(e) => e.fmt(f),
             Error::Pg(e) => e.fmt(f),
             Error::TileEmpty() => write!(f, "Tile empty"),
@@ -49,7 +55,9 @@ impl std::error::Error for Error {
             Error::DuplicatePattern(_) => None,
             Error::InvalidAddress(e) => Some(e),
             Error::Io(e) => Some(e),
+            Error::Loam(e) => Some(e),
             Error::Mvt(e) => Some(e),
+            Error::OsmReader(e) => Some(e),
             Error::ParseInt(e) => Some(e),
             Error::Pg(e) => Some(e),
             Error::TileEmpty() => None,
@@ -70,9 +78,21 @@ impl From<io::Error> for Error {
     }
 }
 
+impl From<loam::Error> for Error {
+    fn from(e: loam::Error) -> Self {
+        Error::Loam(e)
+    }
+}
+
 impl From<mvt::Error> for Error {
     fn from(e: mvt::Error) -> Self {
         Error::Mvt(e)
+    }
+}
+
+impl From<osmpbfreader::Error> for Error {
+    fn from(e: osmpbfreader::Error) -> Self {
+        Error::OsmReader(e)
     }
 }
 

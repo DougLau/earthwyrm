@@ -8,11 +8,11 @@ mod config;
 mod error;
 mod geom;
 mod layer;
-mod map;
 mod osm;
+mod tile;
 
-pub use config::{LayerCfg, LayerGroupCfg, TableCfg, WyrmCfg};
+pub use config::{LayerCfg, LayerGroupCfg, WyrmCfg};
 pub use error::Error;
-pub use map::Wyrm;
 pub use mvt::TileId;
 pub use osm::make_layer;
+pub use tile::Wyrm;

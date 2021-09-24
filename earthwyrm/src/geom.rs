@@ -2,178 +2,201 @@
 //
 // Copyright (c) 2019-2021  Minnesota Department of Transportation
 //
+use crate::error::{Error, Result};
 use crate::layer::LayerDef;
-use crate::Error;
-use log::{trace, warn};
-use mvt::{Feature, GeomData, GeomEncoder, GeomType, Layer};
+use crate::tile::TileCfg;
+use mvt::{GeomData, GeomEncoder, GeomType, Layer};
 use pointy::Transform;
-use postgis::ewkb;
-use postgres::types::FromSql;
-use postgres::Row;
+use rosewood::{Geometry, Linestring, Point, Polygon, RTree};
+use std::path::Path;
 
-/// Geometry result
-type GeomResult = Result<Option<GeomData>, Error>;
-
-/// Encode points into GeomData
-fn encode_points(g: ewkb::MultiPoint, t: &Transform<f64>) -> GeomResult {
-    if g.points.is_empty() {
-        return Ok(None);
-    }
-    let mut ge = GeomEncoder::new(GeomType::Point, *t);
-    for p in &g.points {
-        ge.add_point(p.x, p.y);
-    }
-    Ok(Some(ge.encode()?))
+/// Geometry which can be encoded to GeomData
+pub trait GeomEncode {
+    /// Encode into GeomData
+    fn encode(&self, t: Transform<f32>) -> Result<GeomData>;
 }
 
-/// Encode linestrings into GeomData
-fn encode_linestrings(
-    g: ewkb::MultiLineString,
-    t: &Transform<f64>,
-) -> GeomResult {
-    if g.lines.is_empty() {
-        return Ok(None);
-    }
-    let mut ge = GeomEncoder::new(GeomType::Linestring, *t);
-    for ls in &g.lines {
-        ge.complete_geom()?;
-        for p in &ls.points {
-            ge.add_point(p.x, p.y);
-        }
-    }
-    Ok(Some(ge.encode()?))
-}
+/// Tag values, in order specified by tag pattern rule
+type Values = Vec<Option<String>>;
 
-/// Encode polygons into GeomData
-fn encode_polygons(g: ewkb::MultiPolygon, t: &Transform<f64>) -> GeomResult {
-    if g.polygons.is_empty() {
-        return Ok(None);
-    }
-    let mut ge = GeomEncoder::new(GeomType::Polygon, *t);
-    for polygon in &g.polygons {
-        // NOTE: this assumes that rings are well-formed according to MVT spec
-        for ring in &polygon.rings {
-            ge.complete_geom()?;
-            let len = ring.points.len();
-            if len > 2 {
-                for p in &ring.points[..(len - 1)] {
-                    ge.add_point(p.x, p.y);
-                }
-            }
-        }
-    }
-    Ok(Some(ge.encode()?))
-}
-
-/// Geometry row from a DB query
-pub struct GeomRow<'a> {
-    /// DB row of query
-    row: &'a Row,
-    /// Geometry type
-    geom_type: GeomType,
-    /// ID Column
-    id_column: &'a str,
-}
-
-impl<'a> GeomRow<'a> {
-    /// Create a new geom row
-    pub fn new(row: &'a Row, geom_type: GeomType, id_column: &'a str) -> Self {
-        GeomRow {
-            row,
-            geom_type,
-            id_column,
-        }
-    }
-
-    /// Check if a row matches a layer
-    pub fn matches_layer(&self, layer_def: &LayerDef) -> bool {
-        for pattern in layer_def.patterns() {
-            if let Some(key) = pattern.match_key() {
-                if !pattern.matches_value(self.get_tag_value(key)) {
-                    return false;
-                }
-            }
-        }
-        true
-    }
-
-    /// Get the row ID
-    pub fn get_id(&self) -> i64 {
-        // id_column is always #0 (see QueryDef::build_sql)
-        self.row.get::<_, i64>(0)
-    }
-
-    /// Get one tag value (string)
-    fn get_tag_value(&self, col: &str) -> Option<String> {
-        if let Some(v) = self.row.get::<_, Option<String>>(col) {
-            if !v.is_empty() {
-                return Some(v);
-            }
-        }
-        None
-    }
-
-    /// Get geometry from a row, encoded as MVT GeomData
-    pub fn get_geometry(&self, t: &Transform<f64>) -> GeomResult {
-        match self.geom_type {
-            GeomType::Point => self.get_geom_data(t, &encode_points),
-            GeomType::Linestring => self.get_geom_data(t, &encode_linestrings),
-            GeomType::Polygon => self.get_geom_data(t, &encode_polygons),
-        }
-    }
-
-    /// Get geom data from a row
-    fn get_geom_data<T: FromSql<'a>>(
+/// Tree of geometry
+pub trait GeomTree {
+    /// Query a tile layer
+    fn query_features(
         &self,
-        t: &Transform<f64>,
-        enc: &dyn Fn(T, &Transform<f64>) -> GeomResult,
-    ) -> GeomResult {
-        // geom_column is always #1 (see QueryDef::build_sql)
-        match self.row.try_get(1) {
-            Ok(Some(g)) => enc(g, t),
-            Ok(None) => Ok(None),
-            Err(e) => Err(Error::Pg(e)),
-        }
-    }
-
-    /// Add a feature to a layer
-    pub fn add_feature(
-        &self,
-        layer: Layer,
         layer_def: &LayerDef,
-        geom_data: GeomData,
-    ) -> Layer {
-        let mut feature = layer.into_feature(geom_data);
-        self.get_tags(layer_def, &mut feature);
-        feature.into_layer()
-    }
+        layer: Layer,
+        tile_cfg: &TileCfg,
+    ) -> Result<Layer>;
+}
 
-    /// Get tags from a row and add them to a feature
-    fn get_tags(&self, layer_def: &LayerDef, feature: &mut Feature) {
-        let fid = self.get_id();
-        trace!("layer {}, fid {}", layer_def.name(), fid);
-        // NOTE: Leaflet apparently can't use mvt feature id; use tag/property
-        feature.add_tag_sint(self.id_column, fid);
-        for pattern in layer_def.patterns() {
-            if let Some(key) = pattern.include_key() {
-                if let Some(v) = self.get_tag_value(key) {
-                    feature.add_tag_string(key, &v);
-                    trace!("layer {}, {}={}", layer_def.name(), key, &v);
-                }
-            }
+/// Tree of point geometry
+struct PointTree {
+    tree: RTree<f32, Point<f32, Values>>,
+}
+
+/// Tree of linestring geometry
+struct LinestringTree {
+    tree: RTree<f32, Linestring<f32, Values>>,
+}
+
+/// Tree of polygon geometry
+struct PolygonTree {
+    tree: RTree<f32, Polygon<f32, Values>>,
+}
+
+impl<D> GeomEncode for Point<f32, D> {
+    fn encode(&self, t: Transform<f32>) -> Result<GeomData> {
+        let mut enc = GeomEncoder::new(GeomType::Point, t);
+        for pt in self.as_points() {
+            enc.add_point(pt.x(), pt.y())?;
         }
+        Ok(enc.encode()?)
     }
 }
 
-/// Lookup a geometry type from a string name
-pub fn lookup_geom_type(geom_type: &str) -> Option<GeomType> {
-    match geom_type {
-        "polygon" => Some(GeomType::Polygon),
-        "linestring" => Some(GeomType::Linestring),
-        "point" => Some(GeomType::Point),
-        _ => {
-            warn!("unknown geom type: {}", geom_type);
-            None
+impl PointTree {
+    /// Create a new point tree
+    fn new<P>(path: P) -> Result<Self>
+    where
+        P: AsRef<Path>,
+    {
+        let tree = RTree::new(path)?;
+        Ok(Self { tree })
+    }
+}
+
+impl GeomTree for PointTree {
+    fn query_features(
+        &self,
+        layer_def: &LayerDef,
+        mut layer: Layer,
+        tile_cfg: &TileCfg,
+    ) -> Result<Layer> {
+        let transform = tile_cfg.transform();
+        for point in self.tree.query(tile_cfg.bbox()) {
+            let point = point?;
+            let values = point.data();
+            if layer_def.values_match(values) {
+                let geom = point.encode(transform)?;
+                if !geom.is_empty() {
+                    let mut feature = layer.into_feature(geom);
+                    layer_def.add_tags(&mut feature, values);
+                    layer = feature.into_layer();
+                }
+            }
         }
+        Ok(layer)
+    }
+}
+
+impl<D> GeomEncode for Linestring<f32, D> {
+    fn encode(&self, t: Transform<f32>) -> Result<GeomData> {
+        let mut enc = GeomEncoder::new(GeomType::Linestring, t);
+        for line in self.as_lines() {
+            enc.complete_geom()?;
+            for pt in line {
+                enc.add_point(pt.x(), pt.y())?;
+            }
+        }
+        Ok(enc.encode()?)
+    }
+}
+
+impl LinestringTree {
+    /// Create a new linestring tree
+    fn new<P>(path: P) -> Result<Self>
+    where
+        P: AsRef<Path>,
+    {
+        let tree = RTree::new(path)?;
+        Ok(Self { tree })
+    }
+}
+
+impl GeomTree for LinestringTree {
+    fn query_features(
+        &self,
+        layer_def: &LayerDef,
+        mut layer: Layer,
+        tile_cfg: &TileCfg,
+    ) -> Result<Layer> {
+        let transform = tile_cfg.transform();
+        for lines in self.tree.query(tile_cfg.bbox()) {
+            let lines = lines?;
+            let values = lines.data();
+            if layer_def.values_match(values) {
+                let geom = lines.encode(transform)?;
+                if !geom.is_empty() {
+                    let mut feature = layer.into_feature(geom);
+                    layer_def.add_tags(&mut feature, values);
+                    layer = feature.into_layer();
+                }
+            }
+        }
+        Ok(layer)
+    }
+}
+
+impl<D> GeomEncode for Polygon<f32, D> {
+    fn encode(&self, t: Transform<f32>) -> Result<GeomData> {
+        let mut enc = GeomEncoder::new(GeomType::Polygon, t);
+        for ring in self.as_rings() {
+            // NOTE: this assumes that rings are well-formed
+            //       according to MVT spec
+            enc.complete_geom()?;
+            let len = ring.len();
+            if len > 2 {
+                for p in &ring[..(len - 1)] {
+                    enc.add_point(p.x(), p.y())?;
+                }
+            }
+        }
+        Ok(enc.encode()?)
+    }
+}
+
+impl PolygonTree {
+    /// Create a new polygon tree
+    fn new<P>(path: P) -> Result<Self>
+    where
+        P: AsRef<Path>,
+    {
+        let tree = RTree::new(path)?;
+        Ok(Self { tree })
+    }
+}
+
+impl GeomTree for PolygonTree {
+    fn query_features(
+        &self,
+        layer_def: &LayerDef,
+        mut layer: Layer,
+        tile_cfg: &TileCfg,
+    ) -> Result<Layer> {
+        let transform = tile_cfg.transform();
+        for polygon in self.tree.query(tile_cfg.bbox()) {
+            let polygon = polygon?;
+            let values = polygon.data();
+            if layer_def.values_match(values) {
+                let geom = polygon.encode(transform)?;
+                if !geom.is_empty() {
+                    let mut feature = layer.into_feature(geom);
+                    layer_def.add_tags(&mut feature, values);
+                    layer = feature.into_layer();
+                }
+            }
+        }
+        Ok(layer)
+    }
+}
+
+/// Make an RTree
+pub fn make_tree(geom_tp: &str, path: &str) -> Result<Box<dyn GeomTree>> {
+    match geom_tp {
+        "point" => Ok(Box::new(PointTree::new(path)?)),
+        "linestring" => Ok(Box::new(LinestringTree::new(path)?)),
+        "polygon" => Ok(Box::new(PolygonTree::new(path)?)),
+        _ => Err(Error::UnknownGeometryType()),
     }
 }

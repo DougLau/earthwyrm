@@ -5,18 +5,19 @@ It can serve [OpenStreetMap] or other GIS data.
 
 ## Links
 
-* [EarthWyrm-warp] map server
+* [EarthWyrm-bin] map server
 * Library [documentation]
 
-## Database tables
+## Layers
 
-GIS data is stored in a PostgreSQL database, using the PostGIS extension.
-Each table contains one column containing `point`, `linestring` or `polygon`
-data.  The geometry must use Web Mercator (EPSG:3857) projection.  The
-[osm2pgsql] tool creates tables in the proper format.
+GIS data is stored as R-Trees in a [rosewood] file for each layer.  They contain
+`point`, `linestring` or `polygon` features, with associated tags.  The geometry
+uses [Web Mercator] projection (EPSG:3857).
+
 
 [documentation]: https://docs.rs/earthwyrm
-[EarthWyrm-warp]: earthwyrm-warp/
+[earthwyrm-bin]: ../earthwyrm-bin/
 [MVT]: https://github.com/mapbox/vector-tile-spec
 [OpenStreetMap]: https://www.openstreetmap.org/about
-[osm2pgsql]: https://osm2pgsql.org/
+[rosewood]: https://docs.rs/rosewood
+[Web Mercator]: https://en.wikipedia.org/wiki/Web_Mercator_projection

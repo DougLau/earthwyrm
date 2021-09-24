@@ -15,7 +15,7 @@ fn is_county(obj: &OsmObj) -> bool {
     obj.is_relation()
         && obj.tags().contains("type", "boundary")
         && obj.tags().contains("boundary", "administrative")
-        && obj.tags().contains("admin_level", "8")
+        && obj.tags().contains("admin_level", "6")
 }
 
 /// Polygon maker

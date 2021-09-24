@@ -12,25 +12,40 @@ use std::{fmt, io};
 pub enum Error {
     /// Duplicate tag pattern
     DuplicatePattern(String),
+
     /// Invalid network address error
     InvalidAddress(AddrParseError),
+
     /// I/O error
     Io(io::Error),
+
     /// Loam error
     Loam(loam::Error),
+
     /// MVT error
     Mvt(mvt::Error),
+
     /// OSM reader error
     OsmReader(osmpbfreader::Error),
+
     /// Parse int error
     ParseInt(ParseIntError),
-    /// PostgreSQL error
-    Pg(postgres::Error),
+
+    /// Invalid zoom level
+    InvalidZoomLevel(u32),
+
     /// Tile empty
     TileEmpty(),
+
+    /// Unknown geometry type
+    UnknownGeometryType(),
+
     /// Unknown layer group name
     UnknownGroupName(),
 }
+
+/// Earthwyrm Result
+pub type Result<T> = std::result::Result<T, Error>;
 
 impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
@@ -42,8 +57,11 @@ impl fmt::Display for Error {
             Error::Mvt(e) => e.fmt(f),
             Error::OsmReader(e) => e.fmt(f),
             Error::ParseInt(e) => e.fmt(f),
-            Error::Pg(e) => e.fmt(f),
+            Error::InvalidZoomLevel(zoom) => {
+                write!(f, "Invalid zoom level: {}", zoom)
+            }
             Error::TileEmpty() => write!(f, "Tile empty"),
+            Error::UnknownGeometryType() => write!(f, "Unknown geometry type"),
             Error::UnknownGroupName() => write!(f, "Unknown group name"),
         }
     }
@@ -59,8 +77,9 @@ impl std::error::Error for Error {
             Error::Mvt(e) => Some(e),
             Error::OsmReader(e) => Some(e),
             Error::ParseInt(e) => Some(e),
-            Error::Pg(e) => Some(e),
+            Error::InvalidZoomLevel(_) => None,
             Error::TileEmpty() => None,
+            Error::UnknownGeometryType() => None,
             Error::UnknownGroupName() => None,
         }
     }
@@ -99,11 +118,5 @@ impl From<osmpbfreader::Error> for Error {
 impl From<ParseIntError> for Error {
     fn from(e: ParseIntError) -> Self {
         Error::ParseInt(e)
-    }
-}
-
-impl From<postgres::Error> for Error {
-    fn from(e: postgres::Error) -> Self {
-        Error::Pg(e)
     }
 }

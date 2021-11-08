@@ -1,0 +1,131 @@
+# earthwyrm.muon
+#
+# Socket address and port to bind server
+bind_address: 127.0.0.1:3030
+# Root path for static files
+root_path: /var/local/earthwyrm
+
+# Tile properties
+#
+# Tile extent; width and height
+tile_extent: 256
+# Extent outside tile edges
+edge_extent: 6
+# Per-tile query limit
+query_limit: 500000
+
+# Layer groups are collections of MVT files containing related layers.
+#   - name: Base URI path name
+layer_group: tile
+  # Layer definition
+  #
+  # name: Name of layer
+  #
+  # geom_type: Type of geometry (point, linestring or polygon)
+  #
+  # zoom: Zoom level, in one of three formats:
+  #     - exact (ex. 5)
+  #     - range (ex. 8-12)
+  #     - minimum (ex. 10+)
+  #
+  # tags: Whitespace separated patterns for the layer -- all must match for a
+  #       feature to be included.  Each pattern consists of up to 4 parts:
+  #       rule, tag, equality, and value(s).  The only required part is the tag.
+  #
+  #       Rule: controls how the tag/values are matched/included:
+  #           . (period): match tag/values and include them in the layer
+  #           ? (question mark): do not match tag, but include in layer
+  #           $ (dollar): do not match tag, but include in the layer, as `sint`
+  #           (empty): match tag/values, but do not include them in layer
+  #       Tag: see https://wiki.openstreetmap.org/wiki/Tags
+  #       Equality: how to process values (must be paired with value list)
+  #           = (equal): value must be equal to an item in value list
+  #           != (not equal): value must be not equal to an item in list
+  #       Value(s): list of values, separated by | (vertical bar).  The null
+  #           value may be specified with _ (underscore).
+  #
+  #       Examples:
+  #           tag=value
+  #           tag=value1|value2
+  #           tag!=value
+  #           tag!=value|_
+  #           tag              (same as tag!=_)
+  #           .tag             (same as .tag!=_)
+  #           ?tag             (same as ?tag!=_)
+  #
+  layer: county
+    geom_type: polygon
+    zoom: 4-14
+    tags: $osm_id ?name ?population boundary=administrative admin_level=6
+  layer: city
+    geom_type: polygon
+    zoom: 10+
+    tags: $osm_id ?name ?population boundary=administrative admin_level=8
+  layer: leisure
+    geom_type: polygon
+    zoom: 13+
+    tags: $osm_id ?name leisure
+  layer: lake
+    geom_type: polygon
+    zoom: 5+
+    tags: $osm_id ?name natural=water water=lake|oxbow
+  layer: river
+    geom_type: polygon
+    zoom: 5+
+    tags: $osm_id ?name natural=water water=river
+  layer: water
+    geom_type: polygon
+    zoom: 12+
+    tags: $osm_id ?name natural=water water!=lake|oxbow|river|pond
+  layer: pond
+    geom_type: polygon
+    zoom: 14+
+    tags: $osm_id ?name natural=water water=pond
+  layer: basin
+    geom_type: polygon
+    zoom: 14+
+    tags: $osm_id ?name landuse=basin
+  layer: wetland
+    geom_type: polygon
+    zoom: 12+
+    tags: $osm_id ?name natural=wetland
+  layer: retail
+    geom_type: polygon
+    zoom: 14+
+    tags: $osm_id ?name landuse=retail
+  layer: motorway
+    geom_type: linestring
+    zoom: 8+
+    tags: $osm_id ?name ?ref highway=motorway|motorway_link
+  layer: trunk
+    geom_type: linestring
+    zoom: 9+
+    tags: $osm_id ?name ?ref highway=trunk|trunk_link
+  layer: primary
+    geom_type: linestring
+    zoom: 10+
+    tags: $osm_id ?name ?ref highway=primary|primary_link
+  layer: secondary
+    geom_type: linestring
+    zoom: 12+
+    tags: $osm_id ?name ?ref highway=secondary|secondary_link
+  layer: tertiary
+    geom_type: linestring
+    zoom: 13+
+    tags: $osm_id ?name ?ref highway=tertiary|tertiary_link
+  layer: roads
+    geom_type: linestring
+    zoom: 14+
+    tags: $osm_id ?name ?ref highway=unclassified|residential|living_street|service|road
+  layer: paths
+    geom_type: linestring
+    zoom: 15+
+    tags: $osm_id ?name highway=pedestrian|footway|track|bridleway|steps|corridor|cycleway|path
+  layer: parking
+    geom_type: polygon
+    zoom: 15+
+    tags: $osm_id ?name amenity=parking
+  layer: building
+    geom_type: polygon
+    zoom: 15+
+    tags: $osm_id ?name building

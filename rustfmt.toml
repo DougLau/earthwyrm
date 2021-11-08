@@ -1,4 +1,5 @@
 fn_args_layout = "Tall"
 hard_tabs = false
 max_width = 80
+fn_call_width = 78
 use_field_init_shorthand = true

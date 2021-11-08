@@ -1,9 +1,14 @@
+// main.rs
+//
+// Copyright (c) 2021  Minnesota Department of Transportation
+//
+#![forbid(unsafe_code)]
+
 use argh::FromArgs;
+use earthwyrm::{make_layer, Error, WyrmCfg};
 use pointy::BBox;
 use rosewood::{Geometry, Polygon, RTree};
-use std::error::Error;
 use std::ffi::OsString;
-use earthwyrm::make_layer;
 
 const LOAM: &str = &"cities.loam";
 
@@ -30,6 +35,9 @@ enum Command {
 #[argh(subcommand, name = "make")]
 struct MakeCommand {
     #[argh(positional)]
+    config: OsString,
+
+    #[argh(positional)]
     osm: OsString,
 }
 
@@ -39,12 +47,13 @@ struct MakeCommand {
 struct QueryCommand {
     #[argh(positional)]
     lat: f32,
+
     #[argh(positional)]
     lon: f32,
 }
 
 /// Query a map layer
-fn query_layer(lat: f32, lon: f32) -> Result<(), Box<dyn Error>> {
+fn query_layer(lat: f32, lon: f32) -> Result<(), Error> {
     let rtree = RTree::<f32, Polygon<f32, String>>::new(LOAM)?;
     let bbox = BBox::new([(-lon, lat)]);
     for poly in rtree.query(bbox) {
@@ -54,16 +63,24 @@ fn query_layer(lat: f32, lon: f32) -> Result<(), Box<dyn Error>> {
     Ok(())
 }
 
+impl MakeCommand {
+    fn make(self) -> Result<(), Error> {
+        let cfg = std::fs::read_to_string(&self.config)?;
+        let cfg: WyrmCfg = muon_rs::from_str(&cfg)?;
+        Ok(make_layer(cfg.osm)?)
+    }
+}
+
 impl Args {
-    fn run(self) -> Result<(), Box<dyn Error>> {
+    fn run(self) -> Result<(), Error> {
         match self.cmd {
-            Command::Make(cmd) => Ok(make_layer(cmd.osm)?),
+            Command::Make(cmd) => cmd.make(),
             Command::Query(cmd) => query_layer(cmd.lat, cmd.lon),
         }
     }
 }
 
-fn main() -> Result<(), Box<dyn Error>> {
+fn main() -> Result<(), Error> {
     env_logger::builder().format_timestamp(None).init();
     let args: Args = argh::from_env();
     args.run()?;

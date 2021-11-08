@@ -22,6 +22,9 @@ pub enum Error {
     /// Loam error
     Loam(loam::Error),
 
+    /// MuON error
+    Muon(muon_rs::Error),
+
     /// MVT error
     Mvt(mvt::Error),
 
@@ -54,6 +57,7 @@ impl fmt::Display for Error {
             Error::InvalidAddress(e) => e.fmt(f),
             Error::Io(e) => e.fmt(f),
             Error::Loam(e) => e.fmt(f),
+            Error::Muon(e) => e.fmt(f),
             Error::Mvt(e) => e.fmt(f),
             Error::OsmReader(e) => e.fmt(f),
             Error::ParseInt(e) => e.fmt(f),
@@ -74,6 +78,7 @@ impl std::error::Error for Error {
             Error::InvalidAddress(e) => Some(e),
             Error::Io(e) => Some(e),
             Error::Loam(e) => Some(e),
+            Error::Muon(e) => Some(e),
             Error::Mvt(e) => Some(e),
             Error::OsmReader(e) => Some(e),
             Error::ParseInt(e) => Some(e),
@@ -100,6 +105,12 @@ impl From<io::Error> for Error {
 impl From<loam::Error> for Error {
     fn from(e: loam::Error) -> Self {
         Error::Loam(e)
+    }
+}
+
+impl From<muon_rs::Error> for Error {
+    fn from(e: muon_rs::Error) -> Self {
+        Error::Muon(e)
     }
 }
 

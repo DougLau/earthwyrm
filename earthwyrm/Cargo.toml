@@ -12,12 +12,10 @@ edition = "2018"
 [dependencies]
 loam = "0.1"
 log = "0.4"
+muon-rs = "0.2"
 mvt = "0.7"
 osmpbfreader = "0.15"
 pointy = "0.3"
 rosewood = "0.1"
 serde = "1.0"
 serde_derive = "1.0"
-
-[dev-dependencies]
-muon-rs = "0.2"

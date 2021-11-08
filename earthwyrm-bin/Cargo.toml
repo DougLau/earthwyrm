@@ -1,8 +1,8 @@
 [package]
-name = "earthwyrm_bin"
+name = "earthwyrm-bin"
 version = "0.1.0"
 license = "MIT OR Apache-2.0"
-repository = "https://github.com/DougLau/earthwyrm/earthwyrm_bin"
+repository = "https://github.com/DougLau/earthwyrm/earthwyrm-bin"
 edition = "2018"
 
 [dependencies]
@@ -10,5 +10,10 @@ argh = "0.1"
 earthwyrm = "0.4"
 env_logger = "0.7"
 log = "0.4"
+muon-rs = "0.2"
 pointy = "0.3"
 rosewood = "0.1"
+
+[[bin]]
+name = "earthwyrm"
+path = "src/main.rs"

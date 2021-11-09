@@ -7,7 +7,7 @@ edition = "2018"
 
 [dependencies]
 argh = "0.1"
-earthwyrm = "0.4"
+earthwyrm = { version = "0.4", path = "../earthwyrm" }
 env_logger = "0.7"
 log = "0.4"
 muon-rs = "0.2"

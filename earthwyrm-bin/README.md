@@ -23,10 +23,12 @@ cargo build --release
 sh ./static/install.sh
 ```
 
-* Download OpenStreetMap data in _.osm.pbf_ (OSM protobuf) format.  See the
+* Download OpenStreetMap data in `.osm.pbf` (OSM protobuf) format.  See the
   [OSM wiki] for download options, such as [Geofabrik].
 
-* Run earthwyrm make (as earthwyrm user)
+* Put the OSM file in `/var/local/earthwyrm/osm/`
+
+* Run `earthwyrm dig` (as earthwyrm user)
 
 * Start the server
 ```

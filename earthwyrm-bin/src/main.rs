@@ -1,20 +1,56 @@
 // main.rs
 //
-// Copyright (c) 2021  Minnesota Department of Transportation
+// Copyright (c) 2021-2022  Minnesota Department of Transportation
 //
 #![forbid(unsafe_code)]
 
+use anyhow::{anyhow, bail, Context, Result};
 use argh::FromArgs;
-use earthwyrm::{make_layer, Error, WyrmCfg};
+use earthwyrm::{make_layer, WyrmCfg};
 use pointy::BBox;
 use rosewood::{Geometry, Polygon, RTree};
 use std::ffi::OsString;
+use std::fs::read_to_string;
+use std::path::{Path, PathBuf};
 
-const LOAM: &str = &"cities.loam";
+/// Default path for configuration file
+const CONFIG_PATH: &str = "/etc/earthwyrm/earthwyrm.muon";
+
+/// Get path to the OSM file
+fn osm_path<P>(dir: P) -> Result<PathBuf>
+where
+    P: AsRef<Path>,
+{
+    let path = Path::new(dir.as_ref().as_os_str()).join("osm");
+    let mut paths = path
+        .read_dir()
+        .with_context(|| format!("reading directory: {path:?}"))?
+        .filter_map(|f| f.ok())
+        .filter_map(|f| match f.file_type() {
+            Ok(ft) if ft.is_file() => {
+                let path = path.join(f.file_name());
+                if path.extension().unwrap_or_default() == "pbf" {
+                    Some(path)
+                } else {
+                    None
+                }
+            }
+            _ => None,
+        });
+    let osm = paths.next();
+    if paths.next().is_some() {
+        bail!("multiple OSM files found: {path:?}");
+    }
+    osm.ok_or_else(|| anyhow!("no OSM file found: {path:?}"))
+}
 
 /// Command-line arguments
 #[derive(FromArgs, PartialEq, Debug)]
 struct Args {
+    /// configuration file (MuON)
+    #[argh(option, short = 'c', default = "OsString::from(CONFIG_PATH)")]
+    config: OsString,
+
     #[argh(subcommand)]
     cmd: Command,
 }
@@ -23,28 +59,25 @@ struct Args {
 #[derive(FromArgs, PartialEq, Debug)]
 #[argh(subcommand)]
 enum Command {
-    /// Make a layer
-    Make(MakeCommand),
+    /// Dig loam layers from OSM file
+    Dig(DigCommand),
 
-    /// Query the layer
+    /// Query a map layer
     Query(QueryCommand),
 }
 
-/// Make a layer
+/// Dig loam layers from OSM file
 #[derive(FromArgs, PartialEq, Debug)]
-#[argh(subcommand, name = "make")]
-struct MakeCommand {
-    #[argh(positional)]
-    config: OsString,
+#[argh(subcommand, name = "dig")]
+struct DigCommand {}
 
-    #[argh(positional)]
-    osm: OsString,
-}
-
-/// Query the layer
+/// Query a map layer
 #[derive(FromArgs, PartialEq, Debug)]
 #[argh(subcommand, name = "query")]
 struct QueryCommand {
+    #[argh(positional)]
+    loam: OsString,
+
     #[argh(positional)]
     lat: f32,
 
@@ -52,35 +85,47 @@ struct QueryCommand {
     lon: f32,
 }
 
-/// Query a map layer
-fn query_layer(lat: f32, lon: f32) -> Result<(), Error> {
-    let rtree = RTree::<f32, Polygon<f32, String>>::new(LOAM)?;
-    let bbox = BBox::new([(-lon, lat)]);
-    for poly in rtree.query(bbox) {
-        let poly = poly?;
-        println!("found: {}", poly.data());
+impl QueryCommand {
+    /// Query a map layer
+    fn query_layer(&self) -> Result<()> {
+        let rtree = RTree::<f32, Polygon<f32, String>>::new(&self.loam)?;
+        let bbox = BBox::new([(-self.lon, self.lat)]);
+        for poly in rtree.query(bbox) {
+            let poly = poly?;
+            println!("found: {}", poly.data());
+        }
+        Ok(())
     }
-    Ok(())
 }
 
-impl MakeCommand {
-    fn make(self) -> Result<(), Error> {
-        let cfg = std::fs::read_to_string(&self.config)?;
-        let cfg: WyrmCfg = muon_rs::from_str(&cfg)?;
-        Ok(make_layer(cfg.osm)?)
+impl DigCommand {
+    /// Dig loam layers from OSM file
+    fn dig(self, cfg: String) -> Result<()> {
+        let cfg: WyrmCfg =
+            muon_rs::from_str(&cfg).context("deserializing configuration")?;
+        let osm = osm_path(&cfg.base_dir)?;
+        Ok(make_layer(osm)?)
     }
 }
 
 impl Args {
-    fn run(self) -> Result<(), Error> {
+    /// Read the configuration file into a string
+    fn read_config(&self) -> Result<String> {
+        let path = &self.config;
+        read_to_string(path)
+            .with_context(|| format!("reading config: {path:?}"))
+    }
+
+    fn run(self) -> Result<()> {
+        let cfg = self.read_config()?;
         match self.cmd {
-            Command::Make(cmd) => cmd.make(),
-            Command::Query(cmd) => query_layer(cmd.lat, cmd.lon),
+            Command::Dig(cmd) => cmd.dig(cfg),
+            Command::Query(cmd) => cmd.query_layer(),
         }
     }
 }
 
-fn main() -> Result<(), Error> {
+fn main() -> Result<()> {
     env_logger::builder().format_timestamp(None).init();
     let args: Args = argh::from_env();
     args.run()?;

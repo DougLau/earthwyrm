@@ -1,14 +1,14 @@
 // one_tile.rs
 //
-// Copyright (c) 2019-2021  Minnesota Department of Transportation
+// Copyright (c) 2019-2022  Minnesota Department of Transportation
 //
 use earthwyrm::{TileId, Wyrm, WyrmCfg};
 use std::env;
 use std::fs::File;
 
 const MUON: &str = &r#"
+base_dir:
 bind_address:
-root_path:
 tile_extent: 256
 edge_extent: 6
 query_limit: 500000

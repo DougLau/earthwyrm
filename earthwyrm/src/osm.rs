@@ -1,16 +1,17 @@
 // osm.rs
 //
-// Copyright (c) 2021  Minnesota Department of Transportation
+// Copyright (c) 2021-2022  Minnesota Department of Transportation
 //
 use crate::error::Error;
 use osmpbfreader::{NodeId, OsmId, OsmObj, OsmPbfReader, Ref};
 use rosewood::{BulkWriter, Polygon};
 use std::collections::BTreeMap;
-use std::ffi::OsString;
 use std::fs::File;
+use std::path::Path;
 
 const LOAM: &str = &"cities.loam";
 
+/// Check if an OSM object is a "county"
 fn is_county(obj: &OsmObj) -> bool {
     obj.is_relation()
         && obj.tags().contains("type", "boundary")
@@ -195,8 +196,11 @@ fn end_points(way: &[NodeId]) -> (NodeId, NodeId) {
 }
 
 /// Make one map layer
-pub fn make_layer(name: OsString) -> Result<(), Error> {
-    let osm = File::open(name)?;
+pub fn make_layer<P>(osm: P) -> Result<(), Error>
+where
+    P: AsRef<Path>,
+{
+    let osm = File::open(osm)?;
     let mut pbf = OsmPbfReader::new(osm);
     let objs = pbf.get_objs_and_deps(is_county)?;
     let mut maker = PolyMaker::new(objs);

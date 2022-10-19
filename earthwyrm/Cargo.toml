@@ -7,7 +7,7 @@ documentation = "https://docs.rs/earthwyrm"
 repository = "https://github.com/DougLau/earthwyrm/earthwyrm"
 readme = "README.md"
 keywords = ["cartography", "gis", "osm", "server"]
-edition = "2018"
+edition = "2021"
 
 [dependencies]
 loam = "0.1"

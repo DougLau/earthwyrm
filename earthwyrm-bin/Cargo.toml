@@ -3,9 +3,10 @@ name = "earthwyrm-bin"
 version = "0.1.0"
 license = "MIT OR Apache-2.0"
 repository = "https://github.com/DougLau/earthwyrm/earthwyrm-bin"
-edition = "2018"
+edition = "2021"
 
 [dependencies]
+anyhow = "1.0"
 argh = "0.1"
 earthwyrm = { version = "0.4", path = "../earthwyrm" }
 env_logger = "0.7"

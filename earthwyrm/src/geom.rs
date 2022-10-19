@@ -1,6 +1,6 @@
 // geom.rs
 //
-// Copyright (c) 2019-2021  Minnesota Department of Transportation
+// Copyright (c) 2019-2022  Minnesota Department of Transportation
 //
 use crate::error::{Error, Result};
 use crate::layer::LayerDef;
@@ -192,7 +192,10 @@ impl GeomTree for PolygonTree {
 }
 
 /// Make an RTree
-pub fn make_tree(geom_tp: &str, path: &str) -> Result<Box<dyn GeomTree>> {
+pub fn make_tree<P>(geom_tp: &str, path: P) -> Result<Box<dyn GeomTree>>
+where
+    P: AsRef<Path>,
+{
     match geom_tp {
         "point" => Ok(Box::new(PointTree::new(path)?)),
         "linestring" => Ok(Box::new(LinestringTree::new(path)?)),

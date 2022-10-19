@@ -1,18 +1,19 @@
 // config.rs
 //
-// Copyright (c) 2019-2021  Minnesota Department of Transportation
+// Copyright (c) 2019-2022  Minnesota Department of Transportation
 //
 use serde_derive::Deserialize;
 use std::fmt;
+use std::path::PathBuf;
 
 /// Configuration for Earthwyrm tile layers.
 #[derive(Debug, Deserialize)]
 pub struct WyrmCfg {
+    /// Base directory
+    pub base_dir: PathBuf,
+
     /// Address to bind server
     pub bind_address: String,
-
-    /// Root path to server static documents
-    pub root_path: String,
 
     /// Tile extent; width and height
     pub tile_extent: u32,

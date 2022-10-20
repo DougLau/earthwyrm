@@ -1,6 +1,6 @@
 // tile.rs
 //
-// Copyright (c) 2019-2021  Minnesota Department of Transportation
+// Copyright (c) 2019-2022  Minnesota Department of Transportation
 //
 use crate::config::{LayerGroupCfg, WyrmCfg};
 use crate::error::Error;
@@ -82,15 +82,6 @@ impl TileCfg {
     pub fn transform(&self) -> Transform<f32> {
         self.transform
     }
-
-    /// Query one layer
-    fn query_layer(
-        &self,
-        layer_def: &LayerDef,
-        tile: &Tile,
-    ) -> Result<Layer, Error> {
-        layer_def.query_features(tile, self)
-    }
 }
 
 impl LayerGroupDef {
@@ -125,7 +116,7 @@ impl LayerGroupDef {
     fn query_tile(&self, tile_cfg: &TileCfg) -> Result<Tile, Error> {
         let mut tile = Tile::new(tile_cfg.tile_extent);
         for layer_def in &self.layer_defs {
-            let layer = tile_cfg.query_layer(layer_def, &tile)?;
+            let layer = layer_def.query_features(&tile, tile_cfg)?;
             if layer.num_features() > 0 {
                 tile.add_layer(layer)?;
             }

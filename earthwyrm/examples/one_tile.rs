@@ -12,7 +12,7 @@ bind_address:
 tile_extent: 256
 edge_extent: 6
 query_limit: 500000
-layer_group: tile
+layer_group: osm
   layer: city
     geom_type: polygon
     zoom: 1+

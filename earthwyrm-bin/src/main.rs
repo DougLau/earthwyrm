@@ -6,7 +6,7 @@
 
 use anyhow::{anyhow, bail, Context, Result};
 use argh::FromArgs;
-use earthwyrm::{make_layer, WyrmCfg};
+use earthwyrm::WyrmCfg;
 use pointy::BBox;
 use rosewood::{Geometry, Polygon, RTree};
 use std::ffi::OsString;
@@ -104,7 +104,7 @@ impl DigCommand {
         let cfg: WyrmCfg =
             muon_rs::from_str(&cfg).context("deserializing configuration")?;
         let osm = osm_path(&cfg.base_dir)?;
-        Ok(make_layer(osm)?)
+        Ok(cfg.extract_osm(osm)?)
     }
 }
 

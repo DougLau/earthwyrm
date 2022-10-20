@@ -2,7 +2,8 @@
 //
 // Copyright (c) 2021-2022  Minnesota Department of Transportation
 //
-use crate::error::Error;
+use crate::config::{LayerCfg, WyrmCfg};
+use crate::error::Result;
 use osmpbfreader::{NodeId, OsmId, OsmObj, OsmPbfReader, Ref};
 use rosewood::{BulkWriter, Polygon};
 use std::collections::BTreeMap;
@@ -19,9 +20,33 @@ fn is_county(obj: &OsmObj) -> bool {
         && obj.tags().contains("admin_level", "6")
 }
 
+struct OsmExtractor {
+    pbf: OsmPbfReader<File>,
+}
+
 /// Polygon maker
 struct PolyMaker {
     objs: BTreeMap<OsmId, OsmObj>,
+}
+
+impl OsmExtractor {
+    /// Create a new OSM extractor
+    fn new<P>(path: P) -> Result<Self>
+    where
+        P: AsRef<Path>,
+    {
+        let osm = File::open(path)?;
+        let pbf = OsmPbfReader::new(osm);
+        Ok(OsmExtractor { pbf })
+    }
+
+    /// Extract a map layer
+    fn extract_layer(&mut self, layer: &LayerCfg) -> Result<()> {
+        let objs = self.pbf.get_objs_and_deps(is_county)?;
+        let maker = PolyMaker::new(objs);
+        maker.make_polygons()?;
+        Ok(())
+    }
 }
 
 impl PolyMaker {
@@ -32,7 +57,7 @@ impl PolyMaker {
 
     /// Make a polygon from a slice of `Ref`s
     fn make_polygon(
-        &mut self,
+        &self,
         name: &str,
         refs: &[Ref],
     ) -> Option<Polygon<f32, String>> {
@@ -117,7 +142,7 @@ impl PolyMaker {
     }
 
     /// Make polygons for a layer
-    fn make_polygons(&mut self) -> Result<(), Error> {
+    fn make_polygons(&self) -> Result<()> {
         let mut writer = BulkWriter::new(LOAM)?;
         let mut n_poly = 0;
         let relations: Vec<_> = self
@@ -195,15 +220,21 @@ fn end_points(way: &[NodeId]) -> (NodeId, NodeId) {
     (way[0], way[len])
 }
 
-/// Make one map layer
-pub fn make_layer<P>(osm: P) -> Result<(), Error>
-where
-    P: AsRef<Path>,
-{
-    let osm = File::open(osm)?;
-    let mut pbf = OsmPbfReader::new(osm);
-    let objs = pbf.get_objs_and_deps(is_county)?;
-    let mut maker = PolyMaker::new(objs);
-    maker.make_polygons()?;
-    Ok(())
+impl WyrmCfg {
+    /// Extract the `osm` layer group, creating a loam file for each layer
+    pub fn extract_osm<P>(&self, osm: P) -> Result<()>
+    where
+        P: AsRef<Path>,
+    {
+        let mut extractor = OsmExtractor::new(osm)?;
+        for group in &self.layer_group {
+            if group.name == "osm" {
+                for layer in &group.layer {
+                    log::info!("extracting layer: {}", &layer.name);
+                    extractor.extract_layer(layer)?;
+                }
+            }
+        }
+        Ok(())
+    }
 }

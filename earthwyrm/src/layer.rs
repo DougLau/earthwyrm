@@ -134,28 +134,13 @@ impl TagPattern {
     /// Parse a tag pattern rule
     fn parse_rule(pat: &str) -> (MustMatch, IncludeValue, FeatureType, &str) {
         if let Some(pat) = pat.strip_prefix('.') {
-            (
-                MustMatch::Yes,
-                IncludeValue::Yes,
-                FeatureType::MvtString,
-                pat,
-            )
+            (MustMatch::Yes, IncludeValue::Yes, FeatureType::MvtString, pat)
         } else if let Some(pat) = pat.strip_prefix('?') {
-            (
-                MustMatch::No,
-                IncludeValue::Yes,
-                FeatureType::MvtString,
-                pat,
-            )
+            (MustMatch::No, IncludeValue::Yes, FeatureType::MvtString, pat)
         } else if let Some(pat) = pat.strip_prefix('$') {
             (MustMatch::No, IncludeValue::Yes, FeatureType::MvtSint, pat)
         } else {
-            (
-                MustMatch::Yes,
-                IncludeValue::No,
-                FeatureType::MvtString,
-                pat,
-            )
+            (MustMatch::Yes, IncludeValue::No, FeatureType::MvtString, pat)
         }
     }
 

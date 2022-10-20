@@ -17,7 +17,7 @@ pub trait GeomEncode {
 }
 
 /// Tag values, in order specified by tag pattern rule
-type Values = Vec<Option<String>>;
+pub type Values = Vec<Option<String>>;
 
 /// Tree of geometry
 pub trait GeomTree {
@@ -76,14 +76,11 @@ impl GeomTree for PointTree {
         let transform = tile_cfg.transform();
         for point in self.tree.query(tile_cfg.bbox()) {
             let point = point?;
-            let values = point.data();
-            if layer_def.values_match(values) {
-                let geom = point.encode(transform)?;
-                if !geom.is_empty() {
-                    let mut feature = layer.into_feature(geom);
-                    layer_def.add_tags(&mut feature, values);
-                    layer = feature.into_layer();
-                }
+            let geom = point.encode(transform)?;
+            if !geom.is_empty() {
+                let mut feature = layer.into_feature(geom);
+                layer_def.add_tags(&mut feature, point.data());
+                layer = feature.into_layer();
             }
         }
         Ok(layer)
@@ -124,14 +121,11 @@ impl GeomTree for LinestringTree {
         let transform = tile_cfg.transform();
         for lines in self.tree.query(tile_cfg.bbox()) {
             let lines = lines?;
-            let values = lines.data();
-            if layer_def.values_match(values) {
-                let geom = lines.encode(transform)?;
-                if !geom.is_empty() {
-                    let mut feature = layer.into_feature(geom);
-                    layer_def.add_tags(&mut feature, values);
-                    layer = feature.into_layer();
-                }
+            let geom = lines.encode(transform)?;
+            if !geom.is_empty() {
+                let mut feature = layer.into_feature(geom);
+                layer_def.add_tags(&mut feature, lines.data());
+                layer = feature.into_layer();
             }
         }
         Ok(layer)
@@ -177,14 +171,11 @@ impl GeomTree for PolygonTree {
         let transform = tile_cfg.transform();
         for polygon in self.tree.query(tile_cfg.bbox()) {
             let polygon = polygon?;
-            let values = polygon.data();
-            if layer_def.values_match(values) {
-                let geom = polygon.encode(transform)?;
-                if !geom.is_empty() {
-                    let mut feature = layer.into_feature(geom);
-                    layer_def.add_tags(&mut feature, values);
-                    layer = feature.into_layer();
-                }
+            let geom = polygon.encode(transform)?;
+            if !geom.is_empty() {
+                let mut feature = layer.into_feature(geom);
+                layer_def.add_tags(&mut feature, polygon.data());
+                layer = feature.into_layer();
             }
         }
         Ok(layer)

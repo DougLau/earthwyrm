@@ -3,29 +3,28 @@
 // Copyright (c) 2021-2022  Minnesota Department of Transportation
 //
 use crate::config::{LayerCfg, WyrmCfg};
+use crate::common::LayerDef;
 use crate::error::Result;
-use osmpbfreader::{NodeId, OsmId, OsmObj, OsmPbfReader, Ref};
+use crate::geom::Values;
+use osmpbfreader::{NodeId, OsmId, OsmObj, OsmPbfReader, Relation};
 use rosewood::{BulkWriter, Polygon};
 use std::collections::BTreeMap;
 use std::fs::File;
 use std::path::Path;
 
-const LOAM: &str = &"cities.loam";
-
-/// Check if an OSM object is a "county"
-fn is_county(obj: &OsmObj) -> bool {
-    obj.is_relation()
-        && obj.tags().contains("type", "boundary")
-        && obj.tags().contains("boundary", "administrative")
-        && obj.tags().contains("admin_level", "6")
+/// Check if an OSM object matches a layer's tag patterns
+fn check_tags(layer: &LayerDef, obj: &OsmObj) -> bool {
+    obj.is_relation() && layer.check_tags(obj.tags())
 }
 
+/// Tool to extract data from an OSM file
 struct OsmExtractor {
     pbf: OsmPbfReader<File>,
 }
 
 /// Polygon maker
 struct PolyMaker {
+    layer: LayerDef,
     objs: BTreeMap<OsmId, OsmObj>,
 }
 
@@ -41,29 +40,38 @@ impl OsmExtractor {
     }
 
     /// Extract a map layer
-    fn extract_layer(&mut self, layer: &LayerCfg) -> Result<()> {
-        let objs = self.pbf.get_objs_and_deps(is_county)?;
-        let maker = PolyMaker::new(objs);
-        maker.make_polygons()?;
+    fn extract_layer<P>(&mut self, loam_dir: P, layer: &LayerCfg) -> Result<()>
+        where P: AsRef<Path>,
+    {
+        log::info!("extracting layer: {}", &layer.name);
+        let loam = format!("{}.loam", layer.name);
+        let loam = Path::new(loam_dir.as_ref().as_os_str()).join(loam);
+        let layer = LayerDef::try_from(layer)?;
+        let objs = self.pbf.get_objs_and_deps(|o| check_tags(&layer, o))?;
+        let maker = PolyMaker::new(layer, objs);
+        maker.make_polygons(loam)?;
         Ok(())
     }
 }
 
 impl PolyMaker {
     /// Create a new polygon maker
-    fn new(objs: BTreeMap<OsmId, OsmObj>) -> Self {
-        Self { objs }
+    fn new(layer: LayerDef, objs: BTreeMap<OsmId, OsmObj>) -> Self {
+        Self { layer, objs }
     }
 
-    /// Make a polygon from a slice of `Ref`s
-    fn make_polygon(
-        &self,
-        name: &str,
-        refs: &[Ref],
-    ) -> Option<Polygon<f32, String>> {
+    /// Make a polygon from a `Relation`
+    fn make_polygon(&self, rel: &Relation) -> Option<Polygon<f32, Values>> {
         let mut ways = vec![];
-        let mut polygon = Polygon::new(name.to_string());
-        for rf in refs {
+        let name = rel.tags.get("name");
+        if name.is_none() {
+            return None;
+        }
+        let name = name.unwrap();
+        // FIXME: add all tags
+        let values = vec![Some(name.to_string())];
+        let mut polygon = Polygon::new(values);
+        for rf in &rel.refs {
             let outer = if rf.role == "outer" {
                 true
             } else if rf.role == "inner" {
@@ -103,12 +111,14 @@ impl PolyMaker {
                     );
                 }
             } else {
+                log::warn!("no nodes ({})", name);
                 return None;
             }
         }
         if ways.is_empty() {
             Some(polygon)
         } else {
+            log::warn!("not all ways connected ({})", name);
             None
         }
     }
@@ -142,24 +152,15 @@ impl PolyMaker {
     }
 
     /// Make polygons for a layer
-    fn make_polygons(&self) -> Result<()> {
-        let mut writer = BulkWriter::new(LOAM)?;
+    fn make_polygons<P>(&self, loam: P) -> Result<()>
+        where P: AsRef<Path>,
+    {
+        let mut writer = BulkWriter::new(loam)?;
         let mut n_poly = 0;
-        let relations: Vec<_> = self
-            .objs
-            .iter()
-            .filter_map(|(_, obj)| obj.relation())
-            .map(|rel| rel.clone())
-            .collect();
-        for rel in relations {
-            if let Some(name) = rel.tags.get("name") {
-                match self.make_polygon(name, &rel.refs) {
-                    Some(poly) => {
-                        writer.push(&poly)?;
-                        n_poly += 1;
-                    }
-                    None => log::warn!("invalid polygon ({})", name),
-                }
+        for rel in self.objs.iter().filter_map(|(_, obj)| obj.relation()) {
+            if let Some(poly) = self.make_polygon(&rel) {
+                writer.push(&poly)?;
+                n_poly += 1;
             }
         }
         log::info!("polygons: {}", n_poly);
@@ -222,16 +223,17 @@ fn end_points(way: &[NodeId]) -> (NodeId, NodeId) {
 
 impl WyrmCfg {
     /// Extract the `osm` layer group, creating a loam file for each layer
-    pub fn extract_osm<P>(&self, osm: P) -> Result<()>
+    pub fn extract_osm<P, D>(&self, osm: P, loam_dir: D) -> Result<()>
     where
         P: AsRef<Path>,
+        D: AsRef<Path>,
     {
         let mut extractor = OsmExtractor::new(osm)?;
+        let loam_dir = loam_dir.as_ref();
         for group in &self.layer_group {
             if group.name == "osm" {
                 for layer in &group.layer {
-                    log::info!("extracting layer: {}", &layer.name);
-                    extractor.extract_layer(layer)?;
+                    extractor.extract_layer(loam_dir, layer)?;
                 }
             }
         }

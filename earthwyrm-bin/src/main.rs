@@ -104,7 +104,8 @@ impl DigCommand {
         let cfg: WyrmCfg =
             muon_rs::from_str(&cfg).context("deserializing configuration")?;
         let osm = osm_path(&cfg.base_dir)?;
-        Ok(cfg.extract_osm(osm)?)
+        let loam_dir = cfg.base_dir.join("loam");
+        Ok(cfg.extract_osm(osm, loam_dir)?)
     }
 }
 

@@ -5,7 +5,7 @@
 use crate::config::{LayerGroupCfg, WyrmCfg};
 use crate::error::{Error, Result};
 use crate::layer::LayerDef;
-use mvt::{Layer, MapGrid, Tile, TileId};
+use mvt::{MapGrid, Tile, TileId};
 use pointy::{BBox, Transform};
 use std::io::Write;
 use std::time::Instant;

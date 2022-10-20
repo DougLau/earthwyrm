@@ -3,7 +3,7 @@
 // Copyright (c) 2019-2022  Minnesota Department of Transportation
 //
 use crate::config::{LayerGroupCfg, WyrmCfg};
-use crate::error::Error;
+use crate::error::{Error, Result};
 use crate::layer::LayerDef;
 use mvt::{Layer, MapGrid, Tile, TileId};
 use pointy::{BBox, Transform};
@@ -86,7 +86,7 @@ impl TileCfg {
 
 impl LayerGroupDef {
     /// Build a `LayerGroupDef`
-    fn from_cfg(group_cfg: &LayerGroupCfg) -> Result<Self, Error> {
+    fn from_cfg(group_cfg: &LayerGroupCfg) -> Result<Self> {
         let name = group_cfg.name.to_string();
         let layer_defs = LayerDef::from_group_cfg(group_cfg)?;
         log::info!("{} layers in {}", layer_defs.len(), group_cfg);
@@ -99,7 +99,7 @@ impl LayerGroupDef {
     }
 
     /// Fetch a tile
-    fn fetch_tile(&self, tile_cfg: &TileCfg) -> Result<Tile, Error> {
+    fn fetch_tile(&self, tile_cfg: &TileCfg) -> Result<Tile> {
         let t = Instant::now();
         let tile = self.query_tile(tile_cfg)?;
         log::info!(
@@ -113,7 +113,7 @@ impl LayerGroupDef {
     }
 
     /// Query one tile from trees
-    fn query_tile(&self, tile_cfg: &TileCfg) -> Result<Tile, Error> {
+    fn query_tile(&self, tile_cfg: &TileCfg) -> Result<Tile> {
         let mut tile = Tile::new(tile_cfg.tile_extent);
         for layer_def in &self.layer_defs {
             let layer = layer_def.query_features(&tile, tile_cfg)?;
@@ -129,7 +129,7 @@ impl LayerGroupDef {
         &self,
         out: &mut W,
         tile_cfg: TileCfg,
-    ) -> Result<(), Error> {
+    ) -> Result<()> {
         let tile = self.fetch_tile(&tile_cfg)?;
         if tile.num_layers() > 0 {
             tile.write_to(out)?;
@@ -143,7 +143,7 @@ impl LayerGroupDef {
 
 impl Wyrm {
     /// Create a new Wyrm tile fetcher
-    pub fn from_cfg(wyrm_cfg: &WyrmCfg) -> Result<Self, Error> {
+    pub fn from_cfg(wyrm_cfg: &WyrmCfg) -> Result<Self> {
         // Only Web Mercator supported for now
         let grid = MapGrid::default();
         let mut groups = vec![];
@@ -169,7 +169,7 @@ impl Wyrm {
         out: &mut W,
         group_name: &str,
         tid: TileId,
-    ) -> Result<(), Error> {
+    ) -> Result<()> {
         for group in &self.groups {
             if group_name == group.name() {
                 let tile_cfg = self.tile_config(tid);

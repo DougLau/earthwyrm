@@ -17,11 +17,11 @@ use std::path::{Path, PathBuf};
 const CONFIG_PATH: &str = "/etc/earthwyrm/earthwyrm.muon";
 
 /// Get path to the OSM file
-fn osm_path<P>(dir: P) -> Result<PathBuf>
+fn osm_path<P>(base_dir: P) -> Result<PathBuf>
 where
     P: AsRef<Path>,
 {
-    let path = Path::new(dir.as_ref().as_os_str()).join("osm");
+    let path = Path::new(base_dir.as_ref().as_os_str()).join("osm");
     let mut paths = path
         .read_dir()
         .with_context(|| format!("reading directory: {path:?}"))?
@@ -104,8 +104,7 @@ impl DigCommand {
         let cfg: WyrmCfg =
             muon_rs::from_str(&cfg).context("deserializing configuration")?;
         let osm = osm_path(&cfg.base_dir)?;
-        let loam_dir = cfg.base_dir.join("loam");
-        Ok(cfg.extract_osm(osm, loam_dir)?)
+        Ok(cfg.extract_osm(osm)?)
     }
 }
 

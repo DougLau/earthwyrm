@@ -225,13 +225,12 @@ fn end_points(way: &[NodeId]) -> (NodeId, NodeId) {
 
 impl WyrmCfg {
     /// Extract the `osm` layer group, creating a loam file for each layer
-    pub fn extract_osm<P, D>(&self, osm: P, loam_dir: D) -> Result<()>
+    pub fn extract_osm<P>(&self, osm: P) -> Result<()>
     where
         P: AsRef<Path>,
-        D: AsRef<Path>,
     {
         let mut extractor = OsmExtractor::new(osm)?;
-        let loam_dir = loam_dir.as_ref();
+        let loam_dir = &self.base_dir.join("loam");
         for group in &self.layer_group {
             if group.name == "osm" {
                 for layer in &group.layer {

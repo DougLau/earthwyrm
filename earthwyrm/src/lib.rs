@@ -4,7 +4,6 @@
 //
 #![forbid(unsafe_code)]
 
-mod common;
 mod config;
 mod error;
 mod geom;

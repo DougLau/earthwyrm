@@ -2,14 +2,64 @@
 //
 // Copyright (c) 2019-2022  Minnesota Department of Transportation
 //
-use crate::config::LayerGroupCfg;
+use crate::config::LayerCfg;
 use crate::error::{Error, Result};
 use crate::geom::{make_tree, GeomTree};
 use crate::tile::TileCfg;
 use mvt::{Feature, Layer, Tile};
+use osmpbfreader::Tags;
 
 /// Max zoom level
 const ZOOM_MAX: u32 = 30;
+
+/// Layer tree
+pub struct LayerTree {
+    /// Layer definition
+    layer_def: LayerDef,
+
+    /// R-Tree of geometry
+    tree: Box<dyn GeomTree>,
+}
+
+/// Layer rule definition
+pub struct LayerDef {
+    /// Layer name
+    name: String,
+
+    /// Geometry type
+    geom_tp: String,
+
+    /// Minimum zoom level
+    zoom_min: u32,
+
+    /// Maximum zoom level
+    zoom_max: u32,
+
+    /// Tag patterns
+    patterns: Vec<TagPattern>,
+}
+
+/// Tag pattern specification for layer rule
+#[derive(Clone, Debug)]
+struct TagPattern {
+    /// Pattern must match (yes / no)
+    must_match: MustMatch,
+
+    /// Should tag be included in layer
+    include: IncludeValue,
+
+    /// MVT feature type
+    feature_type: FeatureType,
+
+    /// Tag name
+    tag: String,
+
+    /// Pattern equality
+    equality: Equality,
+
+    /// Pattern values
+    values: Vec<String>,
+}
 
 /// Tag pattern specification to require matching tag
 #[derive(Copy, Clone, Debug, PartialEq)]
@@ -51,46 +101,6 @@ enum Equality {
     NotEqual,
 }
 
-/// Tag pattern specification for layer rule
-#[derive(Clone, Debug)]
-struct TagPattern {
-    /// Pattern must match (yes / no)
-    must_match: MustMatch,
-
-    /// Should tag be included in layer
-    include: IncludeValue,
-
-    /// MVT feature type
-    feature_type: FeatureType,
-
-    /// Tag name
-    tag: String,
-
-    /// Pattern equality
-    equality: Equality,
-
-    /// Pattern values
-    values: Vec<String>,
-}
-
-/// Layer rule definition
-pub struct LayerDef {
-    /// Layer name
-    name: String,
-
-    /// R-Tree of geometry
-    tree: Box<dyn GeomTree>,
-
-    /// Minimum zoom level
-    zoom_min: u32,
-
-    /// Maximum zoom level
-    zoom_max: u32,
-
-    /// Tag patterns
-    patterns: Vec<TagPattern>,
-}
-
 impl TagPattern {
     /// Get the tag
     fn tag(&self) -> &str {
@@ -114,7 +124,7 @@ impl TagPattern {
     }
 
     /// Check if the value matches
-    fn matches_value(&self, value: &Option<String>) -> bool {
+    fn matches_value(&self, value: Option<&str>) -> bool {
         debug_assert!(self.must_match == MustMatch::Yes);
         match self.equality {
             Equality::Equal => self.matches_value_option(value),
@@ -123,7 +133,7 @@ impl TagPattern {
     }
 
     /// Check if an optional value matches
-    fn matches_value_option(&self, value: &Option<String>) -> bool {
+    fn matches_value_option(&self, value: Option<&str>) -> bool {
         debug_assert!(self.must_match == MustMatch::Yes);
         match value {
             Some(val) => self.values.iter().any(|v| v == val),
@@ -218,41 +228,34 @@ fn parse_patterns(tags: &[String]) -> Result<Vec<TagPattern>> {
     Ok(patterns)
 }
 
-impl LayerDef {
-    /// Convert layer group config to layer defs
-    pub fn from_group_cfg(group_cfg: &LayerGroupCfg) -> Result<Vec<Self>> {
-        let mut layers = vec![];
-        for layer in &group_cfg.layer {
-            let layer_def = LayerDef::new(
-                &layer.name,
-                &layer.geom_type,
-                &layer.zoom,
-                &layer.tags[..],
-            )?;
-            layers.push(layer_def);
-        }
-        Ok(layers)
-    }
+impl TryFrom<&LayerCfg> for LayerDef {
+    type Error = Error;
 
-    /// Create a new layer definition
-    fn new(
-        name: &str,
-        geom_tp: &str,
-        zoom: &str,
-        patterns: &[String],
-    ) -> Result<Self> {
-        let name = name.to_string();
-        let tree = make_tree(geom_tp, "file.loam")?;
-        let (zoom_min, zoom_max) = parse_zoom_range(zoom)?;
+    fn try_from(layer: &LayerCfg) -> Result<Self> {
+        let name = layer.name.to_string();
+        let geom_tp = layer.geom_type.to_string();
+        let (zoom_min, zoom_max) = parse_zoom_range(&layer.zoom)?;
         log::debug!("zoom: {}-{}", zoom_min, zoom_max);
-        let patterns = parse_patterns(patterns)?;
+        let patterns = parse_patterns(&layer.tags)?;
         Ok(LayerDef {
             name,
-            tree,
+            geom_tp,
             zoom_min,
             zoom_max,
             patterns,
         })
+    }
+}
+
+impl LayerDef {
+    /// Get the layer name
+    pub fn name(&self) -> &str {
+        &self.name
+    }
+
+    /// Get the geometry type
+    pub fn geom_tp(&self) -> &str {
+        &self.geom_tp
     }
 
     /// Get a slice of tag patterns
@@ -261,35 +264,16 @@ impl LayerDef {
     }
 
     /// Check if zoom level matches
-    fn check_zoom(&self, zoom: u32) -> bool {
+    pub fn check_zoom(&self, zoom: u32) -> bool {
         zoom >= self.zoom_min && zoom <= self.zoom_max
     }
 
-    /// Query layer features
-    pub fn query_features(
-        &self,
-        tile: &Tile,
-        tile_cfg: &TileCfg,
-    ) -> Result<Layer> {
-        let layer = tile.create_layer(&self.name);
-        if self.check_zoom(tile_cfg.zoom()) {
-            self.tree.query_features(self, layer, tile_cfg)
-        } else {
-            Ok(layer)
-        }
-    }
-
-    /// Check if tag values match
-    pub fn values_match(&self, values: &[Option<String>]) -> bool {
-        for (idx, pattern) in self.patterns().iter().enumerate() {
-            if let Some(_tag) = pattern.match_tag() {
-                match values.get(idx) {
-                    Some(val) => {
-                        if !pattern.matches_value(val) {
-                            return false;
-                        }
-                    }
-                    None => return false,
+    /// Check if OSM tags match all patterns
+    pub fn check_tags(&self, tags: &Tags) -> bool {
+        for pattern in self.patterns() {
+            if let Some(tag) = pattern.match_tag() {
+                if !pattern.matches_value(tags.get(tag).map(|t| t.as_str())) {
+                    return false;
                 }
             }
         }
@@ -316,6 +300,31 @@ impl LayerDef {
                     },
                 }
             }
+        }
+    }
+}
+
+impl TryFrom<LayerDef> for LayerTree {
+    type Error = Error;
+
+    fn try_from(layer_def: LayerDef) -> Result<Self> {
+        let tree = make_tree(layer_def.geom_tp(), "file.loam")?;
+        Ok(LayerTree { layer_def, tree })
+    }
+}
+
+impl LayerTree {
+    /// Query layer features
+    pub fn query_features(
+        &self,
+        tile: &Tile,
+        tile_cfg: &TileCfg,
+    ) -> Result<Layer> {
+        let layer = tile.create_layer(&self.layer_def.name());
+        if self.layer_def.check_zoom(tile_cfg.zoom()) {
+            self.tree.query_features(&self.layer_def, layer, tile_cfg)
+        } else {
+            Ok(layer)
         }
     }
 }

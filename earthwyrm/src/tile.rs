@@ -4,7 +4,7 @@
 //
 use crate::config::{LayerGroupCfg, WyrmCfg};
 use crate::error::{Error, Result};
-use crate::layer::LayerDef;
+use crate::layer::{LayerDef, LayerTree};
 use mvt::{MapGrid, Tile, TileId};
 use pointy::{BBox, Transform};
 use std::io::Write;
@@ -35,12 +35,12 @@ pub struct TileCfg {
 }
 
 /// Group of layers for making tiles
-struct LayerGroupDef {
+struct LayerGroup {
     /// Name of group
     name: String,
 
-    /// Layer definitions
-    layer_defs: Vec<LayerDef>,
+    /// Layer definitions / trees
+    layers: Vec<LayerTree>,
 }
 
 /// Wyrm tile fetcher.
@@ -64,7 +64,7 @@ pub struct Wyrm {
     query_limit: u32,
 
     /// Tile layer groups
-    groups: Vec<LayerGroupDef>,
+    groups: Vec<LayerGroup>,
 }
 
 impl TileCfg {
@@ -84,15 +84,22 @@ impl TileCfg {
     }
 }
 
-impl LayerGroupDef {
-    /// Build a `LayerGroupDef`
-    fn from_cfg(group_cfg: &LayerGroupCfg) -> Result<Self> {
-        let name = group_cfg.name.to_string();
-        let layer_defs = LayerDef::from_group_cfg(group_cfg)?;
-        log::info!("{} layers in {}", layer_defs.len(), group_cfg);
-        Ok(LayerGroupDef { name, layer_defs })
-    }
+impl TryFrom<&LayerGroupCfg> for LayerGroup {
+    type Error = Error;
 
+    fn try_from(group: &LayerGroupCfg) -> Result<Self> {
+        let name = group.name.to_string();
+        let mut layers = vec![];
+        for layer_cfg in &group.layer {
+            let layer_def = LayerDef::try_from(layer_cfg)?;
+            layers.push(LayerTree::try_from(layer_def)?);
+        }
+        log::info!("{} layers in {}", layers.len(), group);
+        Ok(LayerGroup { name, layers })
+    }
+}
+
+impl LayerGroup {
     /// Get the group name
     pub fn name(&self) -> &str {
         &self.name
@@ -115,8 +122,8 @@ impl LayerGroupDef {
     /// Query one tile from trees
     fn query_tile(&self, tile_cfg: &TileCfg) -> Result<Tile> {
         let mut tile = Tile::new(tile_cfg.tile_extent);
-        for layer_def in &self.layer_defs {
-            let layer = layer_def.query_features(&tile, tile_cfg)?;
+        for layer_tree in &self.layers {
+            let layer = layer_tree.query_features(&tile, tile_cfg)?;
             if layer.num_features() > 0 {
                 tile.add_layer(layer)?;
             }
@@ -124,7 +131,7 @@ impl LayerGroupDef {
         Ok(tile)
     }
 
-    /// Write a tile
+    /// Write group layers to a tile
     fn write_tile<W: Write>(
         &self,
         out: &mut W,
@@ -148,7 +155,7 @@ impl Wyrm {
         let grid = MapGrid::default();
         let mut groups = vec![];
         for group in &wyrm_cfg.layer_group {
-            groups.push(LayerGroupDef::from_cfg(group)?);
+            groups.push(LayerGroup::try_from(group)?);
         }
         Ok(Wyrm {
             grid,

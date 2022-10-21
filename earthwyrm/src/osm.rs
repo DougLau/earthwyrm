@@ -3,9 +3,9 @@
 // Copyright (c) 2021-2022  Minnesota Department of Transportation
 //
 use crate::config::{LayerCfg, WyrmCfg};
-use crate::common::LayerDef;
 use crate::error::Result;
 use crate::geom::Values;
+use crate::layer::LayerDef;
 use osmpbfreader::{NodeId, OsmId, OsmObj, OsmPbfReader, Relation};
 use rosewood::{BulkWriter, Polygon};
 use std::collections::BTreeMap;
@@ -41,7 +41,8 @@ impl OsmExtractor {
 
     /// Extract a map layer
     fn extract_layer<P>(&mut self, loam_dir: P, layer: &LayerCfg) -> Result<()>
-        where P: AsRef<Path>,
+    where
+        P: AsRef<Path>,
     {
         log::info!("extracting layer: {}", &layer.name);
         let loam = format!("{}.loam", layer.name);
@@ -153,7 +154,8 @@ impl PolyMaker {
 
     /// Make polygons for a layer
     fn make_polygons<P>(&self, loam: P) -> Result<()>
-        where P: AsRef<Path>,
+    where
+        P: AsRef<Path>,
     {
         let mut writer = BulkWriter::new(loam)?;
         let mut n_poly = 0;

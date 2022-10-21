@@ -64,11 +64,7 @@ impl PolyMaker {
     /// Make a polygon from a `Relation`
     fn make_polygon(&self, rel: &Relation) -> Option<Polygon<f32, Values>> {
         let mut ways = vec![];
-        let name = rel.tags.get("name");
-        if name.is_none() {
-            return None;
-        }
-        let name = name.unwrap();
+        let name = rel.tags.get("name")?;
         // FIXME: add all tags
         let values = vec![Some(name.to_string())];
         let mut polygon = Polygon::new(values);
@@ -160,7 +156,7 @@ impl PolyMaker {
         let mut writer = BulkWriter::new(loam)?;
         let mut n_poly = 0;
         for rel in self.objs.iter().filter_map(|(_, obj)| obj.relation()) {
-            if let Some(poly) = self.make_polygon(&rel) {
+            if let Some(poly) = self.make_polygon(rel) {
                 writer.push(&poly)?;
                 n_poly += 1;
             }

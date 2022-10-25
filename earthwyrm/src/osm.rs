@@ -63,7 +63,7 @@ impl PolygonMaker {
 
     /// Make a polygon from a `Relation`
     fn make_polygon(&self, rel: &Relation) -> Option<Polygon<f32, Values>> {
-        let values = self.tag_values(&rel.tags)?;
+        let values = self.tag_values(rel.id.0, &rel.tags);
         let mut ways = vec![];
         let mut polygon = Polygon::new(values);
         for rf in &rel.refs {
@@ -147,11 +147,17 @@ impl PolygonMaker {
     }
 
     /// Get values for included tags
-    fn tag_values(&self, tags: &Tags) -> Option<Values> {
-        let name = tags.get("name")?;
-        // FIXME: add all tags
-        let values = vec![Some(name.to_string())];
-        Some(values)
+    fn tag_values(&self, id: i64, tags: &Tags) -> Values {
+        self.layer
+            .tags()
+            .map(|tag| {
+                if tag == "osm_id" {
+                    Some(id.to_string())
+                } else {
+                    tags.get(tag).map(|v| v.to_string())
+                }
+            })
+            .collect()
     }
 
     /// Make all polygons for a layer

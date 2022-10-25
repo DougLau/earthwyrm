@@ -269,6 +269,11 @@ impl LayerDef {
         true
     }
 
+    /// Get an iterator of tags to include
+    pub fn tags(&self) -> impl Iterator<Item = &str> {
+        self.patterns().iter().filter_map(|pat| pat.include_tag())
+    }
+
     /// Get an iterator of included tags, values and sint flags
     pub fn tag_values<'a>(
         &'a self,

@@ -277,13 +277,12 @@ impl LayerDef {
         self.patterns()
             .iter()
             .filter_map(|pat| {
-                pat.include_tag().and_then(|tag| {
-                    Some((tag, pat.feature_type == FeatureType::MvtSint))
-                })
+                pat.include_tag()
+                    .map(|tag| (tag, pat.feature_type == FeatureType::MvtSint))
             })
             .zip(values)
             .filter_map(|((tag, sint), val)| {
-                val.as_ref().and_then(|val| Some((tag, &val[..], sint)))
+                val.as_ref().map(|val| (tag, &val[..], sint))
             })
     }
 }

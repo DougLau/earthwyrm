@@ -4,8 +4,9 @@
 //
 use crate::config::{LayerGroupCfg, WyrmCfg};
 use crate::error::{Error, Result};
-use crate::layer::{LayerDef, LayerTree};
-use mvt::{MapGrid, Tile, TileId};
+use crate::geom::{make_tree, GeomTree};
+use crate::layer::LayerDef;
+use mvt::{Layer, MapGrid, Tile, TileId};
 use pointy::{BBox, Transform};
 use std::io::Write;
 use std::time::Instant;
@@ -32,6 +33,15 @@ pub struct TileCfg {
 
     /// Tolerance for snapping geometry to grid and simplifying
     tolerance: f32,
+}
+
+/// Layer tree
+struct LayerTree {
+    /// Layer definition
+    layer_def: LayerDef,
+
+    /// R-Tree of geometry
+    tree: Box<dyn GeomTree>,
 }
 
 /// Group of layers for making tiles
@@ -204,6 +214,31 @@ impl Wyrm {
             bbox,
             transform,
             tolerance,
+        }
+    }
+}
+
+impl TryFrom<LayerDef> for LayerTree {
+    type Error = Error;
+
+    fn try_from(layer_def: LayerDef) -> Result<Self> {
+        let tree = make_tree(layer_def.geom_tp(), "file.loam")?;
+        Ok(LayerTree { layer_def, tree })
+    }
+}
+
+impl LayerTree {
+    /// Query layer features
+    pub fn query_features(
+        &self,
+        tile: &Tile,
+        tile_cfg: &TileCfg,
+    ) -> Result<Layer> {
+        let layer = tile.create_layer(self.layer_def.name());
+        if self.layer_def.check_zoom(tile_cfg.zoom()) {
+            self.tree.query_features(&self.layer_def, layer, tile_cfg)
+        } else {
+            Ok(layer)
         }
     }
 }

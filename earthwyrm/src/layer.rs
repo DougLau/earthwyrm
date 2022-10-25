@@ -4,22 +4,10 @@
 //
 use crate::config::LayerCfg;
 use crate::error::{Error, Result};
-use crate::geom::{make_tree, GeomTree};
-use crate::tile::TileCfg;
-use mvt::{Feature, Layer, Tile};
 use osmpbfreader::Tags;
 
 /// Max zoom level
 const ZOOM_MAX: u32 = 30;
-
-/// Layer tree
-pub struct LayerTree {
-    /// Layer definition
-    layer_def: LayerDef,
-
-    /// R-Tree of geometry
-    tree: Box<dyn GeomTree>,
-}
 
 /// Layer rule definition
 pub struct LayerDef {
@@ -72,7 +60,7 @@ enum MustMatch {
 }
 
 /// Tag pattern specification to include tag value in layer
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, Debug, Eq, PartialEq)]
 enum IncludeValue {
     /// Do not include tag value in layer
     No,
@@ -82,7 +70,7 @@ enum IncludeValue {
 }
 
 /// Tag pattern specification for MVT feature type
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, Debug, Eq, PartialEq)]
 enum FeatureType {
     /// MVT string type
     MvtString,
@@ -272,7 +260,8 @@ impl LayerDef {
     pub fn check_tags(&self, tags: &Tags) -> bool {
         for pattern in self.patterns() {
             if let Some(tag) = pattern.match_tag() {
-                if !pattern.matches_value(tags.get(tag).map(|t| t.as_str())) {
+                let value = tags.get(tag).map(|t| t.as_str());
+                if !pattern.matches_value(value) {
                     return false;
                 }
             }
@@ -280,51 +269,21 @@ impl LayerDef {
         true
     }
 
-    /// Add tag values to a feature
-    pub fn add_tags(&self, feature: &mut Feature, values: &[Option<String>]) {
-        for (idx, pattern) in self.patterns().iter().enumerate() {
-            if let (Some(tag), Some(Some(val))) =
-                (pattern.include_tag(), values.get(idx))
-            {
-                log::trace!("layer {}, {}={}", self.name, tag, val);
-                match pattern.feature_type {
-                    FeatureType::MvtString => feature.add_tag_string(tag, val),
-                    FeatureType::MvtSint => match val.parse() {
-                        Ok(sint) => feature.add_tag_sint(tag, sint),
-                        Err(_) => log::warn!(
-                            "layer {}, {} invalid sint: {}",
-                            self.name,
-                            tag,
-                            val,
-                        ),
-                    },
-                }
-            }
-        }
-    }
-}
-
-impl TryFrom<LayerDef> for LayerTree {
-    type Error = Error;
-
-    fn try_from(layer_def: LayerDef) -> Result<Self> {
-        let tree = make_tree(layer_def.geom_tp(), "file.loam")?;
-        Ok(LayerTree { layer_def, tree })
-    }
-}
-
-impl LayerTree {
-    /// Query layer features
-    pub fn query_features(
-        &self,
-        tile: &Tile,
-        tile_cfg: &TileCfg,
-    ) -> Result<Layer> {
-        let layer = tile.create_layer(self.layer_def.name());
-        if self.layer_def.check_zoom(tile_cfg.zoom()) {
-            self.tree.query_features(&self.layer_def, layer, tile_cfg)
-        } else {
-            Ok(layer)
-        }
+    /// Get an iterator of included tags, values and sint flags
+    pub fn tag_values<'a>(
+        &'a self,
+        values: &'a [Option<String>],
+    ) -> impl Iterator<Item = (&'a str, &'a str, bool)> {
+        self.patterns()
+            .iter()
+            .filter_map(|pat| {
+                pat.include_tag().and_then(|tag| {
+                    Some((tag, pat.feature_type == FeatureType::MvtSint))
+                })
+            })
+            .zip(values)
+            .filter_map(|((tag, sint), val)| {
+                val.as_ref().and_then(|val| Some((tag, &val[..], sint)))
+            })
     }
 }

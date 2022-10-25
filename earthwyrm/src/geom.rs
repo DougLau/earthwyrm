@@ -5,7 +5,7 @@
 use crate::error::{Error, Result};
 use crate::layer::LayerDef;
 use crate::tile::TileCfg;
-use mvt::{GeomData, GeomEncoder, GeomType, Layer};
+use mvt::{Feature, GeomData, GeomEncoder, GeomType, Layer};
 use pointy::Transform;
 use rosewood::{Geometry, Linestring, Point, Polygon, RTree};
 use std::path::Path;
@@ -43,6 +43,28 @@ struct LinestringTree {
 /// Tree of polygon geometry
 struct PolygonTree {
     tree: RTree<f32, Polygon<f32, Values>>,
+}
+
+impl LayerDef {
+    /// Add tag values to a feature
+    pub fn add_tags(&self, feature: &mut Feature, values: &Values) {
+        for (tag, value, sint) in self.tag_values(values) {
+            log::trace!("layer {}, {}={}", self.name(), tag, value);
+            if sint {
+                match value.parse() {
+                    Ok(val) => feature.add_tag_sint(tag, val),
+                    Err(_) => log::warn!(
+                        "layer {}, {} invalid sint: {}",
+                        self.name(),
+                        tag,
+                        value,
+                    ),
+                }
+            } else {
+                feature.add_tag_string(tag, value);
+            }
+        }
+    }
 }
 
 impl<D> GeomEncode for Point<f32, D> {

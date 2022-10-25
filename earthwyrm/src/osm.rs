@@ -6,8 +6,8 @@ use crate::config::{LayerCfg, WyrmCfg};
 use crate::error::Result;
 use crate::geom::Values;
 use crate::layer::LayerDef;
-use osmpbfreader::{NodeId, OsmId, OsmObj, OsmPbfReader, Relation};
-use rosewood::{BulkWriter, Polygon};
+use osmpbfreader::{NodeId, OsmId, OsmObj, OsmPbfReader, Relation, Tags};
+use rosewood::{BulkWriter, Geometry, Polygon};
 use std::collections::BTreeMap;
 use std::fs::File;
 use std::path::Path;
@@ -22,8 +22,8 @@ struct OsmExtractor {
     pbf: OsmPbfReader<File>,
 }
 
-/// Polygon maker
-struct PolyMaker {
+/// Polygon layer maker
+struct PolygonMaker {
     layer: LayerDef,
     objs: BTreeMap<OsmId, OsmObj>,
 }
@@ -49,24 +49,22 @@ impl OsmExtractor {
         let loam = Path::new(loam_dir.as_ref().as_os_str()).join(loam);
         let layer = LayerDef::try_from(layer)?;
         let objs = self.pbf.get_objs_and_deps(|o| check_tags(&layer, o))?;
-        let maker = PolyMaker::new(layer, objs);
+        let maker = PolygonMaker::new(layer, objs);
         maker.make_polygons(loam)?;
         Ok(())
     }
 }
 
-impl PolyMaker {
-    /// Create a new polygon maker
+impl PolygonMaker {
+    /// Create a new polygon layer maker
     fn new(layer: LayerDef, objs: BTreeMap<OsmId, OsmObj>) -> Self {
         Self { layer, objs }
     }
 
     /// Make a polygon from a `Relation`
     fn make_polygon(&self, rel: &Relation) -> Option<Polygon<f32, Values>> {
+        let values = self.tag_values(&rel.tags)?;
         let mut ways = vec![];
-        let name = rel.tags.get("name")?;
-        // FIXME: add all tags
-        let values = vec![Some(name.to_string())];
         let mut polygon = Polygon::new(values);
         for rf in &rel.refs {
             let outer = if rf.role == "outer" {
@@ -101,21 +99,21 @@ impl PolyMaker {
                         polygon.push_inner(pts);
                     }
                     log::debug!(
-                        "added {:?} way with {} nodes ({})",
+                        "added {:?} way with {} nodes ({:?})",
                         rf.role,
                         len,
-                        name
+                        polygon.data(),
                     );
                 }
             } else {
-                log::warn!("no nodes ({})", name);
+                log::warn!("no nodes ({:?})", polygon.data());
                 return None;
             }
         }
         if ways.is_empty() {
             Some(polygon)
         } else {
-            log::warn!("not all ways connected ({})", name);
+            log::warn!("not all ways connected ({:?})", polygon.data());
             None
         }
     }
@@ -148,7 +146,15 @@ impl PolyMaker {
         pts
     }
 
-    /// Make polygons for a layer
+    /// Get values for included tags
+    fn tag_values(&self, tags: &Tags) -> Option<Values> {
+        let name = tags.get("name")?;
+        // FIXME: add all tags
+        let values = vec![Some(name.to_string())];
+        Some(values)
+    }
+
+    /// Make all polygons for a layer
     fn make_polygons<P>(&self, loam: P) -> Result<()>
     where
         P: AsRef<Path>,

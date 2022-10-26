@@ -63,3 +63,13 @@ impl fmt::Display for LayerGroupCfg {
         Ok(())
     }
 }
+
+impl WyrmCfg {
+    /// Get path to a layer .loam file
+    pub fn loam_path(&self, name: &str) -> PathBuf {
+        let mut path = PathBuf::from(&self.base_dir);
+        path.push("loam");
+        path.push(format!("{}.loam", name));
+        path
+    }
+}

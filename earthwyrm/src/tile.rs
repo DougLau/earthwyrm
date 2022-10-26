@@ -94,22 +94,19 @@ impl TileCfg {
     }
 }
 
-impl TryFrom<&LayerGroupCfg> for LayerGroup {
-    type Error = Error;
-
-    fn try_from(group: &LayerGroupCfg) -> Result<Self> {
+impl LayerGroup {
+    /// Create a new layer group
+    fn new(group: &LayerGroupCfg, wyrm: &WyrmCfg) -> Result<Self> {
         let name = group.name.to_string();
         let mut layers = vec![];
         for layer_cfg in &group.layer {
             let layer_def = LayerDef::try_from(layer_cfg)?;
-            layers.push(LayerTree::try_from(layer_def)?);
+            layers.push(LayerTree::new(layer_def, wyrm)?);
         }
         log::info!("{} layers in {}", layers.len(), group);
         Ok(LayerGroup { name, layers })
     }
-}
 
-impl LayerGroup {
     /// Get the group name
     pub fn name(&self) -> &str {
         &self.name
@@ -165,7 +162,7 @@ impl Wyrm {
         let grid = MapGrid::default();
         let mut groups = vec![];
         for group in &wyrm_cfg.layer_group {
-            groups.push(LayerGroup::try_from(group)?);
+            groups.push(LayerGroup::new(group, wyrm_cfg)?);
         }
         Ok(Wyrm {
             grid,
@@ -218,16 +215,14 @@ impl Wyrm {
     }
 }
 
-impl TryFrom<LayerDef> for LayerTree {
-    type Error = Error;
-
-    fn try_from(layer_def: LayerDef) -> Result<Self> {
-        let tree = make_tree(layer_def.geom_tp(), "file.loam")?;
+impl LayerTree {
+    /// Create a new layer tree
+    fn new(layer_def: LayerDef, wyrm: &WyrmCfg) -> Result<Self> {
+        let loam = wyrm.loam_path(layer_def.name());
+        let tree = make_tree(layer_def.geom_tp(), loam)?;
         Ok(LayerTree { layer_def, tree })
     }
-}
 
-impl LayerTree {
     /// Query layer features
     pub fn query_features(
         &self,

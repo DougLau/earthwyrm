@@ -39,14 +39,12 @@ impl OsmExtractor {
         Ok(OsmExtractor { pbf })
     }
 
-    /// Extract a map layer
-    fn extract_layer<P>(&mut self, loam_dir: P, layer: &LayerCfg) -> Result<()>
+    /// Extract a map layer to a loam file
+    fn extract_layer<P>(&mut self, loam: P, layer: &LayerCfg) -> Result<()>
     where
         P: AsRef<Path>,
     {
         log::info!("extracting layer: {}", &layer.name);
-        let loam = format!("{}.loam", layer.name);
-        let loam = Path::new(loam_dir.as_ref().as_os_str()).join(loam);
         let layer = LayerDef::try_from(layer)?;
         let objs = self.pbf.get_objs_and_deps(|o| check_tags(&layer, o))?;
         let maker = PolygonMaker::new(layer, objs);
@@ -151,11 +149,9 @@ impl PolygonMaker {
         self.layer
             .tags()
             .map(|tag| {
-                if tag == "osm_id" {
-                    Some(id.to_string())
-                } else {
-                    tags.get(tag).map(|v| v.to_string())
-                }
+                (tag == "osm_id")
+                    .then(|| id.to_string())
+                    .or_else(|| tags.get(tag).map(|v| v.to_string()))
             })
             .collect()
     }
@@ -238,11 +234,11 @@ impl WyrmCfg {
         P: AsRef<Path>,
     {
         let mut extractor = OsmExtractor::new(osm)?;
-        let loam_dir = &self.base_dir.join("loam");
         for group in &self.layer_group {
             if group.name == "osm" {
                 for layer in &group.layer {
-                    extractor.extract_layer(loam_dir, layer)?;
+                    let loam = self.loam_path(&layer.name);
+                    extractor.extract_layer(loam, layer)?;
                 }
             }
         }

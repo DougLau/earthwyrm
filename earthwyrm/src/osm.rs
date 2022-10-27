@@ -2,7 +2,7 @@
 //
 // Copyright (c) 2021-2022  Minnesota Department of Transportation
 //
-use crate::config::{LayerCfg, WyrmCfg};
+use crate::config::WyrmCfg;
 use crate::error::Result;
 use crate::geom::Values;
 use crate::layer::LayerDef;
@@ -13,6 +13,9 @@ use std::collections::BTreeMap;
 use std::fs::File;
 use std::path::Path;
 
+/// OSM object map
+type ObjMap = BTreeMap<OsmId, OsmObj>;
+
 /// Tool to extract data from an OSM file
 struct OsmExtractor {
     pbf: OsmPbfReader<File>,
@@ -21,7 +24,7 @@ struct OsmExtractor {
 /// Geometry layer maker
 struct GeometryMaker {
     layer: LayerDef,
-    objs: BTreeMap<OsmId, OsmObj>,
+    objs: ObjMap,
 }
 
 impl OsmExtractor {
@@ -35,21 +38,10 @@ impl OsmExtractor {
         Ok(OsmExtractor { pbf })
     }
 
-    /// Extract a map layer to a loam file
-    fn extract_layer<P>(&mut self, loam: P, layer: &LayerCfg) -> Result<()>
-    where
-        P: AsRef<Path>,
-    {
-        log::debug!("extracting layer: {}", &layer.name);
-        let layer = LayerDef::try_from(layer)?;
-        let objs = self.pbf.get_objs_and_deps(|obj| layer.check_obj(obj))?;
-        let geom_tp = layer.geom_tp();
-        let maker = GeometryMaker::new(layer, objs);
-        match geom_tp {
-            GeomType::Point => todo!(),
-            GeomType::Linestring => maker.make_linestrings(loam),
-            GeomType::Polygon => maker.make_polygons(loam),
-        }
+    /// Extract a objects for a map layer
+    fn extract_layer(&mut self, layer: &LayerDef) -> Result<ObjMap> {
+        log::debug!("extracting layer: {}", layer.name());
+        Ok(self.pbf.get_objs_and_deps(|obj| layer.check_obj(obj))?)
     }
 }
 
@@ -66,7 +58,7 @@ impl LayerDef {
 
 impl GeometryMaker {
     /// Create a new geometry layer maker
-    fn new(layer: LayerDef, objs: BTreeMap<OsmId, OsmObj>) -> Self {
+    fn new(layer: LayerDef, objs: ObjMap) -> Self {
         Self { layer, objs }
     }
 
@@ -227,6 +219,18 @@ impl GeometryMaker {
         }
         Ok(())
     }
+
+    /// Make all geometry for a layer
+    fn make_geometry<P>(&self, loam: P) -> Result<()>
+    where
+        P: AsRef<Path>,
+    {
+        match self.layer.geom_tp() {
+            GeomType::Point => todo!(),
+            GeomType::Linestring => self.make_linestrings(loam),
+            GeomType::Polygon => self.make_polygons(loam),
+        }
+    }
 }
 
 /// Connect ways on matching node Ids
@@ -289,8 +293,11 @@ impl WyrmCfg {
         for group in &self.layer_group {
             if group.name == "osm" {
                 for layer in &group.layer {
-                    let loam = self.loam_path(&layer.name);
-                    extractor.extract_layer(loam, layer)?;
+                    let layer = LayerDef::try_from(layer)?;
+                    let objs = extractor.extract_layer(&layer)?;
+                    let loam = self.loam_path(layer.name());
+                    let maker = GeometryMaker::new(layer, objs);
+                    maker.make_geometry(loam)?;
                 }
             }
         }

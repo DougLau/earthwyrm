@@ -70,11 +70,10 @@ impl GeometryMaker {
             log::warn!("no nodes ({:?})", linestring.data());
             return None;
         }
-        let nodes = way.nodes.clone();
-        let (w0, w1) = end_points(&nodes);
+        let (w0, w1) = end_points(&way.nodes);
         log::trace!("way {:?} .. {:?}", w0.0, w1.0);
-        let len = nodes.len();
-        linestring.push(self.lookup_nodes(&nodes));
+        let len = way.nodes.len();
+        linestring.push(self.lookup_nodes(&way.nodes));
         log::debug!("added way with {len} nodes ({:?})", linestring.data());
         Some(linestring)
     }
@@ -93,39 +92,38 @@ impl GeometryMaker {
                 continue;
             };
             let nodes = self.way_nodes(rf.member);
-            if !nodes.is_empty() {
-                let (w0, w1) = end_points(&nodes);
-                log::trace!(
-                    "{:?} way {:?} .. {:?} ({})",
-                    rf.role,
-                    w0.0,
-                    w1.0,
-                    ways.len()
-                );
-                ways.push(nodes);
-                while ways.len() > 1 {
-                    if !connect_ways(&mut ways) {
-                        break;
-                    }
-                }
-                while let Some(ring) = find_ring(&mut ways) {
-                    let len = ring.len();
-                    let pts = self.lookup_nodes(&ring);
-                    if outer {
-                        polygon.push_outer(pts);
-                    } else {
-                        polygon.push_inner(pts);
-                    }
-                    log::debug!(
-                        "added {:?} way with {} nodes ({:?})",
-                        rf.role,
-                        len,
-                        polygon.data(),
-                    );
-                }
-            } else {
+            if nodes.is_empty() {
                 log::warn!("no nodes ({:?})", polygon.data());
                 return None;
+            }
+            let (w0, w1) = end_points(&nodes);
+            log::trace!(
+                "{:?} way {:?} .. {:?} ({})",
+                rf.role,
+                w0.0,
+                w1.0,
+                ways.len()
+            );
+            ways.push(nodes);
+            while ways.len() > 1 {
+                if !connect_ways(&mut ways) {
+                    break;
+                }
+            }
+            while let Some(ring) = find_ring(&mut ways) {
+                let len = ring.len();
+                let pts = self.lookup_nodes(&ring);
+                if outer {
+                    polygon.push_outer(pts);
+                } else {
+                    polygon.push_inner(pts);
+                }
+                log::debug!(
+                    "added {:?} way with {} nodes ({:?})",
+                    rf.role,
+                    len,
+                    polygon.data(),
+                );
             }
         }
         if ways.is_empty() {

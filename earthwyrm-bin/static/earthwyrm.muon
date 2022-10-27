@@ -69,23 +69,19 @@ layer_group: osm
   layer: lake
     geom_type: polygon
     zoom: 5+
-    tags: $osm_id ?name natural=water water=lake|oxbow
+    tags: $osm_id ?name natural=water water=harbour|lagoon|lake|oxbow
   layer: river
     geom_type: polygon
-    zoom: 5+
-    tags: $osm_id ?name natural=water water=river
-  layer: water
-    geom_type: polygon
-    zoom: 12+
-    tags: $osm_id ?name natural=water water!=lake|oxbow|river|pond
+    zoom: 6+
+    tags: $osm_id ?name natural=water water=canal|rapids|river
   layer: pond
     geom_type: polygon
-    zoom: 14+
-    tags: $osm_id ?name natural=water water=pond
-  layer: basin
+    zoom: 12+
+    tags: $osm_id ?name natural=water water=basin|pond|reservoir
+  layer: water
     geom_type: polygon
     zoom: 14+
-    tags: $osm_id ?name landuse=basin
+    tags: $osm_id ?name natural=water water!=basin|canal|harbour|lagoon|lake|oxbow|pond|rapids|reservoir|river
   layer: wetland
     geom_type: polygon
     zoom: 12+

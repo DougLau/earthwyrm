@@ -172,6 +172,8 @@ impl PolygonMaker {
         log::info!("polygons: {}", n_poly);
         if n_poly > 0 {
             writer.finish()?;
+        } else {
+            writer.cancel()?;
         }
         Ok(())
     }

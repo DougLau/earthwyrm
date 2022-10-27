@@ -2,7 +2,7 @@
 //
 // Copyright (c) 2019-2022  Minnesota Department of Transportation
 //
-use crate::error::{Error, Result};
+use crate::error::Result;
 use crate::layer::LayerDef;
 use crate::tile::TileCfg;
 use mvt::{Feature, GeomData, GeomEncoder, GeomType, Layer};
@@ -19,30 +19,26 @@ pub trait GeomEncode {
 /// Tag values, in order specified by tag pattern rule
 pub type Values = Vec<Option<String>>;
 
-/// Tree of geometry
-pub trait GeomTree {
-    /// Query a tile layer
-    fn query_features(
-        &self,
-        layer_def: &LayerDef,
-        layer: Layer,
-        tile_cfg: &TileCfg,
-    ) -> Result<Layer>;
-}
-
 /// Tree of point geometry
-struct PointTree {
+pub struct PointTree {
     tree: RTree<f32, Point<f32, Values>>,
 }
 
 /// Tree of linestring geometry
-struct LinestringTree {
+pub struct LinestringTree {
     tree: RTree<f32, Linestring<f32, Values>>,
 }
 
 /// Tree of polygon geometry
-struct PolygonTree {
+pub struct PolygonTree {
     tree: RTree<f32, Polygon<f32, Values>>,
+}
+
+/// Tree of geometry
+pub enum GeomTree {
+    Point(PointTree),
+    Linestring(LinestringTree),
+    Polygon(PolygonTree),
 }
 
 impl LayerDef {
@@ -86,9 +82,8 @@ impl PointTree {
         let tree = RTree::new(path)?;
         Ok(Self { tree })
     }
-}
 
-impl GeomTree for PointTree {
+    /// Query point features
     fn query_features(
         &self,
         layer_def: &LayerDef,
@@ -131,9 +126,8 @@ impl LinestringTree {
         let tree = RTree::new(path)?;
         Ok(Self { tree })
     }
-}
 
-impl GeomTree for LinestringTree {
+    /// Query linestring features
     fn query_features(
         &self,
         layer_def: &LayerDef,
@@ -181,9 +175,8 @@ impl PolygonTree {
         let tree = RTree::new(path)?;
         Ok(Self { tree })
     }
-}
 
-impl GeomTree for PolygonTree {
+    /// Query polygon features
     fn query_features(
         &self,
         layer_def: &LayerDef,
@@ -204,15 +197,38 @@ impl GeomTree for PolygonTree {
     }
 }
 
-/// Make an RTree
-pub fn make_tree<P>(geom_tp: &str, path: P) -> Result<Box<dyn GeomTree>>
-where
-    P: AsRef<Path>,
-{
-    match geom_tp {
-        "point" => Ok(Box::new(PointTree::new(path)?)),
-        "linestring" => Ok(Box::new(LinestringTree::new(path)?)),
-        "polygon" => Ok(Box::new(PolygonTree::new(path)?)),
-        _ => Err(Error::UnknownGeometryType()),
+impl GeomTree {
+    /// Make a tree to read geometry
+    pub fn new<P>(geom_tp: GeomType, path: P) -> Result<Self>
+    where
+        P: AsRef<Path>,
+    {
+        match geom_tp {
+            GeomType::Point => Ok(GeomTree::Point(PointTree::new(path)?)),
+            GeomType::Linestring => {
+                Ok(GeomTree::Linestring(LinestringTree::new(path)?))
+            }
+            GeomType::Polygon => Ok(GeomTree::Polygon(PolygonTree::new(path)?)),
+        }
+    }
+
+    /// Query geometry features in tree
+    pub fn query_features(
+        &self,
+        layer_def: &LayerDef,
+        layer: Layer,
+        tile_cfg: &TileCfg,
+    ) -> Result<Layer> {
+        match self {
+            GeomTree::Point(tree) => {
+                tree.query_features(layer_def, layer, tile_cfg)
+            }
+            GeomTree::Linestring(tree) => {
+                tree.query_features(layer_def, layer, tile_cfg)
+            }
+            GeomTree::Polygon(tree) => {
+                tree.query_features(layer_def, layer, tile_cfg)
+            }
+        }
     }
 }

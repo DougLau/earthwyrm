@@ -4,7 +4,7 @@
 //
 use crate::config::{LayerGroupCfg, WyrmCfg};
 use crate::error::{Error, Result};
-use crate::geom::{make_tree, GeomTree};
+use crate::geom::GeomTree;
 use crate::layer::LayerDef;
 use mvt::{Layer, MapGrid, Tile, TileId};
 use pointy::{BBox, Transform};
@@ -41,7 +41,7 @@ struct LayerTree {
     layer_def: LayerDef,
 
     /// R-Tree of geometry
-    tree: Box<dyn GeomTree>,
+    tree: GeomTree,
 }
 
 /// Group of layers for making tiles
@@ -219,7 +219,7 @@ impl LayerTree {
     /// Create a new layer tree
     fn new(layer_def: LayerDef, wyrm: &WyrmCfg) -> Result<Self> {
         let loam = wyrm.loam_path(layer_def.name());
-        let tree = make_tree(layer_def.geom_tp(), loam)?;
+        let tree = GeomTree::new(layer_def.geom_tp(), loam)?;
         Ok(LayerTree { layer_def, tree })
     }
 

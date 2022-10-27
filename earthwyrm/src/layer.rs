@@ -4,6 +4,7 @@
 //
 use crate::config::LayerCfg;
 use crate::error::{Error, Result};
+use mvt::GeomType;
 use osmpbfreader::Tags;
 
 /// Max zoom level
@@ -15,7 +16,7 @@ pub struct LayerDef {
     name: String,
 
     /// Geometry type
-    geom_tp: String,
+    geom_tp: GeomType,
 
     /// Minimum zoom level
     zoom_min: u32,
@@ -216,12 +217,22 @@ fn parse_patterns(tags: &[String]) -> Result<Vec<TagPattern>> {
     Ok(patterns)
 }
 
+/// Parse geometry type
+fn parse_geom_type(geom_tp: &str) -> Result<GeomType> {
+    match geom_tp {
+        "point" => Ok(GeomType::Point),
+        "linestring" => Ok(GeomType::Linestring),
+        "polygon" => Ok(GeomType::Polygon),
+        _ => Err(Error::UnknownGeometryType()),
+    }
+}
+
 impl TryFrom<&LayerCfg> for LayerDef {
     type Error = Error;
 
     fn try_from(layer: &LayerCfg) -> Result<Self> {
         let name = layer.name.to_string();
-        let geom_tp = layer.geom_type.to_string();
+        let geom_tp = parse_geom_type(&layer.geom_type)?;
         let (zoom_min, zoom_max) = parse_zoom_range(&layer.zoom)?;
         log::debug!("zoom: {}-{}", zoom_min, zoom_max);
         let patterns = parse_patterns(&layer.tags)?;
@@ -242,8 +253,8 @@ impl LayerDef {
     }
 
     /// Get the geometry type
-    pub fn geom_tp(&self) -> &str {
-        &self.geom_tp
+    pub fn geom_tp(&self) -> GeomType {
+        self.geom_tp
     }
 
     /// Get a slice of tag patterns

@@ -93,8 +93,9 @@ impl GeometryMaker {
             };
             let nodes = self.way_nodes(rf.member);
             if nodes.is_empty() {
-                log::warn!("no nodes ({:?})", polygon.data());
-                return None;
+                // relations on edges of dump area
+                // can have empty member ways
+                continue;
             }
             let (w0, w1) = end_points(&nodes);
             log::trace!(
@@ -129,12 +130,12 @@ impl GeometryMaker {
         if ways.is_empty() {
             Some(polygon)
         } else {
-            log::warn!("not all ways connected ({:?})", polygon.data());
+            log::debug!("broken polygon ({:?})", polygon.data());
             None
         }
     }
 
-    /// Get the nodes for a way
+    /// Get the member way nodes for a relation
     fn way_nodes(&self, id: OsmId) -> Vec<NodeId> {
         if let Some(member) = self.objs.get(&id) {
             if let Some(way) = member.way() {
@@ -143,7 +144,6 @@ impl GeometryMaker {
                 }
             }
         }
-        log::debug!("invalid way: {:?}", id);
         vec![]
     }
 

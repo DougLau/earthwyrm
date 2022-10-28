@@ -12,14 +12,16 @@ the typical `Z/X/Y.mvt` tile naming convention.
 These instructions are for Linux (tested on Fedora)
 
 * Download and build `earthwyrm-bin`
-```
+
+```bash
 git clone https://github.com/DougLau/earthwyrm.git
 cd earthwyrm/earthwyrm-bin
 cargo build --release
 ```
 
 * Install (as root)
-```
+
+```bash
 sh ./static/install.sh
 ```
 
@@ -31,7 +33,7 @@ sh ./static/install.sh
 * Run `earthwyrm dig` (as earthwyrm user)
 
 * Start the server
-```
+```bash
 systemctl enable earthwyrm
 systemctl start earthwyrm
 systemctl status earthwyrm

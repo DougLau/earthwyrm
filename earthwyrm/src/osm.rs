@@ -7,8 +7,10 @@ use crate::error::Result;
 use crate::geom::Values;
 use crate::layer::LayerDef;
 use mvt::GeomType;
-use osmpbfreader::{NodeId, OsmId, OsmObj, OsmPbfReader, Relation, Tags, Way};
-use rosewood::{BulkWriter, Geometry, Linestring, Polygon};
+use osmpbfreader::{
+    Node, NodeId, OsmId, OsmObj, OsmPbfReader, Relation, Tags, Way,
+};
+use rosewood::{BulkWriter, Geometry, Linestring, Point, Polygon};
 use std::collections::BTreeMap;
 use std::fs::File;
 use std::path::Path;
@@ -60,6 +62,16 @@ impl GeometryMaker {
     /// Create a new geometry layer maker
     fn new(layer: LayerDef, objs: ObjMap) -> Self {
         Self { layer, objs }
+    }
+
+    /// Make a point from a `Node`
+    fn make_point(&self, node: &Node) -> Option<Point<f32, Values>> {
+        let values = self.tag_values(node.id.0, &node.tags);
+        let mut point = Point::new(values);
+        let pts = self.lookup_nodes(&[node.id]);
+        point.push(pts[0]);
+        log::debug!("added point ({:?})", point.data());
+        Some(point)
     }
 
     /// Make a linestring from a `Way`
@@ -174,6 +186,28 @@ impl GeometryMaker {
             .collect()
     }
 
+    /// Make all points for a layer
+    fn make_points<P>(&self, loam: P) -> Result<()>
+    where
+        P: AsRef<Path>,
+    {
+        let mut writer = BulkWriter::new(loam)?;
+        let mut n_point = 0;
+        for pt in self.objs.iter().filter_map(|(_, obj)| obj.node()) {
+            if let Some(point) = self.make_point(pt) {
+                writer.push(&point)?;
+                n_point += 1;
+            }
+        }
+        log::info!("{} layer ({n_point} points)", self.layer.name());
+        if n_point > 0 {
+            writer.finish()?;
+        } else {
+            writer.cancel()?;
+        }
+        Ok(())
+    }
+
     /// Make all linestrings for a layer
     fn make_linestrings<P>(&self, loam: P) -> Result<()>
     where
@@ -181,8 +215,8 @@ impl GeometryMaker {
     {
         let mut writer = BulkWriter::new(loam)?;
         let mut n_line = 0;
-        for rel in self.objs.iter().filter_map(|(_, obj)| obj.way()) {
-            if let Some(line) = self.make_linestring(rel) {
+        for way in self.objs.iter().filter_map(|(_, obj)| obj.way()) {
+            if let Some(line) = self.make_linestring(way) {
                 writer.push(&line)?;
                 n_line += 1;
             }
@@ -224,7 +258,7 @@ impl GeometryMaker {
         P: AsRef<Path>,
     {
         match self.layer.geom_tp() {
-            GeomType::Point => todo!(),
+            GeomType::Point => self.make_points(loam),
             GeomType::Linestring => self.make_linestrings(loam),
             GeomType::Polygon => self.make_polygons(loam),
         }

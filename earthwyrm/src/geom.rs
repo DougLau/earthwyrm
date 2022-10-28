@@ -86,10 +86,17 @@ impl PointTree {
     /// Query point features
     fn query_features(
         &self,
-        _layer_def: &LayerDef,
-        _bbox: BBox<f32>,
+        layer_def: &LayerDef,
+        bbox: BBox<f32>,
     ) -> Result<()> {
-        todo!()
+        for points in self.tree.query(bbox) {
+            let points = points?;
+            let values = points.data();
+            for (tag, value, _sint) in layer_def.tag_values(values) {
+                println!("{}: {tag}={value}", layer_def.name());
+            }
+        }
+        Ok(())
     }
 
     /// Query points in a tile

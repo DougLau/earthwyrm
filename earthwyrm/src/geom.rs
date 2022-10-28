@@ -6,7 +6,7 @@ use crate::error::Result;
 use crate::layer::LayerDef;
 use crate::tile::TileCfg;
 use mvt::{Feature, GeomData, GeomEncoder, GeomType, Layer};
-use pointy::Transform;
+use pointy::{BBox, Transform};
 use rosewood::{Geometry, Linestring, Point, Polygon, RTree};
 use std::path::Path;
 
@@ -86,6 +86,15 @@ impl PointTree {
     /// Query point features
     fn query_features(
         &self,
+        _layer_def: &LayerDef,
+        _bbox: BBox<f32>,
+    ) -> Result<()> {
+        todo!()
+    }
+
+    /// Query points in a tile
+    fn query_tile(
+        &self,
         layer_def: &LayerDef,
         mut layer: Layer,
         tile_cfg: &TileCfg,
@@ -129,6 +138,22 @@ impl LinestringTree {
 
     /// Query linestring features
     fn query_features(
+        &self,
+        layer_def: &LayerDef,
+        bbox: BBox<f32>,
+    ) -> Result<()> {
+        for lines in self.tree.query(bbox) {
+            let lines = lines?;
+            let values = lines.data();
+            for (tag, value, _sint) in layer_def.tag_values(values) {
+                println!("{}: {tag}={value}", layer_def.name());
+            }
+        }
+        Ok(())
+    }
+
+    /// Query linestrings in a tile
+    fn query_tile(
         &self,
         layer_def: &LayerDef,
         mut layer: Layer,
@@ -180,6 +205,22 @@ impl PolygonTree {
     fn query_features(
         &self,
         layer_def: &LayerDef,
+        bbox: BBox<f32>,
+    ) -> Result<()> {
+        for poly in self.tree.query(bbox) {
+            let poly = poly?;
+            let values = poly.data();
+            for (tag, value, _sint) in layer_def.tag_values(values) {
+                println!("{}: {tag}={value}", layer_def.name());
+            }
+        }
+        Ok(())
+    }
+
+    /// Query polygons in a tile
+    fn query_tile(
+        &self,
+        layer_def: &LayerDef,
         mut layer: Layer,
         tile_cfg: &TileCfg,
     ) -> Result<Layer> {
@@ -212,8 +253,21 @@ impl GeomTree {
         }
     }
 
-    /// Query geometry features in tree
+    /// Query geometry features
     pub fn query_features(
+        &self,
+        layer_def: &LayerDef,
+        bbox: BBox<f32>,
+    ) -> Result<()> {
+        match self {
+            GeomTree::Point(tree) => tree.query_features(layer_def, bbox),
+            GeomTree::Linestring(tree) => tree.query_features(layer_def, bbox),
+            GeomTree::Polygon(tree) => tree.query_features(layer_def, bbox),
+        }
+    }
+
+    /// Query geometry in a tile
+    pub fn query_tile(
         &self,
         layer_def: &LayerDef,
         layer: Layer,
@@ -221,13 +275,13 @@ impl GeomTree {
     ) -> Result<Layer> {
         match self {
             GeomTree::Point(tree) => {
-                tree.query_features(layer_def, layer, tile_cfg)
+                tree.query_tile(layer_def, layer, tile_cfg)
             }
             GeomTree::Linestring(tree) => {
-                tree.query_features(layer_def, layer, tile_cfg)
+                tree.query_tile(layer_def, layer, tile_cfg)
             }
             GeomTree::Polygon(tree) => {
-                tree.query_features(layer_def, layer, tile_cfg)
+                tree.query_tile(layer_def, layer, tile_cfg)
             }
         }
     }

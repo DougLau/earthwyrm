@@ -6,9 +6,8 @@
 
 use anyhow::{anyhow, bail, Context, Result};
 use argh::FromArgs;
-use earthwyrm::WyrmCfg;
+use earthwyrm::{Wyrm, WyrmCfg};
 use pointy::BBox;
-use rosewood::{Geometry, Polygon, RTree};
 use std::ffi::OsString;
 use std::fs::read_to_string;
 use std::path::{Path, PathBuf};
@@ -76,26 +75,10 @@ struct DigCommand {}
 #[argh(subcommand, name = "query")]
 struct QueryCommand {
     #[argh(positional)]
-    loam: OsString,
-
-    #[argh(positional)]
     lat: f32,
 
     #[argh(positional)]
     lon: f32,
-}
-
-impl QueryCommand {
-    /// Query a map layer
-    fn query_layer(&self) -> Result<()> {
-        let rtree = RTree::<f32, Polygon<f32, String>>::new(&self.loam)?;
-        let bbox = BBox::new([(-self.lon, self.lat)]);
-        for poly in rtree.query(bbox) {
-            let poly = poly?;
-            println!("found: {}", poly.data());
-        }
-        Ok(())
-    }
 }
 
 impl DigCommand {
@@ -105,6 +88,18 @@ impl DigCommand {
             muon_rs::from_str(&cfg).context("deserializing configuration")?;
         let osm = osm_path(&cfg.base_dir)?;
         Ok(cfg.extract_osm(osm)?)
+    }
+}
+
+impl QueryCommand {
+    /// Query a lat/lon position
+    fn query(&self, cfg: String) -> Result<()> {
+        let cfg: WyrmCfg =
+            muon_rs::from_str(&cfg).context("deserializing configuration")?;
+        let wyrm = Wyrm::try_from(&cfg)?;
+        let bbox = BBox::new([(-self.lon, self.lat)]);
+        wyrm.query_features(bbox)?;
+        Ok(())
     }
 }
 
@@ -120,7 +115,7 @@ impl Args {
         let cfg = self.read_config()?;
         match self.cmd {
             Command::Dig(cmd) => cmd.dig(cfg),
-            Command::Query(cmd) => cmd.query_layer(),
+            Command::Query(cmd) => cmd.query(cfg),
         }
     }
 }

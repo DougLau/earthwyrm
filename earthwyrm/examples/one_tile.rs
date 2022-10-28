@@ -25,7 +25,7 @@ fn write_tile(
     z: u32,
 ) -> Result<(), Box<dyn std::error::Error>> {
     let wyrm_cfg: WyrmCfg = muon_rs::from_str(MUON)?;
-    let wyrm = Wyrm::from_cfg(&wyrm_cfg)?;
+    let wyrm = Wyrm::try_from(&wyrm_cfg)?;
     let mut file = File::create("./one_tile.mvt")?;
     let tid = TileId::new(x, y, z)?;
     wyrm.fetch_tile(&mut file, "tile", tid)?;

@@ -57,7 +57,7 @@ struct LayerGroup {
 ///
 /// To create:
 /// * Use `serde` to deserialize a [WyrmCfg]
-/// * `let wyrm = Wyrm::from_cfg(wyrm_cfg)?;`
+/// * `let wyrm = Wyrm::try_from(wyrm_cfg)?;`
 ///
 /// [WyrmCfg]: struct.WyrmCfg.html
 pub struct Wyrm {
@@ -130,7 +130,7 @@ impl LayerGroup {
     fn query_tile(&self, tile_cfg: &TileCfg) -> Result<Tile> {
         let mut tile = Tile::new(tile_cfg.tile_extent);
         for layer_tree in &self.layers {
-            let layer = layer_tree.query_features(&tile, tile_cfg)?;
+            let layer = layer_tree.query_tile(&tile, tile_cfg)?;
             if layer.num_features() > 0 {
                 tile.add_layer(layer)?;
             }
@@ -155,9 +155,10 @@ impl LayerGroup {
     }
 }
 
-impl Wyrm {
-    /// Create a new Wyrm tile fetcher
-    pub fn from_cfg(wyrm_cfg: &WyrmCfg) -> Result<Self> {
+impl TryFrom<&WyrmCfg> for Wyrm {
+    type Error = Error;
+
+    fn try_from(wyrm_cfg: &WyrmCfg) -> Result<Self> {
         // Only Web Mercator supported for now
         let grid = MapGrid::default();
         let mut groups = vec![];
@@ -171,6 +172,18 @@ impl Wyrm {
             query_limit: wyrm_cfg.query_limit,
             groups,
         })
+    }
+}
+
+impl Wyrm {
+    /// Query features a bounding box
+    pub fn query_features(&self, bbox: BBox<f32>) -> Result<()> {
+        for group in &self.groups {
+            for layer in &group.layers {
+                layer.tree.query_features(&layer.layer_def, bbox)?;
+            }
+        }
+        Ok(())
     }
 
     /// Fetch one tile.
@@ -223,15 +236,11 @@ impl LayerTree {
         Ok(LayerTree { layer_def, tree })
     }
 
-    /// Query layer features
-    pub fn query_features(
-        &self,
-        tile: &Tile,
-        tile_cfg: &TileCfg,
-    ) -> Result<Layer> {
+    /// Query tile features
+    pub fn query_tile(&self, tile: &Tile, tile_cfg: &TileCfg) -> Result<Layer> {
         let layer = tile.create_layer(self.layer_def.name());
         if self.layer_def.check_zoom(tile_cfg.zoom()) {
-            self.tree.query_features(&self.layer_def, layer, tile_cfg)
+            self.tree.query_tile(&self.layer_def, layer, tile_cfg)
         } else {
             Ok(layer)
         }

@@ -11,7 +11,6 @@ base_dir:
 bind_address:
 tile_extent: 256
 edge_extent: 6
-query_limit: 500000
 layer_group: osm
   layer: city
     geom_type: polygon

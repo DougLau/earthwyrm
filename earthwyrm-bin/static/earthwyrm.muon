@@ -11,8 +11,6 @@ bind_address: 127.0.0.1:3030
 tile_extent: 256
 # Extent outside tile edges
 edge_extent: 6
-# Per-tile query limit
-query_limit: 500000
 
 # Layer groups are collections of MVT files containing related layers.
 # For example, the `osm` layer group is for OpenStreetMap layers.

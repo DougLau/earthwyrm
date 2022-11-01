@@ -21,9 +21,6 @@ pub struct WyrmCfg {
     /// Extent outside tile edges
     pub edge_extent: u32,
 
-    /// Limit of rows per query
-    pub query_limit: u32,
-
     /// Configuration for all layer groups
     pub layer_group: Vec<LayerGroupCfg>,
 }

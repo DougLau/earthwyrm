@@ -19,9 +19,6 @@ pub struct TileCfg {
     /// Extent outside tile edges
     edge_extent: u32,
 
-    /// Query row limit
-    query_limit: u32,
-
     /// Tile ID
     tid: TileId,
 
@@ -69,9 +66,6 @@ pub struct Wyrm {
 
     /// Extent outside tile edges
     edge_extent: u32,
-
-    /// Query row limit
-    query_limit: u32,
 
     /// Tile layer groups
     groups: Vec<LayerGroup>,
@@ -169,7 +163,6 @@ impl TryFrom<&WyrmCfg> for Wyrm {
             grid,
             tile_extent: wyrm_cfg.tile_extent,
             edge_extent: wyrm_cfg.edge_extent,
-            query_limit: wyrm_cfg.query_limit,
             groups,
         })
     }
@@ -219,7 +212,6 @@ impl Wyrm {
         TileCfg {
             tile_extent,
             edge_extent: self.edge_extent,
-            query_limit: self.query_limit,
             tid,
             bbox,
             transform,

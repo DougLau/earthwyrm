@@ -7,7 +7,7 @@ use crate::layer::LayerDef;
 use crate::tile::TileCfg;
 use mvt::{Feature, GeomData, GeomEncoder, GeomType, Layer};
 use pointy::{BBox, Transform};
-use rosewood::{GisData, Linestring, Point, Polygon, RTree};
+use rosewood::{gis, gis::GisData, RTree};
 use std::path::Path;
 
 /// Geometry which can be encoded to GeomData
@@ -21,17 +21,17 @@ pub type Values = Vec<Option<String>>;
 
 /// Tree of point geometry
 pub struct PointTree {
-    tree: RTree<f32, Point<f32, Values>>,
+    tree: RTree<f32, gis::Point<f32, Values>>,
 }
 
 /// Tree of linestring geometry
 pub struct LinestringTree {
-    tree: RTree<f32, Linestring<f32, Values>>,
+    tree: RTree<f32, gis::Linestring<f32, Values>>,
 }
 
 /// Tree of polygon geometry
 pub struct PolygonTree {
-    tree: RTree<f32, Polygon<f32, Values>>,
+    tree: RTree<f32, gis::Polygon<f32, Values>>,
 }
 
 /// Tree of geometry
@@ -63,7 +63,7 @@ impl LayerDef {
     }
 }
 
-impl<D> GeomEncode for Point<f32, D> {
+impl<D> GeomEncode for gis::Point<f32, D> {
     fn encode(&self, t: Transform<f32>) -> Result<GeomData> {
         let mut enc = GeomEncoder::new(GeomType::Point, t);
         for pt in self.as_points() {
@@ -120,7 +120,7 @@ impl PointTree {
     }
 }
 
-impl<D> GeomEncode for Linestring<f32, D> {
+impl<D> GeomEncode for gis::Linestring<f32, D> {
     fn encode(&self, t: Transform<f32>) -> Result<GeomData> {
         let mut enc = GeomEncoder::new(GeomType::Linestring, t);
         for line in self.as_lines() {
@@ -180,7 +180,7 @@ impl LinestringTree {
     }
 }
 
-impl<D> GeomEncode for Polygon<f32, D> {
+impl<D> GeomEncode for gis::Polygon<f32, D> {
     fn encode(&self, t: Transform<f32>) -> Result<GeomData> {
         let mut enc = GeomEncoder::new(GeomType::Polygon, t);
         for ring in self.as_rings() {

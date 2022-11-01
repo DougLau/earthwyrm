@@ -10,7 +10,7 @@ use mvt::GeomType;
 use osmpbfreader::{
     Node, NodeId, OsmId, OsmObj, OsmPbfReader, Relation, Tags, Way,
 };
-use rosewood::{BulkWriter, GisData, Linestring, Point, Polygon};
+use rosewood::{gis, gis::GisData, BulkWriter};
 use std::collections::BTreeMap;
 use std::fs::File;
 use std::path::Path;
@@ -65,9 +65,9 @@ impl GeometryMaker {
     }
 
     /// Make a point from a `Node`
-    fn make_point(&self, node: &Node) -> Option<Point<f32, Values>> {
+    fn make_point(&self, node: &Node) -> Option<gis::Point<f32, Values>> {
         let values = self.tag_values(node.id.0, &node.tags);
-        let mut point = Point::new(values);
+        let mut point = gis::Point::new(values);
         let pts = self.lookup_nodes(&[node.id]);
         for pt in pts {
             point.push(pt);
@@ -77,9 +77,12 @@ impl GeometryMaker {
     }
 
     /// Make a linestring from a `Way`
-    fn make_linestring(&self, way: &Way) -> Option<Linestring<f32, Values>> {
+    fn make_linestring(
+        &self,
+        way: &Way,
+    ) -> Option<gis::Linestring<f32, Values>> {
         let values = self.tag_values(way.id.0, &way.tags);
-        let mut linestring = Linestring::new(values);
+        let mut linestring = gis::Linestring::new(values);
         if way.nodes.is_empty() {
             log::warn!("no nodes ({:?})", linestring.data());
             return None;
@@ -93,10 +96,13 @@ impl GeometryMaker {
     }
 
     /// Make a polygon from a `Relation`
-    fn make_polygon(&self, rel: &Relation) -> Option<Polygon<f32, Values>> {
+    fn make_polygon(
+        &self,
+        rel: &Relation,
+    ) -> Option<gis::Polygon<f32, Values>> {
         let values = self.tag_values(rel.id.0, &rel.tags);
         let mut ways = vec![];
-        let mut polygon = Polygon::new(values);
+        let mut polygon = gis::Polygon::new(values);
         for rf in &rel.refs {
             let outer = if rf.role == "outer" {
                 true

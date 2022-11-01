@@ -69,7 +69,9 @@ impl GeometryMaker {
         let values = self.tag_values(node.id.0, &node.tags);
         let mut point = Point::new(values);
         let pts = self.lookup_nodes(&[node.id]);
-        point.push(pts[0]);
+        for pt in pts {
+            point.push(pt);
+        }
         log::debug!("added point ({:?})", point.data());
         Some(point)
     }

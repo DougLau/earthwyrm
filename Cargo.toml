@@ -1,8 +1,2 @@
 [workspace]
 members = ["earthwyrm", "earthwyrm-bin"]
-
-[patch.crates-io]
-earthwyrm = { path = "./earthwyrm" }
-loam = { path = "../loam/loam/" }
-mvt = { path = "../mvt/" }
-rosewood = { path = "../loam/rosewood/" }

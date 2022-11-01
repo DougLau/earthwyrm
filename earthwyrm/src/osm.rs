@@ -10,7 +10,7 @@ use mvt::GeomType;
 use osmpbfreader::{
     Node, NodeId, OsmId, OsmObj, OsmPbfReader, Relation, Tags, Way,
 };
-use rosewood::{gis, gis::GisData, BulkWriter};
+use rosewood::{gis, gis::Gis, BulkWriter};
 use std::collections::BTreeMap;
 use std::fs::File;
 use std::path::Path;

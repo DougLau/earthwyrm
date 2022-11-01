@@ -7,7 +7,7 @@ use crate::layer::LayerDef;
 use crate::tile::TileCfg;
 use mvt::{Feature, GeomData, GeomEncoder, GeomType, Layer};
 use pointy::{BBox, Transform};
-use rosewood::{Geometry, Linestring, Point, Polygon, RTree};
+use rosewood::{GisData, Linestring, Point, Polygon, RTree};
 use std::path::Path;
 
 /// Geometry which can be encoded to GeomData

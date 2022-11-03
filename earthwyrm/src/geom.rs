@@ -6,14 +6,14 @@ use crate::error::Result;
 use crate::layer::LayerDef;
 use crate::tile::TileCfg;
 use mvt::{Feature, GeomData, GeomEncoder, GeomType, Layer};
-use pointy::{BBox, Transform};
+use pointy::{BBox, Bounded, Pt, Seg, Transform};
 use rosewood::{gis, gis::Gis, RTree};
 use std::path::Path;
 
 /// Geometry which can be encoded to GeomData
-pub trait GeomEncode {
+trait GisEncode {
     /// Encode into GeomData
-    fn encode(&self, t: Transform<f32>) -> Result<GeomData>;
+    fn encode(&self, bbox: BBox<f32>, t: Transform<f32>) -> Result<GeomData>;
 }
 
 /// Tag values, in order specified by tag pattern rule
@@ -21,17 +21,17 @@ pub type Values = Vec<Option<String>>;
 
 /// Tree of point geometry
 pub struct PointTree {
-    tree: RTree<f32, gis::Point<f32, Values>>,
+    tree: RTree<f32, gis::Points<f32, Values>>,
 }
 
 /// Tree of linestring geometry
 pub struct LinestringTree {
-    tree: RTree<f32, gis::Linestring<f32, Values>>,
+    tree: RTree<f32, gis::Linestrings<f32, Values>>,
 }
 
 /// Tree of polygon geometry
 pub struct PolygonTree {
-    tree: RTree<f32, gis::Polygon<f32, Values>>,
+    tree: RTree<f32, gis::Polygons<f32, Values>>,
 }
 
 /// Tree of geometry
@@ -63,11 +63,13 @@ impl LayerDef {
     }
 }
 
-impl<D> GeomEncode for gis::Point<f32, D> {
-    fn encode(&self, t: Transform<f32>) -> Result<GeomData> {
+impl<D> GisEncode for gis::Points<f32, D> {
+    fn encode(&self, bbox: BBox<f32>, t: Transform<f32>) -> Result<GeomData> {
         let mut enc = GeomEncoder::new(GeomType::Point, t);
-        for pt in self.as_points() {
-            enc.add_point(pt.x(), pt.y())?;
+        for pt in self.iter() {
+            if pt.bounded_by(bbox) {
+                enc.add_point(pt.x, pt.y)?;
+            }
         }
         Ok(enc.encode()?)
     }
@@ -106,13 +108,14 @@ impl PointTree {
         mut layer: Layer,
         tile_cfg: &TileCfg,
     ) -> Result<Layer> {
+        let bbox = tile_cfg.bbox();
         let transform = tile_cfg.transform();
-        for point in self.tree.query(tile_cfg.bbox()) {
-            let point = point?;
-            let geom = point.encode(transform)?;
+        for points in self.tree.query(bbox) {
+            let points = points?;
+            let geom = points.encode(bbox, transform)?;
             if !geom.is_empty() {
                 let mut feature = layer.into_feature(geom);
-                layer_def.add_tags(&mut feature, point.data());
+                layer_def.add_tags(&mut feature, points.data());
                 layer = feature.into_layer();
             }
         }
@@ -120,13 +123,22 @@ impl PointTree {
     }
 }
 
-impl<D> GeomEncode for gis::Linestring<f32, D> {
-    fn encode(&self, t: Transform<f32>) -> Result<GeomData> {
+impl<D> GisEncode for gis::Linestrings<f32, D> {
+    fn encode(&self, bbox: BBox<f32>, t: Transform<f32>) -> Result<GeomData> {
         let mut enc = GeomEncoder::new(GeomType::Linestring, t);
-        for line in self.as_lines() {
-            enc.complete_geom()?;
-            for pt in line {
-                enc.add_point(pt.x(), pt.y())?;
+        for line in self.iter() {
+            let mut connected = false;
+            for seg in line.segments() {
+                if seg.bounded_by(bbox) {
+                    if !connected {
+                        enc.complete_geom()?;
+                        enc.add_point(seg.p0.x, seg.p0.y)?;
+                    }
+                    enc.add_point(seg.p1.x, seg.p1.y)?;
+                    connected = true;
+                } else {
+                    connected = false;
+                }
             }
         }
         Ok(enc.encode()?)
@@ -166,10 +178,11 @@ impl LinestringTree {
         mut layer: Layer,
         tile_cfg: &TileCfg,
     ) -> Result<Layer> {
+        let bbox = tile_cfg.bbox();
         let transform = tile_cfg.transform();
-        for lines in self.tree.query(tile_cfg.bbox()) {
+        for lines in self.tree.query(bbox) {
             let lines = lines?;
-            let geom = lines.encode(transform)?;
+            let geom = lines.encode(bbox, transform)?;
             if !geom.is_empty() {
                 let mut feature = layer.into_feature(geom);
                 layer_def.add_tags(&mut feature, lines.data());
@@ -180,17 +193,36 @@ impl LinestringTree {
     }
 }
 
-impl<D> GeomEncode for gis::Polygon<f32, D> {
-    fn encode(&self, t: Transform<f32>) -> Result<GeomData> {
+impl<D> GisEncode for gis::Polygons<f32, D> {
+    fn encode(&self, bbox: BBox<f32>, t: Transform<f32>) -> Result<GeomData> {
         let mut enc = GeomEncoder::new(GeomType::Polygon, t);
-        for ring in self.as_rings() {
+        for ring in self.iter() {
             // NOTE: this assumes that rings are well-formed
             //       according to MVT spec
-            enc.complete_geom()?;
-            let len = ring.len();
-            if len > 2 {
-                for p in &ring[..(len - 1)] {
-                    enc.add_point(p.x(), p.y())?;
+            let mut first = true;
+            let mut skip: Option<Pt<_>> = None; // skipped point outside of bbox
+            for seg in ring.segments() {
+                // If we skipped the previous point, check if we really need it
+                if let Some(p0) = skip {
+                    let sg = Seg::new(p0, seg.p1);
+                    if sg.bounded_by(bbox) {
+                        if first {
+                            enc.complete_geom()?;
+                            first = false;
+                        }
+                        enc.add_point(p0.x, p0.y)?;
+                    }
+                }
+                if seg.bounded_by(bbox) {
+                    if first {
+                        enc.complete_geom()?;
+                        enc.add_point(seg.p0.x, seg.p0.y)?;
+                        first = false;
+                    }
+                    enc.add_point(seg.p1.x, seg.p1.y)?;
+                    skip = None;
+                } else {
+                    skip = Some(seg.p1);
                 }
             }
         }
@@ -231,10 +263,11 @@ impl PolygonTree {
         mut layer: Layer,
         tile_cfg: &TileCfg,
     ) -> Result<Layer> {
+        let bbox = tile_cfg.bbox();
         let transform = tile_cfg.transform();
-        for polygon in self.tree.query(tile_cfg.bbox()) {
+        for polygon in self.tree.query(bbox) {
             let polygon = polygon?;
-            let geom = polygon.encode(transform)?;
+            let geom = polygon.encode(bbox, transform)?;
             if !geom.is_empty() {
                 let mut feature = layer.into_feature(geom);
                 layer_def.add_tags(&mut feature, polygon.data());

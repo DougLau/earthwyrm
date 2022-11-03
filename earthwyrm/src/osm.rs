@@ -65,11 +65,10 @@ impl GeometryMaker {
     }
 
     /// Make a point from a `Node`
-    fn make_point(&self, node: &Node) -> Option<gis::Point<f32, Values>> {
+    fn make_point(&self, node: &Node) -> Option<gis::Points<f32, Values>> {
         let values = self.tag_values(node.id.0, &node.tags);
-        let mut point = gis::Point::new(values);
-        let pts = self.lookup_nodes(&[node.id]);
-        for pt in pts {
+        let mut point = gis::Points::new(values);
+        for pt in self.lookup_nodes(&[node.id]) {
             point.push(pt);
         }
         log::debug!("added point ({:?})", point.data());
@@ -80,9 +79,9 @@ impl GeometryMaker {
     fn make_linestring(
         &self,
         way: &Way,
-    ) -> Option<gis::Linestring<f32, Values>> {
+    ) -> Option<gis::Linestrings<f32, Values>> {
         let values = self.tag_values(way.id.0, &way.tags);
-        let mut linestring = gis::Linestring::new(values);
+        let mut linestring = gis::Linestrings::new(values);
         if way.nodes.is_empty() {
             log::warn!("no nodes ({:?})", linestring.data());
             return None;
@@ -99,10 +98,10 @@ impl GeometryMaker {
     fn make_polygon(
         &self,
         rel: &Relation,
-    ) -> Option<gis::Polygon<f32, Values>> {
+    ) -> Option<gis::Polygons<f32, Values>> {
         let values = self.tag_values(rel.id.0, &rel.tags);
         let mut ways = vec![];
-        let mut polygon = gis::Polygon::new(values);
+        let mut polygon = gis::Polygons::new(values);
         for rf in &rel.refs {
             let outer = if rf.role == "outer" {
                 true

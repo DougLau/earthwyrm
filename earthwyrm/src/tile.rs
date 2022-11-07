@@ -16,13 +16,10 @@ pub struct TileCfg {
     /// Tile extent; width and height
     tile_extent: u32,
 
-    /// Extent outside tile edges
-    edge_extent: u32,
-
     /// Tile ID
     tid: TileId,
 
-    /// Bounding box of tile
+    /// Bounding box of tile (including edge extent)
     bbox: BBox<f32>,
 
     /// Transform from spatial to tile coordinates
@@ -77,7 +74,7 @@ impl TileCfg {
         self.tid.z()
     }
 
-    /// Get the bounding box
+    /// Get the bounding box (including edge extent)
     pub fn bbox(&self) -> BBox<f32> {
         self.bbox
     }
@@ -203,15 +200,22 @@ impl Wyrm {
     /// Create tile config for a tile ID
     fn tile_config(&self, tid: TileId) -> TileCfg {
         let tile_extent = self.tile_extent;
-        let bbox = self.grid.tile_bbox(tid);
+        let mut bbox = self.grid.tile_bbox(tid);
         let tile_sz = bbox.x_max() - bbox.x_min();
         let tolerance = tile_sz / tile_extent as f32;
         log::debug!("tile {}, tolerance {:?}", tid, tolerance);
+        // increase bounding box by edge extent
+        let edge = self.edge_extent as f32 / tile_extent as f32;
+        let edge_x = edge * (bbox.x_max() - bbox.x_min());
+        let edge_y = edge * (bbox.y_max() - bbox.y_min());
+        bbox.extend([
+            (bbox.x_min() - edge_x, bbox.y_min() - edge_y),
+            (bbox.x_max() + edge_x, bbox.y_max() + edge_y),
+        ]);
         let ts = tile_extent as f32;
         let transform = self.grid.tile_transform(tid).scale(ts, ts);
         TileCfg {
             tile_extent,
-            edge_extent: self.edge_extent,
             tid,
             bbox,
             transform,

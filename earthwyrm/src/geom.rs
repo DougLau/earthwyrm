@@ -163,9 +163,11 @@ impl LinestringTree {
     ) -> Result<()> {
         for lines in self.tree.query(bbox) {
             let lines = lines?;
-            let values = lines.data();
-            for (tag, value, _sint) in layer_def.tag_values(values) {
-                println!("{}: {tag}={value}", layer_def.name());
+            if lines.bounded_by(bbox) {
+                let values = lines.data();
+                for (tag, value, _sint) in layer_def.tag_values(values) {
+                    println!("{}: {tag}={value}", layer_def.name());
+                }
             }
         }
         Ok(())
@@ -248,9 +250,11 @@ impl PolygonTree {
     ) -> Result<()> {
         for poly in self.tree.query(bbox) {
             let poly = poly?;
-            let values = poly.data();
-            for (tag, value, _sint) in layer_def.tag_values(values) {
-                println!("{}: {tag}={value}", layer_def.name());
+            if poly.bounded_by(bbox) {
+                let values = poly.data();
+                for (tag, value, _sint) in layer_def.tag_values(values) {
+                    println!("{}: {tag}={value}", layer_def.name());
+                }
             }
         }
         Ok(())

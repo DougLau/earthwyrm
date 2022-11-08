@@ -37,8 +37,8 @@ This file tree will be created:
     └── map.js
 ```
 
-* Download OpenStreetMap data in `.osm.pbf` (OSM protobuf) format.  See the
-  [OSM wiki] for download options, such as [Geofabrik].
+* Download OpenStreetMap data for your region in `.osm.pbf` (OSM protobuf)
+  format.  See the [OSM wiki] for download options, such as [Geofabrik].
 
 * Put the OSM file in `/var/local/earthwyrm/osm/`
 
@@ -52,6 +52,9 @@ systemctl status earthwyrm
 ```
 
 ## Customizing
+
+The configuration file is located at `/var/local/earthwyrm/earthwyrm.muon`.  It
+contains customising instructions.
 
 By default, *EarthWyrm* will listen on the IPv4 loopback address.  This means
 clients from other hosts will not be able to reach the server.  There are a

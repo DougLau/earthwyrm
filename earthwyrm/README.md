@@ -1,11 +1,11 @@
-# EarthWyrm ![Logo](./earthwyrm.svg)
+# EarthWyrm ![Logo](../earthwyrm.svg)
 
 *EarthWyrm* is a Rust library for generating vector tiles in [MVT] format.
 It can serve [OpenStreetMap] or other GIS data.
 
 ## Links
 
-* [EarthWyrm-bin] map server
+* [earthwyrm-bin] map server
 * Library [documentation]
 
 ## Layers

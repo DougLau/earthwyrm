@@ -7,28 +7,27 @@ of Transportation (MnDOT).  It can serve [OpenStreetMap] or other GIS data in
 EarthWyrm uses the pervasive [Web Mercator] projection (EPSG:3857), along with
 the typical `Z/X/Y.mvt` tile naming convention.
 
-## Setup
+## Installation
 
 These instructions are for Linux (tested on Fedora)
 
-* Download and build `earthwyrm-bin`
-
-```bash
-git clone https://github.com/DougLau/earthwyrm.git
-cd earthwyrm/earthwyrm-bin
-cargo build --release
+```console
+cargo install earthwyrm-bin
 ```
 
-* Install (as root)
-
-```bash
-sh ./static/install.sh
+```console (root)
+install ~/.cargo/bin/earthwyrm /usr/local/bin/
+useradd --system earthwyrm
+mkdir /var/local/earthwyrm
+chown earthwyrm.earthwyrm /var/local/earthwyrm
+sudo -u earthwyrm /usr/local/bin/earthwyrm init
 ```
 
 This file tree will be created:
 ```
 /var/local/earthwyrm/
 ├── earthwyrm.muon
+├── earthwyrm.service
 ├── loam
 ├── osm
 └── static
@@ -37,6 +36,11 @@ This file tree will be created:
     └── map.js
 ```
 
+### Setup
+
+* The configuration file at `/var/local/earthwyrm/earthwyrm.muon` contains
+  customization instructions.
+
 * Download OpenStreetMap data for your region in `.osm.pbf` (OSM protobuf)
   format.  See the [OSM wiki] for download options, such as [Geofabrik].
 
@@ -44,17 +48,14 @@ This file tree will be created:
 
 * Run `earthwyrm dig` (as earthwyrm user)
 
-* Start the server
-```bash
+
+### Configure as systemd service
+
+```console (root)
+cp /var/local/earthwyrm/earthwyrm.service /etc/systemd/system/
 systemctl enable earthwyrm
 systemctl start earthwyrm
-systemctl status earthwyrm
 ```
-
-## Customizing
-
-The configuration file at `/var/local/earthwyrm/earthwyrm.muon` contains
-customization instructions.
 
 
 [Geofabrik]: http://download.geofabrik.de/

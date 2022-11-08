@@ -106,6 +106,10 @@ impl InitCommand {
             include_bytes!("../static/earthwyrm.muon"),
         )?;
         write_file(
+            Path::new(base.as_ref().as_os_str()).join("earthwyrm.service"),
+            include_bytes!("../static/earthwyrm.service"),
+        )?;
+        write_file(
             Path::new(&static_path).join("index.html"),
             include_bytes!("../static/index.html"),
         )?;

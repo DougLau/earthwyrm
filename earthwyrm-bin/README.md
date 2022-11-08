@@ -40,18 +40,19 @@ This file tree will be created:
 
 ### Setup
 
-* The configuration file at `/var/local/earthwyrm/earthwyrm.muon` contains
-  customization instructions.
+The configuration file at `/var/local/earthwyrm/earthwyrm.muon` contains
+customization instructions.
 
-* Download OpenStreetMap data for your region in `.osm.pbf` (OSM protobuf)
-  format.  See the [OSM wiki] for download options, such as [Geofabrik].
+Download an extract of your region in [PBF format], e.g.
+`minnesota-latest.osm.pbf`, from an OpenStreetMap data provider, such as
+[Geofabrik].
 
-* Put the OSM file in `/var/local/earthwyrm/osm/`
+```bash
+cp minnesota-latest.osm.pbf /var/local/earthwyrm/osm/
+sudo -u earthwyrm earthwyrm dig
+```
 
-* Run `earthwyrm dig` (as earthwyrm user)
-
-
-### Configure as systemd service
+### Configure service
 
 As root:
 ```bash
@@ -60,9 +61,13 @@ systemctl enable earthwyrm
 systemctl start earthwyrm
 ```
 
+### Test
+
+From the server host, browse to [127.0.0.1:3030](http://127.0.0.1:3030/)
+
 
 [Geofabrik]: http://download.geofabrik.de/
 [MVT]: https://github.com/mapbox/vector-tile-spec
 [OpenStreetMap]: https://www.openstreetmap.org/about
-[OSM wiki]: https://wiki.openstreetmap.org/wiki/Downloading_data
+[PBF format]: https://wiki.openstreetmap.org/wiki/PBF_Format
 [Web Mercator]: https://en.wikipedia.org/wiki/Web_Mercator_projection

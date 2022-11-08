@@ -1,5 +1,9 @@
 # earthwyrm.muon
 #
+# The default bind_address is the IPv4 loopback address, which is not accessible
+# to clients on other hosts.  Instead of changing the bind address, it is
+# recommended to set up a reverse proxy, such as nginx.
+#
 # Socket address and port to bind server
 bind_address: 127.0.0.1:3030
 
@@ -17,7 +21,9 @@ layer_group: tile
   #
   # name: Name of layer
   #
-  # source: Data source (`osm` or `json`)
+  # source: Data source:
+  #       - osm (openstreetmap.org)
+  #       - json
   #
   # geom_type: Type of geometry (point, linestring or polygon)
   #

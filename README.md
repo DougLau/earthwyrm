@@ -6,5 +6,5 @@
 * [earthwyrm-bin] map server
 
 
-[earthwyrm]: ./earthwrym/
+[earthwyrm]: ./earthwyrm/
 [earthwyrm-bin]: ./earthwyrm-bin/

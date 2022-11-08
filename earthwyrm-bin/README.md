@@ -11,11 +11,13 @@ the typical `Z/X/Y.mvt` tile naming convention.
 
 These instructions are for Linux (tested on Fedora)
 
-```console
+```bash
 cargo install earthwyrm-bin
 ```
 
-```console (root)
+Then, as root:
+
+```bash
 install ~/.cargo/bin/earthwyrm /usr/local/bin/
 useradd --system earthwyrm
 mkdir /var/local/earthwyrm
@@ -51,7 +53,8 @@ This file tree will be created:
 
 ### Configure as systemd service
 
-```console (root)
+As root:
+```bash
 cp /var/local/earthwyrm/earthwyrm.service /etc/systemd/system/
 systemctl enable earthwyrm
 systemctl start earthwyrm

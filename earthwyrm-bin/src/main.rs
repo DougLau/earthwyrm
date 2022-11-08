@@ -9,18 +9,16 @@ use argh::FromArgs;
 use earthwyrm::{Wyrm, WyrmCfg};
 use pointy::BBox;
 use std::ffi::OsString;
-use std::fs::read_to_string;
+use std::fs::File;
+use std::io::Write;
 use std::path::{Path, PathBuf};
 
-/// Default path for configuration file
-const CONFIG_PATH: &str = "/etc/earthwyrm/earthwyrm.muon";
-
 /// Get path to the OSM file
-fn osm_path<P>(base_dir: P) -> Result<PathBuf>
+fn osm_path<P>(base: P) -> Result<PathBuf>
 where
     P: AsRef<Path>,
 {
-    let path = Path::new(base_dir.as_ref().as_os_str()).join("osm");
+    let path = Path::new(base.as_ref().as_os_str()).join("osm");
     let mut paths = path
         .read_dir()
         .with_context(|| format!("reading directory: {path:?}"))?
@@ -46,9 +44,9 @@ where
 /// Command-line arguments
 #[derive(FromArgs, PartialEq, Debug)]
 struct Args {
-    /// configuration file (MuON)
-    #[argh(option, short = 'c', default = "OsString::from(CONFIG_PATH)")]
-    config: OsString,
+    /// base directory
+    #[argh(option, short = 'b')]
+    base: Option<OsString>,
 
     #[argh(subcommand)]
     cmd: Command,
@@ -58,6 +56,9 @@ struct Args {
 #[derive(FromArgs, PartialEq, Debug)]
 #[argh(subcommand)]
 enum Command {
+    /// Initialize earthwyrm configuration
+    Init(InitCommand),
+
     /// Dig loam layers from OSM file
     Dig(DigCommand),
 
@@ -65,13 +66,18 @@ enum Command {
     Query(QueryCommand),
 }
 
+/// Initialize earthwyrm configuration
+#[derive(Clone, Copy, FromArgs, PartialEq, Debug)]
+#[argh(subcommand, name = "init")]
+struct InitCommand {}
+
 /// Dig loam layers from OSM file
-#[derive(FromArgs, PartialEq, Debug)]
+#[derive(Clone, Copy, FromArgs, PartialEq, Debug)]
 #[argh(subcommand, name = "dig")]
 struct DigCommand {}
 
 /// Query a map layer
-#[derive(FromArgs, PartialEq, Debug)]
+#[derive(Clone, Copy, FromArgs, PartialEq, Debug)]
 #[argh(subcommand, name = "query")]
 struct QueryCommand {
     #[argh(positional)]
@@ -81,21 +87,60 @@ struct QueryCommand {
     lon: f32,
 }
 
+impl InitCommand {
+    /// Initialize earthwyrm configuration
+    fn init<P>(self, base: Option<P>) -> Result<()>
+    where
+        P: AsRef<Path>,
+    {
+        let base = base.ok_or(anyhow!("no base directory specified"))?;
+        let static_path = Path::new(base.as_ref().as_os_str()).join("static");
+        std::fs::create_dir_all(&static_path)?;
+        let osm_path = Path::new(base.as_ref().as_os_str()).join("osm");
+        std::fs::create_dir_all(&osm_path)?;
+        let loam_path = Path::new(base.as_ref().as_os_str()).join("loam");
+        std::fs::create_dir_all(&loam_path)?;
+        write_file(
+            Path::new(base.as_ref().as_os_str()).join("earthwyrm.muon"),
+            include_bytes!("../static/earthwyrm.muon"),
+        )?;
+        write_file(
+            Path::new(&static_path).join("index.html"),
+            include_bytes!("../static/index.html"),
+        )?;
+        write_file(
+            Path::new(&static_path).join("map.js"),
+            include_bytes!("../static/map.js"),
+        )?;
+        write_file(
+            Path::new(&static_path).join("map.css"),
+            include_bytes!("../static/map.css"),
+        )?;
+        Ok(())
+    }
+}
+
+/// Write a file to specified path
+fn write_file<P>(path: P, contents: &[u8]) -> Result<()>
+where
+    P: AsRef<Path> + core::fmt::Debug,
+{
+    println!("Writing file: {path:?}");
+    let mut file = File::options().create_new(true).write(true).open(&path)?;
+    Ok(file.write_all(contents)?)
+}
+
 impl DigCommand {
     /// Dig loam layers from OSM file
-    fn dig(self, cfg: String) -> Result<()> {
-        let cfg: WyrmCfg =
-            muon_rs::from_str(&cfg).context("deserializing configuration")?;
-        let osm = osm_path(&cfg.base_dir)?;
+    fn dig(self, cfg: WyrmCfg) -> Result<()> {
+        let osm = osm_path(cfg.base_dir())?;
         Ok(cfg.extract_osm(osm)?)
     }
 }
 
 impl QueryCommand {
     /// Query a lat/lon position
-    fn query(&self, cfg: String) -> Result<()> {
-        let cfg: WyrmCfg =
-            muon_rs::from_str(&cfg).context("deserializing configuration")?;
+    fn query(&self, cfg: WyrmCfg) -> Result<()> {
         let wyrm = Wyrm::try_from(&cfg)?;
         let bbox = BBox::new([(-self.lon, self.lat)]);
         wyrm.query_features(bbox)?;
@@ -105,17 +150,17 @@ impl QueryCommand {
 
 impl Args {
     /// Read the configuration file into a string
-    fn read_config(&self) -> Result<String> {
-        let path = &self.config;
-        read_to_string(path)
-            .with_context(|| format!("reading config: {path:?}"))
+    fn read_config(&self) -> Result<WyrmCfg> {
+        Ok(WyrmCfg::from_dir(self.base.as_ref())
+            .with_context(|| format!("config {:?}", &self.base))?)
     }
 
+    /// Run selected command
     fn run(self) -> Result<()> {
-        let cfg = self.read_config()?;
-        match self.cmd {
-            Command::Dig(cmd) => cmd.dig(cfg),
-            Command::Query(cmd) => cmd.query(cfg),
+        match &self.cmd {
+            Command::Init(cmd) => cmd.init(self.base.as_ref()),
+            Command::Dig(cmd) => cmd.dig(self.read_config()?),
+            Command::Query(cmd) => cmd.query(self.read_config()?),
         }
     }
 }

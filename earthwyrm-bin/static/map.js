@@ -3,7 +3,6 @@ function init_map() {
         center: [45, -93],
         zoom: 12,
     });
-    // Replace host IP address
     var url = "http://127.0.0.1:3030/tile/{z}/{x}/{y}.mvt";
     var highlight_style = {
         fill: true,
@@ -66,7 +65,6 @@ function init_map() {
         river: water,
         water: water,
         pond: water,
-        basin: water,
         wetland: wetland,
         leisure: leisure,
         retail: retail,

@@ -1,7 +1,5 @@
 # earthwyrm.muon
 #
-# Base directory
-base_dir: /var/local/earthwyrm
 # Socket address and port to bind server
 bind_address: 127.0.0.1:3030
 

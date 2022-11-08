@@ -25,6 +25,18 @@ cargo build --release
 sh ./static/install.sh
 ```
 
+This file tree will be created:
+```
+/var/local/earthwyrm/
+├── earthwyrm.muon
+├── loam
+├── osm
+└── static
+    ├── index.html
+    ├── map.css
+    └── map.js
+```
+
 * Download OpenStreetMap data in `.osm.pbf` (OSM protobuf) format.  See the
   [OSM wiki] for download options, such as [Geofabrik].
 
@@ -45,12 +57,10 @@ By default, *EarthWyrm* will listen on the IPv4 loopback address.  This means
 clients from other hosts will not be able to reach the server.  There are a
 couple of options:
 
-* Update `bind_address` in `/etc/earthwyrm/earthwyrm.muon`
+* Update `bind_address` in `/var/local/earthwyrm/earthwyrm.muon`.  Also, the url
+  in `/var/local/earthwyrm/static/map.js` will need to be updated.
 * (Preferred option!)  Set up a reverse proxy, such as [nginx].  This has the
   advantage that caching can be enabled to improve latency.
-
-In either case, the url in `/var/local/earthwyrm/static/map.js` will need to be
-updated.
 
 
 [Geofabrik]: http://download.geofabrik.de/

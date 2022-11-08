@@ -2,15 +2,20 @@
 //
 // Copyright (c) 2019-2022  Minnesota Department of Transportation
 //
+use crate::error::Result;
 use serde_derive::Deserialize;
 use std::fmt;
-use std::path::PathBuf;
+use std::fs::read_to_string;
+use std::path::{Path, PathBuf};
+
+/// Default base directory path
+const BASE_DIR: &str = "/var/local/earthwyrm/";
 
 /// Configuration for Earthwyrm tile layers.
 #[derive(Debug, Deserialize)]
 pub struct WyrmCfg {
     /// Base directory
-    pub base_dir: PathBuf,
+    pub base_dir: Option<PathBuf>,
 
     /// Address to bind server
     pub bind_address: String,
@@ -62,9 +67,33 @@ impl fmt::Display for LayerGroupCfg {
 }
 
 impl WyrmCfg {
+    /// Read the configuration file
+    pub fn from_dir<P>(base: Option<P>) -> Result<Self>
+    where
+        P: AsRef<Path>,
+    {
+        let base = match &base {
+            Some(base) => PathBuf::from(base.as_ref()),
+            None => PathBuf::from(BASE_DIR),
+        };
+        let path = Path::new(&base).join("earthwyrm.muon");
+        let cfg = read_to_string(&path)?;
+        let mut cfg: Self = muon_rs::from_str(&cfg)?;
+        cfg.base_dir = Some(PathBuf::from(base));
+        Ok(cfg)
+    }
+
+    /// Get the base directory
+    pub fn base_dir(&self) -> PathBuf {
+        match &self.base_dir {
+            Some(base) => PathBuf::from(base),
+            None => PathBuf::from(BASE_DIR),
+        }
+    }
+
     /// Get path to a layer .loam file
     pub fn loam_path(&self, name: &str) -> PathBuf {
-        let mut path = PathBuf::from(&self.base_dir);
+        let mut path = self.base_dir();
         path.push("loam");
         path.push(format!("{}.loam", name));
         path

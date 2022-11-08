@@ -93,7 +93,8 @@ impl InitCommand {
     where
         P: AsRef<Path>,
     {
-        let base = base.ok_or(anyhow!("no base directory specified"))?;
+        let base =
+            base.ok_or_else(|| anyhow!("no base directory specified"))?;
         let static_path = Path::new(base.as_ref().as_os_str()).join("static");
         std::fs::create_dir_all(&static_path)?;
         let osm_path = Path::new(base.as_ref().as_os_str()).join("osm");
@@ -151,8 +152,8 @@ impl QueryCommand {
 impl Args {
     /// Read the configuration file into a string
     fn read_config(&self) -> Result<WyrmCfg> {
-        Ok(WyrmCfg::from_dir(self.base.as_ref())
-            .with_context(|| format!("config {:?}", &self.base))?)
+        WyrmCfg::from_dir(self.base.as_ref())
+            .with_context(|| format!("config {:?}", &self.base))
     }
 
     /// Run selected command

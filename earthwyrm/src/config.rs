@@ -82,7 +82,7 @@ impl WyrmCfg {
         let path = Path::new(&base).join("earthwyrm.muon");
         let cfg = read_to_string(&path)?;
         let mut cfg: Self = muon_rs::from_str(&cfg)?;
-        cfg.base_dir = Some(PathBuf::from(base));
+        cfg.base_dir = Some(base);
         Ok(cfg)
     }
 

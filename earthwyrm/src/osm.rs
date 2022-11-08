@@ -206,7 +206,7 @@ impl GeometryMaker {
                 n_point += 1;
             }
         }
-        log::info!("{} layer ({n_point} points)", self.layer.name());
+        println!("  layer: {} ({n_point} points)", self.layer.name());
         if n_point > 0 {
             writer.finish()?;
         } else {
@@ -228,7 +228,7 @@ impl GeometryMaker {
                 n_line += 1;
             }
         }
-        log::info!("{} layer ({n_line} linestrings)", self.layer.name());
+        println!("  layer: {} ({n_line} linestrings)", self.layer.name());
         if n_line > 0 {
             writer.finish()?;
         } else {
@@ -250,7 +250,7 @@ impl GeometryMaker {
                 n_poly += 1;
             }
         }
-        log::info!("{} layer ({n_poly} polygons)", self.layer.name());
+        println!("  layer: {} ({n_poly} polygons)", self.layer.name());
         if n_poly > 0 {
             writer.finish()?;
         } else {
@@ -326,9 +326,10 @@ impl WyrmCfg {
     /// Extract the `osm` layer group, creating a loam file for each layer
     pub fn extract_osm<P>(&self, osm: P) -> Result<()>
     where
-        P: AsRef<Path>,
+        P: AsRef<Path> + std::fmt::Debug,
     {
-        let mut extractor = OsmExtractor::new(osm)?;
+        let mut extractor = OsmExtractor::new(&osm)?;
+        println!("Extracting layers from {:?}", osm);
         for group in &self.layer_group {
             for layer in &group.layer {
                 let layer = LayerDef::try_from(layer)?;

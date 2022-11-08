@@ -9,7 +9,7 @@ the typical `Z/X/Y.mvt` tile naming convention.
 
 ## Installation
 
-These instructions are for Linux (tested on Fedora)
+These instructions have been tested on Fedora Linux.
 
 ```bash
 cargo install earthwyrm-bin
@@ -38,17 +38,21 @@ This file tree will be created:
     └── map.js
 ```
 
-### Setup
+Edit the __configuration__ file at `/var/local/earthwyrm/earthwyrm.muon`.  It
+contains examples and instructions.
 
-The configuration file at `/var/local/earthwyrm/earthwyrm.muon` contains
-customization instructions.
-
-Download an extract of your region in [PBF format], e.g.
+__Download__ an extract of your region in [PBF format], e.g.
 `minnesota-latest.osm.pbf`, from an OpenStreetMap data provider, such as
 [Geofabrik].
 
 ```bash
-cp minnesota-latest.osm.pbf /var/local/earthwyrm/osm/
+mv minnesota-latest.osm.pbf /var/local/earthwyrm/osm/
+```
+
+__Dig__ the configured layers into `.loam` cache files.  This step may take a
+long time, depending on the region size.
+
+```bash
 sudo -u earthwyrm earthwyrm dig
 ```
 

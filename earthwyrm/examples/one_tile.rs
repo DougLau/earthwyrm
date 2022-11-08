@@ -7,12 +7,12 @@ use std::env;
 use std::fs::File;
 
 const MUON: &str = &r#"
-base_dir:
 bind_address:
 tile_extent: 256
 edge_extent: 6
-layer_group: osm
+layer_group: tile
   layer: city
+    source: osm
     geom_type: polygon
     zoom: 1+
     tags: ?name ?population boundary=administrative admin_level=8

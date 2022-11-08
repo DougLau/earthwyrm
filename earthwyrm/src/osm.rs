@@ -5,7 +5,7 @@
 use crate::config::WyrmCfg;
 use crate::error::Result;
 use crate::geom::Values;
-use crate::layer::LayerDef;
+use crate::layer::{DataSource, LayerDef};
 use mvt::GeomType;
 use osmpbfreader::{
     Node, NodeId, OsmId, OsmObj, OsmPbfReader, Relation, Tags, Way,
@@ -330,9 +330,9 @@ impl WyrmCfg {
     {
         let mut extractor = OsmExtractor::new(osm)?;
         for group in &self.layer_group {
-            if group.name == "osm" {
-                for layer in &group.layer {
-                    let layer = LayerDef::try_from(layer)?;
+            for layer in &group.layer {
+                let layer = LayerDef::try_from(layer)?;
+                if layer.source() == DataSource::Osm {
                     let objs = extractor.extract_layer(&layer)?;
                     let loam = self.loam_path(layer.name());
                     let maker = GeometryMaker::new(layer, objs);

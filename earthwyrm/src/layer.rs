@@ -15,6 +15,9 @@ pub struct LayerDef {
     /// Layer name
     name: String,
 
+    /// Data source
+    source: DataSource,
+
     /// Geometry type
     geom_tp: GeomType,
 
@@ -26,6 +29,15 @@ pub struct LayerDef {
 
     /// Tag patterns
     patterns: Vec<TagPattern>,
+}
+
+/// Data source for layers
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum DataSource {
+    /// Open street map
+    Osm,
+    /// Json data source
+    Json,
 }
 
 /// Tag pattern specification for layer rule
@@ -51,7 +63,7 @@ struct TagPattern {
 }
 
 /// Tag pattern specification to require matching tag
-#[derive(Copy, Clone, Debug, PartialEq)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
 enum MustMatch {
     /// Pattern does not require match
     No,
@@ -61,7 +73,7 @@ enum MustMatch {
 }
 
 /// Tag pattern specification to include tag value in layer
-#[derive(Copy, Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
 enum IncludeValue {
     /// Do not include tag value in layer
     No,
@@ -71,7 +83,7 @@ enum IncludeValue {
 }
 
 /// Tag pattern specification for MVT feature type
-#[derive(Copy, Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
 enum FeatureType {
     /// MVT string type
     MvtString,
@@ -81,7 +93,7 @@ enum FeatureType {
 }
 
 /// Tag pattern specification to match value equal vs. not equal
-#[derive(Copy, Clone, Debug)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
 enum Equality {
     /// Pattern equals value
     Equal,
@@ -217,6 +229,15 @@ fn parse_patterns(tags: &[String]) -> Result<Vec<TagPattern>> {
     Ok(patterns)
 }
 
+/// Parse data source
+fn parse_source(source: &str) -> Result<DataSource> {
+    match source {
+        "osm" => Ok(DataSource::Osm),
+        "json" => Ok(DataSource::Json),
+        _ => Err(Error::UnknownDataSource()),
+    }
+}
+
 /// Parse geometry type
 fn parse_geom_type(geom_tp: &str) -> Result<GeomType> {
     match geom_tp {
@@ -232,12 +253,14 @@ impl TryFrom<&LayerCfg> for LayerDef {
 
     fn try_from(layer: &LayerCfg) -> Result<Self> {
         let name = layer.name.to_string();
+        let source = parse_source(&layer.source)?;
         let geom_tp = parse_geom_type(&layer.geom_type)?;
         let (zoom_min, zoom_max) = parse_zoom_range(&layer.zoom)?;
         log::debug!("zoom: {}-{}", zoom_min, zoom_max);
         let patterns = parse_patterns(&layer.tags)?;
         Ok(LayerDef {
             name,
+            source,
             geom_tp,
             zoom_min,
             zoom_max,
@@ -250,6 +273,11 @@ impl LayerDef {
     /// Get the layer name
     pub fn name(&self) -> &str {
         &self.name
+    }
+
+    /// Get data source
+    pub fn source(&self) -> DataSource {
+        self.source
     }
 
     /// Get the geometry type

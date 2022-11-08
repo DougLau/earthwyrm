@@ -46,6 +46,9 @@ pub struct LayerCfg {
     /// Layer name
     pub name: String,
 
+    /// Data source (`osm`, `json`)
+    pub source: String,
+
     /// Type for geometry (`point`, `linestring` or `polygon`)
     pub geom_type: String,
 

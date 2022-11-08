@@ -40,6 +40,9 @@ pub enum Error {
     /// Tile empty
     TileEmpty(),
 
+    /// Unknown data source
+    UnknownDataSource(),
+
     /// Unknown geometry type
     UnknownGeometryType(),
 
@@ -65,6 +68,7 @@ impl fmt::Display for Error {
                 write!(f, "Invalid zoom level: {}", zoom)
             }
             Error::TileEmpty() => write!(f, "Tile empty"),
+            Error::UnknownDataSource() => write!(f, "Unknown data source"),
             Error::UnknownGeometryType() => write!(f, "Unknown geometry type"),
             Error::UnknownGroupName() => write!(f, "Unknown group name"),
         }
@@ -84,6 +88,7 @@ impl std::error::Error for Error {
             Error::ParseInt(e) => Some(e),
             Error::InvalidZoomLevel(_) => None,
             Error::TileEmpty() => None,
+            Error::UnknownDataSource() => None,
             Error::UnknownGeometryType() => None,
             Error::UnknownGroupName() => None,
         }

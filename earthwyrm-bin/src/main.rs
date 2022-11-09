@@ -147,7 +147,7 @@ impl QueryCommand {
     /// Query a lat/lon position
     fn query(&self, cfg: WyrmCfg) -> Result<()> {
         let wyrm = Wyrm::try_from(&cfg)?;
-        let bbox = BBox::new([(-self.lon, self.lat)]);
+        let bbox = BBox::new([(self.lon, self.lat)]);
         wyrm.query_features(bbox)?;
         Ok(())
     }

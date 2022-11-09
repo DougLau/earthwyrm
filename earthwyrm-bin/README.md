@@ -53,7 +53,7 @@ __Dig__ the configured layers into `.loam` cache files.  This step may take a
 long time, depending on the region size.
 
 ```bash
-sudo -u earthwyrm earthwyrm dig
+sudo -u earthwyrm /usr/local/bin/earthwyrm dig
 ```
 
 ### Configure service
@@ -61,6 +61,7 @@ sudo -u earthwyrm earthwyrm dig
 As root:
 ```bash
 cp /var/local/earthwyrm/earthwyrm.service /etc/systemd/system/
+systemctl daemon-reload
 systemctl enable earthwyrm
 systemctl start earthwyrm
 ```

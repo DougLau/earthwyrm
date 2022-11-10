@@ -6,6 +6,12 @@
 
 use anyhow::{anyhow, bail, Context, Result};
 use argh::FromArgs;
+use axum::{
+    http::{header, StatusCode},
+    response::{Html, IntoResponse},
+    routing::get,
+    Router,
+};
 use earthwyrm::{Wyrm, WyrmCfg};
 use pointy::BBox;
 use std::ffi::OsString;
@@ -64,6 +70,9 @@ enum Command {
 
     /// Query a map layer
     Query(QueryCommand),
+
+    /// Serve tiles with http
+    Serve(ServeCommand),
 }
 
 /// Initialize earthwyrm configuration
@@ -87,6 +96,11 @@ struct QueryCommand {
     lon: f32,
 }
 
+/// Serve tiles using http
+#[derive(Clone, Copy, FromArgs, PartialEq, Debug)]
+#[argh(subcommand, name = "serve")]
+struct ServeCommand {}
+
 impl InitCommand {
     /// Initialize earthwyrm configuration
     fn init<P>(self, base: Option<P>) -> Result<()>
@@ -95,31 +109,17 @@ impl InitCommand {
     {
         let base =
             base.ok_or_else(|| anyhow!("no base directory specified"))?;
-        let static_path = Path::new(base.as_ref().as_os_str()).join("static");
-        std::fs::create_dir_all(&static_path)?;
         let osm_path = Path::new(base.as_ref().as_os_str()).join("osm");
         std::fs::create_dir_all(&osm_path)?;
         let loam_path = Path::new(base.as_ref().as_os_str()).join("loam");
         std::fs::create_dir_all(&loam_path)?;
         write_file(
             Path::new(base.as_ref().as_os_str()).join("earthwyrm.muon"),
-            include_bytes!("../static/earthwyrm.muon"),
+            include_bytes!("../res/earthwyrm.muon"),
         )?;
         write_file(
             Path::new(base.as_ref().as_os_str()).join("earthwyrm.service"),
-            include_bytes!("../static/earthwyrm.service"),
-        )?;
-        write_file(
-            Path::new(&static_path).join("index.html"),
-            include_bytes!("../static/index.html"),
-        )?;
-        write_file(
-            Path::new(&static_path).join("map.js"),
-            include_bytes!("../static/map.js"),
-        )?;
-        write_file(
-            Path::new(&static_path).join("map.css"),
-            include_bytes!("../static/map.css"),
+            include_bytes!("../res/earthwyrm.service"),
         )?;
         Ok(())
     }
@@ -153,6 +153,38 @@ impl QueryCommand {
     }
 }
 
+impl ServeCommand {
+    /// Serve tiles using http
+    fn serve(&self, cfg: WyrmCfg) -> Result<()> {
+        let wyrm = Wyrm::try_from(&cfg)?;
+        let sock_addr = cfg.bind_address.parse()?;
+        let rt = tokio::runtime::Runtime::new()?;
+        rt.block_on(async {
+            let app = Router::new()
+                .route("/index.html", get(index_html))
+                .route("/map.css", get(map_css))
+                .route("/map.js", get(map_js));
+            axum::Server::bind(&sock_addr)
+                .serve(app.into_make_service())
+                .await
+                .unwrap();
+        });
+        Ok(())
+    }
+}
+
+async fn index_html() -> impl IntoResponse {
+    Html(include_str!("../res/index.html"))
+}
+
+async fn map_css() -> impl IntoResponse {
+    ([(header::CONTENT_TYPE, "text/css")], include_str!("../res/map.css"))
+}
+
+async fn map_js() -> impl IntoResponse {
+    ([(header::CONTENT_TYPE, "text/javascript")], include_str!("../res/map.js"))
+}
+
 impl Args {
     /// Read the configuration file into a string
     fn read_config(&self) -> Result<WyrmCfg> {
@@ -166,6 +198,7 @@ impl Args {
             Command::Init(cmd) => cmd.init(self.base.as_ref()),
             Command::Dig(cmd) => cmd.dig(self.read_config()?),
             Command::Query(cmd) => cmd.query(self.read_config()?),
+            Command::Serve(cmd) => cmd.serve(self.read_config()?),
         }
     }
 }

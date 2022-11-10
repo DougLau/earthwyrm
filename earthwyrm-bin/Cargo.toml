@@ -8,12 +8,14 @@ edition = "2021"
 [dependencies]
 anyhow = "1.0"
 argh = "0.1"
+axum = "0.5"
 earthwyrm = { version = "0.4", path = "../earthwyrm" }
 env_logger = "0.7"
 log = "0.4"
 muon-rs = "0.2"
 pointy = "0.3"
 rosewood = "0.1"
+tokio = { version = "1", features = ["rt-multi-thread"] }
 
 [[bin]]
 name = "earthwyrm"

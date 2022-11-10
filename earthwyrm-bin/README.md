@@ -31,11 +31,7 @@ This file tree will be created:
 ├── earthwyrm.muon
 ├── earthwyrm.service
 ├── loam
-├── osm
-└── static
-    ├── index.html
-    ├── map.css
-    └── map.js
+└── osm
 ```
 
 Edit the __configuration__ file at `/var/local/earthwyrm/earthwyrm.muon`.  It

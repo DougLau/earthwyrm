@@ -7,7 +7,7 @@
 use anyhow::{anyhow, bail, Context, Result};
 use argh::FromArgs;
 use axum::{
-    http::{header, StatusCode},
+    http::header,
     response::{Html, IntoResponse},
     routing::get,
     Router,
@@ -99,7 +99,11 @@ struct QueryCommand {
 /// Serve tiles using http
 #[derive(Clone, Copy, FromArgs, PartialEq, Debug)]
 #[argh(subcommand, name = "serve")]
-struct ServeCommand {}
+struct ServeCommand {
+    /// include leaflet map for testing
+    #[argh(switch, short = 'l')]
+    leaflet: bool,
+}
 
 impl InitCommand {
     /// Initialize earthwyrm configuration
@@ -160,10 +164,13 @@ impl ServeCommand {
         let sock_addr = cfg.bind_address.parse()?;
         let rt = tokio::runtime::Runtime::new()?;
         rt.block_on(async {
-            let app = Router::new()
-                .route("/index.html", get(index_html))
-                .route("/map.css", get(map_css))
-                .route("/map.js", get(map_js));
+            let mut app = Router::new();
+            if self.leaflet {
+                app = app
+                    .route("/index.html", get(index_html))
+                    .route("/map.css", get(map_css))
+                    .route("/map.js", get(map_js));
+            }
             axum::Server::bind(&sock_addr)
                 .serve(app.into_make_service())
                 .await

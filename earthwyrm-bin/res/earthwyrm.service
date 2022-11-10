@@ -4,7 +4,7 @@ StartLimitIntervalSec=0
 
 [Service]
 Environment=RUST_LOG=warn
-ExecStart=/usr/local/bin/earthwyrm serve
+ExecStart=/usr/local/bin/earthwyrm serve --leaflet
 Restart=always
 RestartSec=2
 User=earthwyrm

@@ -6,6 +6,9 @@ resolver = "2"
 version = "0.4.4"
 edition = "2021"
 
+[workspace.dependencies]
+earthwyrm = "0.4"
+
 [patch.crates-io]
 loam = { path = "../loam" }
 rosewood = { path = "../loam" }

@@ -18,6 +18,7 @@ use std::ffi::OsString;
 use std::fs::File;
 use std::io::Write;
 use std::path::{Path, PathBuf};
+use tokio::net::TcpListener;
 
 /// Get path to the OSM file
 fn osm_path<P>(base: P) -> Result<PathBuf>
@@ -161,7 +162,6 @@ impl ServeCommand {
     /// Serve tiles using http
     fn serve(&self, cfg: WyrmCfg) -> Result<()> {
         let wyrm = Wyrm::try_from(&cfg)?;
-        let sock_addr = cfg.bind_address.parse()?;
         let rt = tokio::runtime::Runtime::new()?;
         rt.block_on(async {
             let mut app = Router::new();
@@ -171,23 +171,24 @@ impl ServeCommand {
                     .route("/map.css", get(map_css))
                     .route("/map.js", get(map_js));
             }
-            axum::Server::bind(&sock_addr)
-                .serve(app.into_make_service())
-                .await
-                .unwrap();
+            let listener = TcpListener::bind(cfg.bind_address).await.unwrap();
+            axum::serve(listener, app).await.unwrap();
         });
         Ok(())
     }
 }
 
+/// Get `indexl.html` as response
 async fn index_html() -> impl IntoResponse {
     Html(include_str!("../res/index.html"))
 }
 
+/// Get `map.css` as response
 async fn map_css() -> impl IntoResponse {
     ([(header::CONTENT_TYPE, "text/css")], include_str!("../res/map.css"))
 }
 
+/// Get `map.js` as response
 async fn map_js() -> impl IntoResponse {
     ([(header::CONTENT_TYPE, "text/javascript")], include_str!("../res/map.js"))
 }
@@ -210,6 +211,7 @@ impl Args {
     }
 }
 
+/// Main entry point
 fn main() -> Result<()> {
     env_logger::builder().format_timestamp(None).init();
     let args: Args = argh::from_env();

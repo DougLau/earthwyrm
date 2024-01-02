@@ -1,6 +1,6 @@
 // config.rs
 //
-// Copyright (c) 2019-2022  Minnesota Department of Transportation
+// Copyright (c) 2019-2023  Minnesota Department of Transportation
 //
 use crate::error::Result;
 use serde_derive::Deserialize;
@@ -80,7 +80,7 @@ impl WyrmCfg {
             None => PathBuf::from(BASE_DIR),
         };
         let path = Path::new(&base).join("earthwyrm.muon");
-        let cfg = read_to_string(&path)?;
+        let cfg = read_to_string(path)?;
         let mut cfg: Self = muon_rs::from_str(&cfg)?;
         cfg.base_dir = Some(base);
         Ok(cfg)

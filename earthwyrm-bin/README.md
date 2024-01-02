@@ -12,7 +12,7 @@ the typical `Z/X/Y.mvt` tile naming convention.
 These instructions have been tested on Fedora Linux.
 
 ```bash
-cargo install earthwyrm-bin
+cargo install --locked earthwyrm-bin
 ```
 
 Then, as root:

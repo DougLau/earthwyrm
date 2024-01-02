@@ -8,6 +8,10 @@ edition = "2021"
 
 [workspace.dependencies]
 earthwyrm = "0.4"
+log = "0.4"
+muon-rs = "0.2"
+pointy = "0.4"
+rosewood = "0.1"
 
 [patch.crates-io]
 loam = { path = "../loam" }

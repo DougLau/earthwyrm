@@ -11,10 +11,10 @@ argh = "0.1"
 axum = "0.7"
 earthwyrm = { workspace = true }
 env_logger = "0.7"
-log = "0.4"
-muon-rs = "0.2"
-pointy = "0.4"
-rosewood = "0.1"
+log = { workspace = true }
+muon-rs = { workspace = true }
+pointy = { workspace = true }
+rosewood = { workspace = true }
 tokio = { version = "1", features = ["rt-multi-thread"] }
 
 [[bin]]

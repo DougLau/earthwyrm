@@ -4,7 +4,7 @@
 //
 #![forbid(unsafe_code)]
 
-use anyhow::{anyhow, bail, Context, Result};
+use anyhow::{anyhow, Context, Result};
 use argh::FromArgs;
 use axum::{
     http::header,
@@ -15,37 +15,34 @@ use axum::{
 use earthwyrm::{Wyrm, WyrmCfg};
 use pointy::BBox;
 use std::ffi::OsString;
-use std::fs::File;
+use std::fs::{DirEntry, File};
 use std::io::Write;
 use std::path::{Path, PathBuf};
 use tokio::net::TcpListener;
 
-/// Get path to the OSM file
-fn osm_path<P>(base: P) -> Result<PathBuf>
-where
-    P: AsRef<Path>,
-{
-    let path = Path::new(base.as_ref().as_os_str()).join("osm");
-    let mut paths = path
-        .read_dir()
+/// Get path to the newest OSM file
+fn osm_newest(cfg: &WyrmCfg) -> Result<PathBuf> {
+    let base = cfg.base_dir();
+    let path = Path::new(&base).join("osm");
+    path.read_dir()
         .with_context(|| format!("reading directory: {path:?}"))?
-        .filter_map(|f| f.ok())
-        .filter_map(|f| match f.file_type() {
-            Ok(ft) if ft.is_file() => {
-                let path = path.join(f.file_name());
-                if path.extension().unwrap_or_default() == "pbf" {
-                    Some(path)
-                } else {
-                    None
-                }
-            }
-            _ => None,
-        });
-    let osm = paths.next();
-    if paths.next().is_some() {
-        bail!("multiple OSM files found: {path:?}");
+        .filter_map(Result::ok)
+        .filter(is_pbf_file)
+        .max_by_key(|de| de.metadata().unwrap().modified().unwrap())
+        .map(|de| path.join(de.file_name()))
+        .ok_or_else(|| anyhow!("no OSM file found"))
+}
+
+/// Check if a directory entry is a PBF file
+fn is_pbf_file(de: &DirEntry) -> bool {
+    match de.file_type() {
+        Ok(ft) if ft.is_file() => {
+            let name = de.file_name();
+            let path: &Path = name.as_ref();
+            path.extension().unwrap_or_default() == "pbf"
+        }
+        _ => false,
     }
-    osm.ok_or_else(|| anyhow!("no OSM file found: {path:?}"))
 }
 
 /// Command-line arguments
@@ -143,7 +140,7 @@ where
 impl DigCommand {
     /// Dig loam layers from OSM file
     fn dig(self, cfg: WyrmCfg) -> Result<()> {
-        let osm = osm_path(cfg.base_dir())?;
+        let osm = osm_newest(&cfg)?;
         Ok(cfg.extract_osm(osm)?)
     }
 }

@@ -4,8 +4,8 @@
 of Transportation (MnDOT).  It can serve [OpenStreetMap] or other GIS data in
 [MVT] format.
 
-EarthWyrm uses the pervasive [Web Mercator] projection (EPSG:3857), along with
-the typical `Z/X/Y.mvt` tile naming convention.
+EarthWyrm uses the pervasive [Web Mercator] projection (EPSG:3857), with the
+`Z/X/Y.mvt` tile naming convention.
 
 ## Installation
 

@@ -1,5 +1,8 @@
 # earthwyrm.muon
 #
+# Base directory for EarthWyrm configuration files
+base_dir=/var/local/earthwyrm
+#
 # The default bind_address is the IPv4 loopback address, which is not accessible
 # to clients on other hosts.  Instead of changing the bind address, it is
 # recommended to set up a reverse proxy, such as nginx.

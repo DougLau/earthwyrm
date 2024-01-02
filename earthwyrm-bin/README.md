@@ -30,8 +30,8 @@ This file tree will be created:
 /var/local/earthwyrm/
 ├── earthwyrm.muon
 ├── earthwyrm.service
-├── loam
-└── osm
+├── loam/
+└── osm/
 ```
 
 Edit the __configuration__ file at `/var/local/earthwyrm/earthwyrm.muon`.  It

@@ -14,7 +14,6 @@ use axum::{
 };
 use earthwyrm::{Wyrm, WyrmCfg};
 use pointy::BBox;
-use std::ffi::OsString;
 use std::fs::{DirEntry, File};
 use std::io::Write;
 use std::path::{Path, PathBuf};
@@ -22,8 +21,7 @@ use tokio::net::TcpListener;
 
 /// Get path to the newest OSM file
 fn osm_newest(cfg: &WyrmCfg) -> Result<PathBuf> {
-    let base = cfg.base_dir();
-    let path = Path::new(&base).join("osm");
+    let path = Path::new(cfg.base_dir()).join("osm");
     path.read_dir()
         .with_context(|| format!("reading directory: {path:?}"))?
         .filter_map(Result::ok)
@@ -50,7 +48,7 @@ fn is_pbf_file(de: &DirEntry) -> bool {
 struct Args {
     /// base directory
     #[argh(option, short = 'b')]
-    base: Option<OsString>,
+    base: Option<PathBuf>,
 
     #[argh(subcommand)]
     cmd: Command,
@@ -109,18 +107,17 @@ impl InitCommand {
     where
         P: AsRef<Path>,
     {
-        let base =
-            base.ok_or_else(|| anyhow!("no base directory specified"))?;
-        let osm_path = Path::new(base.as_ref().as_os_str()).join("osm");
+        let base = WyrmCfg::base_path(base);
+        let osm_path = Path::new(&base).join("osm");
         std::fs::create_dir_all(osm_path)?;
-        let loam_path = Path::new(base.as_ref().as_os_str()).join("loam");
+        let loam_path = Path::new(&base).join("loam");
         std::fs::create_dir_all(loam_path)?;
         write_file(
-            Path::new(base.as_ref().as_os_str()).join("earthwyrm.muon"),
+            Path::new(&base).join("earthwyrm.muon"),
             include_bytes!("../res/earthwyrm.muon"),
         )?;
         write_file(
-            Path::new(base.as_ref().as_os_str()).join("earthwyrm.service"),
+            Path::new(&base).join("earthwyrm.service"),
             include_bytes!("../res/earthwyrm.service"),
         )?;
         Ok(())
@@ -193,7 +190,8 @@ async fn map_js() -> impl IntoResponse {
 impl Args {
     /// Read the configuration file into a string
     fn read_config(&self) -> Result<WyrmCfg> {
-        WyrmCfg::from_dir(self.base.as_ref())
+        let base = WyrmCfg::base_path(self.base.as_ref());
+        WyrmCfg::from_dir(&base)
             .with_context(|| format!("config {:?}", &self.base))
     }
 

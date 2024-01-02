@@ -2,20 +2,17 @@
 //
 // Copyright (c) 2019-2023  Minnesota Department of Transportation
 //
-use crate::error::Result;
+use crate::error::{Error, Result};
 use serde_derive::Deserialize;
 use std::fmt;
 use std::fs::read_to_string;
 use std::path::{Path, PathBuf};
 
-/// Default base directory path
-const BASE_DIR: &str = "/var/local/earthwyrm/";
-
 /// Configuration for Earthwyrm tile layers.
 #[derive(Debug, Deserialize)]
 pub struct WyrmCfg {
     /// Base directory
-    pub base_dir: Option<PathBuf>,
+    pub base_dir: PathBuf,
 
     /// Address to bind server
     pub bind_address: String,
@@ -70,33 +67,43 @@ impl fmt::Display for LayerGroupCfg {
 }
 
 impl WyrmCfg {
-    /// Read the configuration file
-    pub fn from_dir<P>(base: Option<P>) -> Result<Self>
+    /// Default base directory path
+    const BASE_DEFAULT: &'static str = "/var/local/earthwyrm/";
+
+    /// Make base directory path
+    pub fn base_path<P>(base: Option<P>) -> PathBuf
     where
         P: AsRef<Path>,
     {
-        let base = match &base {
-            Some(base) => PathBuf::from(base.as_ref()),
-            None => PathBuf::from(BASE_DIR),
-        };
-        let path = Path::new(&base).join("earthwyrm.muon");
+        match base {
+            Some(base) => PathBuf::from(base.as_ref().as_os_str()),
+            None => PathBuf::from(Self::BASE_DEFAULT),
+        }
+    }
+
+    /// Read the configuration file
+    pub fn from_dir<P>(base: P) -> Result<Self>
+    where
+        P: AsRef<Path>,
+    {
+        let path = base.as_ref().join("earthwyrm.muon");
         let cfg = read_to_string(path)?;
-        let mut cfg: Self = muon_rs::from_str(&cfg)?;
-        cfg.base_dir = Some(base);
-        Ok(cfg)
+        let cfg: Self = muon_rs::from_str(&cfg)?;
+        if cfg.base_dir() == base.as_ref() {
+            Ok(cfg)
+        } else {
+            Err(Error::InvalidBaseDir(cfg.base_dir))
+        }
     }
 
     /// Get the base directory
-    pub fn base_dir(&self) -> PathBuf {
-        match &self.base_dir {
-            Some(base) => PathBuf::from(base),
-            None => PathBuf::from(BASE_DIR),
-        }
+    pub fn base_dir(&self) -> &Path {
+        self.base_dir.as_path()
     }
 
     /// Get path to a layer .loam file
     pub fn loam_path(&self, name: &str) -> PathBuf {
-        let mut path = self.base_dir();
+        let mut path = self.base_dir.clone();
         path.push("loam");
         path.push(format!("{}.loam", name));
         path

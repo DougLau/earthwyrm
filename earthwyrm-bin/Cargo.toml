@@ -1,9 +1,9 @@
 [package]
 name = "earthwyrm-bin"
-version = "0.1.0"
 license = "MIT OR Apache-2.0"
 repository = "https://github.com/DougLau/earthwyrm/earthwyrm-bin"
-edition = "2021"
+version.workspace = true
+edition.workspace = true
 
 [dependencies]
 anyhow = "1.0"
@@ -13,7 +13,7 @@ earthwyrm = { version = "0.4", path = "../earthwyrm" }
 env_logger = "0.7"
 log = "0.4"
 muon-rs = "0.2"
-pointy = "0.3"
+pointy = "0.4"
 rosewood = "0.1"
 tokio = { version = "1", features = ["rt-multi-thread"] }
 

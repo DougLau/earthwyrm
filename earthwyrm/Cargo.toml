@@ -1,21 +1,21 @@
 [package]
 name = "earthwyrm"
-version = "0.4.3"
 description = "Vector tile map server for openstreetmap data"
 license = "MIT OR Apache-2.0"
 documentation = "https://docs.rs/earthwyrm"
 repository = "https://github.com/DougLau/earthwyrm/earthwyrm"
 readme = "README.md"
 keywords = ["cartography", "gis", "osm", "server"]
-edition = "2021"
+version.workspace = true
+edition.workspace = true
 
 [dependencies]
 loam = "0.1"
 log = "0.4"
 muon-rs = "0.2"
-mvt = "0.7"
+mvt = "0.8"
 osmpbfreader = "0.15"
-pointy = "0.3"
+pointy = "0.4"
 rosewood = "0.1"
 serde = "1.0"
 serde_derive = "1.0"

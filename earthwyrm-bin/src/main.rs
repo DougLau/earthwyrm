@@ -1,6 +1,6 @@
 // main.rs
 //
-// Copyright (c) 2021-2022  Minnesota Department of Transportation
+// Copyright (c) 2021-2023  Minnesota Department of Transportation
 //
 #![forbid(unsafe_code)]
 
@@ -114,9 +114,9 @@ impl InitCommand {
         let base =
             base.ok_or_else(|| anyhow!("no base directory specified"))?;
         let osm_path = Path::new(base.as_ref().as_os_str()).join("osm");
-        std::fs::create_dir_all(&osm_path)?;
+        std::fs::create_dir_all(osm_path)?;
         let loam_path = Path::new(base.as_ref().as_os_str()).join("loam");
-        std::fs::create_dir_all(&loam_path)?;
+        std::fs::create_dir_all(loam_path)?;
         write_file(
             Path::new(base.as_ref().as_os_str()).join("earthwyrm.muon"),
             include_bytes!("../res/earthwyrm.muon"),

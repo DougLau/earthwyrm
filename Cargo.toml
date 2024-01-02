@@ -1,2 +1,12 @@
 [workspace]
 members = ["earthwyrm", "earthwyrm-bin"]
+resolver = "2"
+
+[workspace.package]
+version = "0.4.4"
+edition = "2021"
+
+[patch.crates-io]
+loam = { path = "../loam" }
+rosewood = { path = "../loam" }
+earthwyrm = { path = "earthwyrm" }

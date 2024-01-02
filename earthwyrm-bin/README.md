@@ -37,13 +37,9 @@ This file tree will be created:
 Edit the __configuration__ file at `/var/local/earthwyrm/earthwyrm.muon`.  It
 contains examples and instructions.
 
-__Download__ an extract of your region in [PBF format], e.g.
-`minnesota-latest.osm.pbf`, from an OpenStreetMap data provider, such as
-[Geofabrik].
-
-```bash
-mv minnesota-latest.osm.pbf /var/local/earthwyrm/osm/
-```
+__Download__ an OpenStreetMap extract of your region in [PBF format] into the
+`/var/local/earthwyrm/osm/` directory.  For example, files such as
+`minnesota-latest.osm.pbf` are provided daily from [Geofabrik].
 
 __Dig__ the configured layers into `.loam` cache files.  This step may take a
 long time, depending on the region size.

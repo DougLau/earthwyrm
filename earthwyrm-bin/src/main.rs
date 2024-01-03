@@ -192,7 +192,7 @@ impl Args {
     fn read_config(&self) -> Result<WyrmCfg> {
         let base = WyrmCfg::base_path(self.base.as_ref());
         WyrmCfg::from_dir(&base)
-            .with_context(|| format!("config {:?}", &self.base))
+            .with_context(|| format!("read_config {base:?}"))
     }
 
     /// Run selected command

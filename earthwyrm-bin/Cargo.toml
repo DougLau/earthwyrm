@@ -13,8 +13,11 @@ earthwyrm = { workspace = true }
 env_logger = "0.7"
 log = { workspace = true }
 muon-rs = { workspace = true }
+mvt = { workspace = true }
 pointy = { workspace = true }
 rosewood = { workspace = true }
+serde = { workspace = true }
+serde_derive = { workspace = true }
 tokio = { version = "1", features = ["rt-multi-thread"] }
 
 [[bin]]

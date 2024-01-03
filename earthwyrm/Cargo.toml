@@ -13,9 +13,9 @@ edition.workspace = true
 loam = "0.1"
 log = { workspace = true }
 muon-rs = { workspace = true }
-mvt = "0.8"
+mvt = { workspace = true }
 osmpbfreader = "0.15"
 pointy = { workspace = true }
 rosewood = { workspace = true }
-serde = "1.0"
-serde_derive = "1.0"
+serde = { workspace = true }
+serde_derive = { workspace = true }

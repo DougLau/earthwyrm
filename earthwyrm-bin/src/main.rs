@@ -7,16 +7,19 @@
 use anyhow::{anyhow, Context, Result};
 use argh::FromArgs;
 use axum::{
-    http::header,
-    response::{Html, IntoResponse},
+    extract::{Path as AxumPath, State},
+    http::{header, StatusCode},
+    response::IntoResponse,
     routing::get,
     Router,
 };
-use earthwyrm::{Wyrm, WyrmCfg};
+use earthwyrm::{TileId, Wyrm, WyrmCfg};
 use pointy::BBox;
+use serde::Deserialize;
 use std::fs::{DirEntry, File};
 use std::io::Write;
 use std::path::{Path, PathBuf};
+use std::sync::Arc;
 use tokio::net::TcpListener;
 
 /// Get path to the newest OSM file
@@ -155,16 +158,14 @@ impl QueryCommand {
 impl ServeCommand {
     /// Serve tiles using http
     fn serve(&self, cfg: WyrmCfg) -> Result<()> {
-        let wyrm = Wyrm::try_from(&cfg)?;
+        let wyrm = Arc::new(Wyrm::try_from(&cfg)?);
         let rt = tokio::runtime::Runtime::new()?;
         rt.block_on(async {
             let mut app = Router::new();
             if self.leaflet {
-                app = app
-                    .route("/index.html", get(index_html))
-                    .route("/map.css", get(map_css))
-                    .route("/map.js", get(map_js));
+                app = app.merge(index_html()).merge(map_css()).merge(map_js());
             }
+            app = app.merge(tile_mvt(wyrm));
             let listener = TcpListener::bind(cfg.bind_address).await.unwrap();
             axum::serve(listener, app).await.unwrap();
         });
@@ -172,19 +173,88 @@ impl ServeCommand {
     }
 }
 
-/// Get `indexl.html` as response
-async fn index_html() -> impl IntoResponse {
-    Html(include_str!("../res/index.html"))
+/// Router for `indexl.html`
+fn index_html() -> Router {
+    async fn handler() -> impl IntoResponse {
+        (
+            [(header::CONTENT_TYPE, "text/html")],
+            include_str!("../res/index.html"),
+        )
+    }
+    Router::new()
+        .route("/", get(handler))
+        .route("/index.html", get(handler))
 }
 
-/// Get `map.css` as response
-async fn map_css() -> impl IntoResponse {
-    ([(header::CONTENT_TYPE, "text/css")], include_str!("../res/map.css"))
+/// Router for `map.css`
+fn map_css() -> Router {
+    async fn handler() -> impl IntoResponse {
+        ([(header::CONTENT_TYPE, "text/css")], include_str!("../res/map.css"))
+    }
+    Router::new().route("/map.css", get(handler))
 }
 
-/// Get `map.js` as response
-async fn map_js() -> impl IntoResponse {
-    ([(header::CONTENT_TYPE, "text/javascript")], include_str!("../res/map.js"))
+/// Router for `map.js`
+fn map_js() -> Router {
+    async fn handler() -> impl IntoResponse {
+        (
+            [(header::CONTENT_TYPE, "text/javascript")],
+            include_str!("../res/map.js"),
+        )
+    }
+    Router::new().route("/map.js", get(handler))
+}
+
+/// Get a tile `.mvt` as response
+fn tile_mvt(wyrm: Arc<Wyrm>) -> Router {
+    async fn handler(
+        AxumPath(params): AxumPath<TileParams>,
+        State(state): State<Arc<Wyrm>>,
+    ) -> impl IntoResponse {
+        log::debug!("tile: {}/{}/{}", params.z, params.x, params.tail);
+        let Ok(tid) = TileId::try_from(&params) else {
+            return (StatusCode::NOT_FOUND, "Not Found".into_response());
+        };
+        let mut out = vec![];
+        match state.fetch_tile(&mut out, &params.group, tid) {
+            Ok(()) => (StatusCode::OK, out.into_response()),
+            Err(earthwyrm::Error::TileEmpty()) => {
+                (StatusCode::NOT_FOUND, "Not Found".into_response())
+            }
+            Err(err) => {
+                log::warn!("fetch_tile: {err:?}");
+                (
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    "Internal Error".into_response(),
+                )
+            }
+        }
+    }
+    Router::new()
+        .route("/:group/:z/:x/:tail", get(handler))
+        .with_state(wyrm)
+}
+
+/// Tile route parameters
+#[derive(Deserialize)]
+struct TileParams {
+    group: String,
+    z: u32,
+    x: u32,
+    tail: String,
+}
+
+impl TryFrom<&TileParams> for TileId {
+    type Error = mvt::Error;
+
+    fn try_from(params: &TileParams) -> Result<Self, Self::Error> {
+        if let Some(y) = params.tail.strip_suffix(".mvt") {
+            if let Ok(y) = y.parse::<u32>() {
+                return TileId::new(params.x, y, params.z);
+            }
+        }
+        Err(mvt::Error::InvalidTid())
+    }
 }
 
 impl Args {

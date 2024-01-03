@@ -10,8 +10,11 @@ edition = "2021"
 earthwyrm = "0.4"
 log = "0.4"
 muon-rs = "0.2"
+mvt = "0.8"
 pointy = "0.4"
 rosewood = "0.1"
+serde = "1.0"
+serde_derive = "1.0"
 
 [patch.crates-io]
 loam = { path = "../loam" }

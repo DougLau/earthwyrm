@@ -211,7 +211,13 @@ fn tile_mvt(wyrm: Arc<Wyrm>) -> Router {
         AxumPath(params): AxumPath<TileParams>,
         State(state): State<Arc<Wyrm>>,
     ) -> impl IntoResponse {
-        log::debug!("tile: {}/{}/{}", params.z, params.x, params.tail);
+        log::debug!(
+            "req: {}/{}/{}/{}",
+            &params.group,
+            params.z,
+            params.x,
+            params.tail
+        );
         let Ok(tid) = TileId::try_from(&params) else {
             return (StatusCode::NOT_FOUND, "Not Found".into_response());
         };

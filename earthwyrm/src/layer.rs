@@ -1,11 +1,12 @@
 // layer.rs
 //
-// Copyright (c) 2019-2022  Minnesota Department of Transportation
+// Copyright (c) 2019-2023  Minnesota Department of Transportation
 //
 use crate::config::LayerCfg;
 use crate::error::{Error, Result};
 use mvt::GeomType;
 use osmpbfreader::Tags;
+use std::fmt;
 
 /// Max zoom level
 const ZOOM_MAX: u32 = 30;
@@ -100,6 +101,23 @@ enum Equality {
 
     /// Pattern not equal value
     NotEqual,
+}
+
+impl fmt::Display for TagPattern {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let prefix = match (self.must_match, self.include, self.feature_type) {
+            (MustMatch::No, _, FeatureType::MvtSint) => "$",
+            (MustMatch::No, _, FeatureType::MvtString) => "?",
+            (MustMatch::Yes, IncludeValue::Yes, _) => ".",
+            _ => "",
+        };
+        let equality = match self.equality {
+            Equality::Equal => "=",
+            Equality::NotEqual => "!=",
+        };
+        let values = self.values.join("|");
+        write!(f, "{prefix}{}{equality}{values}", &self.tag)
+    }
 }
 
 impl TagPattern {
@@ -223,7 +241,7 @@ fn parse_patterns(tags: &[String]) -> Result<Vec<TagPattern>> {
         if patterns.iter().any(|p| p.tag() == tag) {
             return Err(Error::DuplicatePattern(pat.to_string()));
         }
-        log::debug!("tag pattern: {:?}", &p);
+        log::debug!("tag pattern: {p}");
         patterns.push(p);
     }
     Ok(patterns)

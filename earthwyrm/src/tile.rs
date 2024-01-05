@@ -1,6 +1,6 @@
 // tile.rs
 //
-// Copyright (c) 2019-2022  Minnesota Department of Transportation
+// Copyright (c) 2019-2023  Minnesota Department of Transportation
 //
 use crate::config::{LayerGroupCfg, WyrmCfg};
 use crate::error::{Error, Result};
@@ -94,7 +94,7 @@ impl LayerGroup {
             let layer_def = LayerDef::try_from(layer_cfg)?;
             layers.push(LayerTree::new(layer_def, wyrm)?);
         }
-        log::info!("{} layers in {}", layers.len(), group);
+        log::info!("{} layers in {group}", layers.len());
         Ok(LayerGroup { name, layers })
     }
 
@@ -166,11 +166,11 @@ impl TryFrom<&WyrmCfg> for Wyrm {
 }
 
 impl Wyrm {
-    /// Query features a bounding box
+    /// Query features in a bounding box
     pub fn query_features(&self, bbox: BBox<f32>) -> Result<()> {
         for group in &self.groups {
             for layer in &group.layers {
-                layer.tree.query_features(&layer.layer_def, bbox)?;
+                layer.query_features(bbox)?;
             }
         }
         Ok(())
@@ -232,8 +232,13 @@ impl LayerTree {
         Ok(LayerTree { layer_def, tree })
     }
 
+    /// Query layer features in a bounding box
+    fn query_features(&self, bbox: BBox<f32>) -> Result<()> {
+        self.tree.query_features(&self.layer_def, bbox)
+    }
+
     /// Query tile features
-    pub fn query_tile(&self, tile: &Tile, tile_cfg: &TileCfg) -> Result<Layer> {
+    fn query_tile(&self, tile: &Tile, tile_cfg: &TileCfg) -> Result<Layer> {
         let layer = tile.create_layer(self.layer_def.name());
         if self.layer_def.check_zoom(tile_cfg.zoom()) {
             self.tree.query_tile(&self.layer_def, layer, tile_cfg)

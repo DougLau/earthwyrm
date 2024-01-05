@@ -111,12 +111,24 @@ impl fmt::Display for TagPattern {
             (MustMatch::Yes, IncludeValue::Yes, _) => ".",
             _ => "",
         };
+        write!(f, "{prefix}{}", &self.tag)?;
+        if let (Equality::NotEqual, Some("_")) =
+            (self.equality, self.values.first().map(String::as_str))
+        {
+            return Ok(());
+        }
         let equality = match self.equality {
             Equality::Equal => "=",
             Equality::NotEqual => "!=",
         };
-        let values = self.values.join("|");
-        write!(f, "{prefix}{}{equality}{values}", &self.tag)
+        write!(f, "{equality}")?;
+        for (i, val) in self.values.iter().enumerate() {
+            if i > 0 {
+                write!(f, "|")?;
+            }
+            write!(f, "{val}")?;
+        }
+        Ok(())
     }
 }
 

@@ -81,6 +81,7 @@ impl PointTree {
     where
         P: AsRef<Path>,
     {
+        log::debug!("PointTree: {:?}", path.as_ref());
         let tree = RTree::new(path)?;
         Ok(Self { tree })
     }
@@ -109,6 +110,7 @@ impl PointTree {
         tile_cfg: &TileCfg,
     ) -> Result<Layer> {
         let bbox = tile_cfg.bbox();
+        log::debug!("tile bbox: {bbox:?}");
         let transform = tile_cfg.transform();
         for points in self.tree.query(bbox) {
             let points = points?;
@@ -151,6 +153,7 @@ impl LinestringTree {
     where
         P: AsRef<Path>,
     {
+        log::debug!("LinestringTree: {:?}", path.as_ref());
         let tree = RTree::new(path)?;
         Ok(Self { tree })
     }
@@ -181,6 +184,7 @@ impl LinestringTree {
         tile_cfg: &TileCfg,
     ) -> Result<Layer> {
         let bbox = tile_cfg.bbox();
+        log::debug!("tile bbox: {bbox:?}");
         let transform = tile_cfg.transform();
         for lines in self.tree.query(bbox) {
             let lines = lines?;
@@ -238,6 +242,7 @@ impl PolygonTree {
     where
         P: AsRef<Path>,
     {
+        log::debug!("PolygonTree: {:?}", path.as_ref());
         let tree = RTree::new(path)?;
         Ok(Self { tree })
     }
@@ -268,6 +273,7 @@ impl PolygonTree {
         tile_cfg: &TileCfg,
     ) -> Result<Layer> {
         let bbox = tile_cfg.bbox();
+        log::debug!("tile bbox: {bbox:?}");
         let transform = tile_cfg.transform();
         for polygon in self.tree.query(bbox) {
             let polygon = polygon?;

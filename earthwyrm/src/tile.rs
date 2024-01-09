@@ -1,6 +1,6 @@
 // tile.rs
 //
-// Copyright (c) 2019-2023  Minnesota Department of Transportation
+// Copyright (c) 2019-2024  Minnesota Department of Transportation
 //
 use crate::config::{LayerGroupCfg, WyrmCfg};
 use crate::error::{Error, Result};
@@ -13,7 +13,7 @@ use std::time::Instant;
 
 /// Tile configuration
 pub struct TileCfg {
-    /// Tile extent; width and height
+    /// Tile extent; width and height in pixels
     tile_extent: u32,
 
     /// Tile ID
@@ -58,10 +58,10 @@ pub struct Wyrm {
     /// Map grid configuration
     grid: MapGrid<f32>,
 
-    /// Tile extent; width and height
+    /// Tile extent; width and height in pixels
     tile_extent: u32,
 
-    /// Extent outside tile edges
+    /// Extent outside tile edges (pixels)
     edge_extent: u32,
 
     /// Tile layer groups
@@ -169,6 +169,7 @@ impl Wyrm {
     /// Query features in a bounding box
     pub fn query_features(&self, bbox: BBox<f32>) -> Result<()> {
         for group in &self.groups {
+            log::debug!("query_features group: {:?}", group.name);
             for layer in &group.layers {
                 layer.query_features(bbox)?;
             }

@@ -12,6 +12,7 @@ use std::fmt;
 const ZOOM_MAX: u32 = 30;
 
 /// Layer rule definition
+#[derive(Debug)]
 pub struct LayerDef {
     /// Layer name
     name: String,
@@ -253,7 +254,7 @@ fn parse_patterns(tags: &[String]) -> Result<Vec<TagPattern>> {
         if patterns.iter().any(|p| p.tag() == tag) {
             return Err(Error::DuplicatePattern(pat.to_string()));
         }
-        log::debug!("tag pattern: {p}");
+        log::trace!("tag pattern: {p}");
         patterns.push(p);
     }
     Ok(patterns)
@@ -286,7 +287,7 @@ impl TryFrom<&LayerCfg> for LayerDef {
         let source = parse_source(&layer.source)?;
         let geom_tp = parse_geom_type(&layer.geom_type)?;
         let (zoom_min, zoom_max) = parse_zoom_range(&layer.zoom)?;
-        log::debug!("zoom: {}-{}", zoom_min, zoom_max);
+        log::trace!("zoom: {}-{}", zoom_min, zoom_max);
         let patterns = parse_patterns(&layer.tags)?;
         Ok(LayerDef {
             name,

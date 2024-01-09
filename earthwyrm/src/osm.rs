@@ -1,6 +1,6 @@
 // osm.rs
 //
-// Copyright (c) 2021-2022  Minnesota Department of Transportation
+// Copyright (c) 2021-2024  Minnesota Department of Transportation
 //
 use crate::config::WyrmCfg;
 use crate::error::Result;
@@ -64,8 +64,8 @@ impl GeometryMaker {
         Self { layer, objs }
     }
 
-    /// Make a point from a `Node`
-    fn make_point(&self, node: &Node) -> Option<gis::Points<f32, Values>> {
+    /// Make point geometry from a `Node`
+    fn node_point(&self, node: &Node) -> Option<gis::Points<f64, Values>> {
         let values = self.tag_values(node.id.0, &node.tags);
         let mut point = gis::Points::new(values);
         for pt in self.lookup_nodes(&[node.id]) {
@@ -75,11 +75,11 @@ impl GeometryMaker {
         Some(point)
     }
 
-    /// Make a linestring from a `Way`
-    fn make_linestring(
+    /// Make linestring geometry from a `Way`
+    fn way_linestring(
         &self,
         way: &Way,
-    ) -> Option<gis::Linestrings<f32, Values>> {
+    ) -> Option<gis::Linestrings<f64, Values>> {
         let values = self.tag_values(way.id.0, &way.tags);
         let mut linestring = gis::Linestrings::new(values);
         if way.nodes.is_empty() {
@@ -94,13 +94,13 @@ impl GeometryMaker {
         Some(linestring)
     }
 
-    /// Make a polygon from a `Relation`
-    fn make_polygon(
+    /// Make polygon geometry from a `Relation`
+    fn rel_polygon(
         &self,
         rel: &Relation,
-    ) -> Option<gis::Polygons<f32, Values>> {
+    ) -> Option<gis::Polygons<f64, Values>> {
         let values = self.tag_values(rel.id.0, &rel.tags);
-        let mut ways = vec![];
+        let mut ways = Vec::new();
         let mut polygon = gis::Polygons::new(values);
         for rf in &rel.refs {
             let outer = if rf.role == "outer" {
@@ -163,19 +163,19 @@ impl GeometryMaker {
                 }
             }
         }
-        vec![]
+        Vec::new()
     }
 
     /// Lookup points for a slice of nodes
-    fn lookup_nodes(&self, nodes: &[NodeId]) -> Vec<(f32, f32)> {
-        let mut pts = vec![];
+    fn lookup_nodes(&self, nodes: &[NodeId]) -> Vec<(f64, f64)> {
+        let mut pts = Vec::with_capacity(nodes.len());
         for node in nodes {
             let nid = OsmId::Node(*node);
             if let Some(OsmObj::Node(node)) = self.objs.get(&nid) {
-                pts.push((node.lon() as f32, node.lat() as f32));
+                pts.push((node.lon(), node.lat()));
             } else {
                 log::error!("node not found: {:?}", node);
-                return vec![];
+                return Vec::new();
             }
         }
         pts
@@ -200,9 +200,9 @@ impl GeometryMaker {
     {
         let mut writer = BulkWriter::new(loam)?;
         let mut n_point = 0;
-        for pt in self.objs.iter().filter_map(|(_, obj)| obj.node()) {
-            if let Some(point) = self.make_point(pt) {
-                writer.push(&point)?;
+        for node in self.objs.iter().filter_map(|(_, obj)| obj.node()) {
+            if let Some(geom) = self.node_point(node) {
+                writer.push(&geom)?;
                 n_point += 1;
             }
         }
@@ -223,8 +223,8 @@ impl GeometryMaker {
         let mut writer = BulkWriter::new(loam)?;
         let mut n_line = 0;
         for way in self.objs.iter().filter_map(|(_, obj)| obj.way()) {
-            if let Some(line) = self.make_linestring(way) {
-                writer.push(&line)?;
+            if let Some(geom) = self.way_linestring(way) {
+                writer.push(&geom)?;
                 n_line += 1;
             }
         }
@@ -245,8 +245,8 @@ impl GeometryMaker {
         let mut writer = BulkWriter::new(loam)?;
         let mut n_poly = 0;
         for rel in self.objs.iter().filter_map(|(_, obj)| obj.relation()) {
-            if let Some(poly) = self.make_polygon(rel) {
-                writer.push(&poly)?;
+            if let Some(geom) = self.rel_polygon(rel) {
+                writer.push(&geom)?;
                 n_poly += 1;
             }
         }

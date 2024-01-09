@@ -1,6 +1,6 @@
 // main.rs
 //
-// Copyright (c) 2021-2023  Minnesota Department of Transportation
+// Copyright (c) 2021-2024  Minnesota Department of Transportation
 //
 #![forbid(unsafe_code)]
 
@@ -89,10 +89,10 @@ struct DigCommand {}
 #[argh(subcommand, name = "query")]
 struct QueryCommand {
     #[argh(positional)]
-    lat: f32,
+    lat: f64,
 
     #[argh(positional)]
-    lon: f32,
+    lon: f64,
 }
 
 /// Serve tiles using http

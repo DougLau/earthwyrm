@@ -1,6 +1,6 @@
 // geom.rs
 //
-// Copyright (c) 2019-2022  Minnesota Department of Transportation
+// Copyright (c) 2019-2024  Minnesota Department of Transportation
 //
 use crate::error::Result;
 use crate::layer::LayerDef;
@@ -13,7 +13,7 @@ use std::path::Path;
 /// Geometry which can be encoded to GeomData
 trait GisEncode {
     /// Encode into GeomData
-    fn encode(&self, bbox: BBox<f32>, t: Transform<f32>) -> Result<GeomData>;
+    fn encode(&self, bbox: BBox<f64>, t: Transform<f64>) -> Result<GeomData>;
 }
 
 /// Tag values, in order specified by tag pattern rule
@@ -21,17 +21,17 @@ pub type Values = Vec<Option<String>>;
 
 /// Tree of point geometry
 pub struct PointTree {
-    tree: RTree<f32, gis::Points<f32, Values>>,
+    tree: RTree<f64, gis::Points<f64, Values>>,
 }
 
 /// Tree of linestring geometry
 pub struct LinestringTree {
-    tree: RTree<f32, gis::Linestrings<f32, Values>>,
+    tree: RTree<f64, gis::Linestrings<f64, Values>>,
 }
 
 /// Tree of polygon geometry
 pub struct PolygonTree {
-    tree: RTree<f32, gis::Polygons<f32, Values>>,
+    tree: RTree<f64, gis::Polygons<f64, Values>>,
 }
 
 /// Tree of geometry
@@ -63,8 +63,8 @@ impl LayerDef {
     }
 }
 
-impl<D> GisEncode for gis::Points<f32, D> {
-    fn encode(&self, bbox: BBox<f32>, t: Transform<f32>) -> Result<GeomData> {
+impl<D> GisEncode for gis::Points<f64, D> {
+    fn encode(&self, bbox: BBox<f64>, t: Transform<f64>) -> Result<GeomData> {
         let mut enc = GeomEncoder::new(GeomType::Point, t);
         for pt in self.iter() {
             if pt.bounded_by(bbox) {
@@ -90,7 +90,7 @@ impl PointTree {
     fn query_features(
         &self,
         layer_def: &LayerDef,
-        bbox: BBox<f32>,
+        bbox: BBox<f64>,
     ) -> Result<()> {
         for points in self.tree.query(bbox) {
             let points = points?;
@@ -125,8 +125,8 @@ impl PointTree {
     }
 }
 
-impl<D> GisEncode for gis::Linestrings<f32, D> {
-    fn encode(&self, bbox: BBox<f32>, t: Transform<f32>) -> Result<GeomData> {
+impl<D> GisEncode for gis::Linestrings<f64, D> {
+    fn encode(&self, bbox: BBox<f64>, t: Transform<f64>) -> Result<GeomData> {
         let mut enc = GeomEncoder::new(GeomType::Linestring, t);
         for line in self.iter() {
             let mut connected = false;
@@ -162,7 +162,7 @@ impl LinestringTree {
     fn query_features(
         &self,
         layer_def: &LayerDef,
-        bbox: BBox<f32>,
+        bbox: BBox<f64>,
     ) -> Result<()> {
         for lines in self.tree.query(bbox) {
             let lines = lines?;
@@ -199,8 +199,8 @@ impl LinestringTree {
     }
 }
 
-impl<D> GisEncode for gis::Polygons<f32, D> {
-    fn encode(&self, bbox: BBox<f32>, t: Transform<f32>) -> Result<GeomData> {
+impl<D> GisEncode for gis::Polygons<f64, D> {
+    fn encode(&self, bbox: BBox<f64>, t: Transform<f64>) -> Result<GeomData> {
         let mut enc = GeomEncoder::new(GeomType::Polygon, t);
         for ring in self.iter() {
             // NOTE: this assumes that rings are well-formed
@@ -251,7 +251,7 @@ impl PolygonTree {
     fn query_features(
         &self,
         layer_def: &LayerDef,
-        bbox: BBox<f32>,
+        bbox: BBox<f64>,
     ) -> Result<()> {
         for poly in self.tree.query(bbox) {
             let poly = poly?;
@@ -307,7 +307,7 @@ impl GeomTree {
     pub fn query_features(
         &self,
         layer_def: &LayerDef,
-        bbox: BBox<f32>,
+        bbox: BBox<f64>,
     ) -> Result<()> {
         match self {
             GeomTree::Point(tree) => tree.query_features(layer_def, bbox),

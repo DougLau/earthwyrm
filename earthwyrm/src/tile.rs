@@ -20,13 +20,13 @@ pub struct TileCfg {
     tid: TileId,
 
     /// Bounding box of tile (including edge extent)
-    bbox: BBox<f32>,
+    bbox: BBox<f64>,
 
     /// Transform from spatial to tile coordinates
-    transform: Transform<f32>,
+    transform: Transform<f64>,
 
     /// Tolerance for snapping geometry to grid and simplifying
-    tolerance: f32,
+    tolerance: f64,
 }
 
 /// Layer tree
@@ -56,7 +56,7 @@ struct LayerGroup {
 /// [WyrmCfg]: struct.WyrmCfg.html
 pub struct Wyrm {
     /// Map grid configuration
-    grid: MapGrid<f32>,
+    grid: MapGrid,
 
     /// Tile extent; width and height in pixels
     tile_extent: u32,
@@ -75,12 +75,12 @@ impl TileCfg {
     }
 
     /// Get the bounding box (including edge extent)
-    pub fn bbox(&self) -> BBox<f32> {
+    pub fn bbox(&self) -> BBox<f64> {
         self.bbox
     }
 
     /// Get the tile transform
-    pub fn transform(&self) -> Transform<f32> {
+    pub fn transform(&self) -> Transform<f64> {
         self.transform
     }
 }
@@ -167,7 +167,7 @@ impl TryFrom<&WyrmCfg> for Wyrm {
 
 impl Wyrm {
     /// Query features in a bounding box
-    pub fn query_features(&self, bbox: BBox<f32>) -> Result<()> {
+    pub fn query_features(&self, bbox: BBox<f64>) -> Result<()> {
         for group in &self.groups {
             log::debug!("query_features group: {:?}", group.name);
             for layer in &group.layers {
@@ -203,17 +203,17 @@ impl Wyrm {
         let tile_extent = self.tile_extent;
         let mut bbox = self.grid.tile_bbox(tid);
         let tile_sz = bbox.x_max() - bbox.x_min();
-        let tolerance = tile_sz / tile_extent as f32;
+        let tolerance = tile_sz / f64::from(tile_extent);
         log::debug!("tile {}, tolerance {:?}", tid, tolerance);
         // increase bounding box by edge extent
-        let edge = self.edge_extent as f32 / tile_extent as f32;
+        let edge = f64::from(self.edge_extent) / f64::from(tile_extent);
         let edge_x = edge * (bbox.x_max() - bbox.x_min());
         let edge_y = edge * (bbox.y_max() - bbox.y_min());
         bbox.extend([
             (bbox.x_min() - edge_x, bbox.y_min() - edge_y),
             (bbox.x_max() + edge_x, bbox.y_max() + edge_y),
         ]);
-        let ts = tile_extent as f32;
+        let ts = f64::from(tile_extent);
         let transform = self.grid.tile_transform(tid).scale(ts, ts);
         TileCfg {
             tile_extent,
@@ -234,7 +234,7 @@ impl LayerTree {
     }
 
     /// Query layer features in a bounding box
-    fn query_features(&self, bbox: BBox<f32>) -> Result<()> {
+    fn query_features(&self, bbox: BBox<f64>) -> Result<()> {
         self.tree.query_features(&self.layer_def, bbox)
     }
 

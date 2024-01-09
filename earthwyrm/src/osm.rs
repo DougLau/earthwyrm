@@ -6,7 +6,7 @@ use crate::config::WyrmCfg;
 use crate::error::Result;
 use crate::geom::Values;
 use crate::layer::{DataSource, LayerDef};
-use mvt::GeomType;
+use mvt::{GeomType, WebMercatorPos, Wgs84Pos};
 use osmpbfreader::{
     Node, NodeId, OsmId, OsmObj, OsmPbfReader, Relation, Tags, Way,
 };
@@ -172,7 +172,9 @@ impl GeometryMaker {
         for node in nodes {
             let nid = OsmId::Node(*node);
             if let Some(OsmObj::Node(node)) = self.objs.get(&nid) {
-                pts.push((node.lon(), node.lat()));
+                let pos = Wgs84Pos::new(node.lat(), node.lon());
+                let pos = WebMercatorPos::from(pos);
+                pts.push((pos.x, pos.y));
             } else {
                 log::error!("node not found: {:?}", node);
                 return Vec::new();

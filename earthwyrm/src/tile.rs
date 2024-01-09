@@ -24,9 +24,6 @@ pub struct TileCfg {
 
     /// Transform from spatial to tile coordinates
     transform: Transform<f64>,
-
-    /// Tolerance for snapping geometry to grid and simplifying
-    tolerance: f64,
 }
 
 /// Layer tree
@@ -202,9 +199,6 @@ impl Wyrm {
     fn tile_config(&self, tid: TileId) -> TileCfg {
         let tile_extent = self.tile_extent;
         let mut bbox = self.grid.tile_bbox(tid);
-        let tile_sz = bbox.x_max() - bbox.x_min();
-        let tolerance = tile_sz / f64::from(tile_extent);
-        log::debug!("tile {}, tolerance {:?}", tid, tolerance);
         // increase bounding box by edge extent
         let edge = f64::from(self.edge_extent) / f64::from(tile_extent);
         let edge_x = edge * (bbox.x_max() - bbox.x_min());
@@ -220,7 +214,6 @@ impl Wyrm {
             tid,
             bbox,
             transform,
-            tolerance,
         }
     }
 }

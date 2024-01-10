@@ -6,7 +6,7 @@ use crate::error::Result;
 use crate::layer::LayerDef;
 use crate::tile::TileCfg;
 use mvt::{Feature, GeomData, GeomEncoder, GeomType, Layer};
-use pointy::{BBox, Bounded, Pt, Seg, Transform};
+use pointy::{BBox, Bounded, Transform};
 use rosewood::{gis, gis::Gis, RTree};
 use std::path::Path;
 
@@ -200,36 +200,19 @@ impl LinestringTree {
 }
 
 impl<D> GisEncode for gis::Polygons<f64, D> {
-    fn encode(&self, bbox: BBox<f64>, t: Transform<f64>) -> Result<GeomData> {
+    fn encode(&self, _bbox: BBox<f64>, t: Transform<f64>) -> Result<GeomData> {
         let mut enc = GeomEncoder::new(GeomType::Polygon, t);
         for ring in self.iter() {
             // NOTE: this assumes that rings are well-formed
             //       according to MVT spec
             let mut first = true;
-            let mut skip: Option<Pt<_>> = None; // skipped point outside of bbox
             for seg in ring.segments() {
-                // If we skipped the previous point, check if we really need it
-                if let Some(p0) = skip {
-                    let sg = Seg::new(p0, seg.p1);
-                    if sg.bounded_by(bbox) {
-                        if first {
-                            enc.complete_geom()?;
-                            first = false;
-                        }
-                        enc.add_point(p0.x, p0.y)?;
-                    }
+                if first {
+                    enc.complete_geom()?;
+                    enc.add_point(seg.p0.x, seg.p0.y)?;
+                    first = false;
                 }
-                if seg.bounded_by(bbox) {
-                    if first {
-                        enc.complete_geom()?;
-                        enc.add_point(seg.p0.x, seg.p0.y)?;
-                        first = false;
-                    }
-                    enc.add_point(seg.p1.x, seg.p1.y)?;
-                    skip = None;
-                } else {
-                    skip = Some(seg.p1);
-                }
+                enc.add_point(seg.p1.x, seg.p1.y)?;
             }
         }
         Ok(enc.encode()?)

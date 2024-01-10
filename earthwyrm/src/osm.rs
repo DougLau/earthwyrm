@@ -247,9 +247,12 @@ impl GeometryMaker {
         let mut writer = BulkWriter::new(loam)?;
         let mut n_poly = 0;
         for rel in self.objs.iter().filter_map(|(_, obj)| obj.relation()) {
-            if let Some(geom) = self.rel_polygon(rel) {
-                writer.push(&geom)?;
-                n_poly += 1;
+            // NOTE: check tags again because relations are nebulous
+            if self.layer.check_tags(&rel.tags) {
+                if let Some(geom) = self.rel_polygon(rel) {
+                    writer.push(&geom)?;
+                    n_poly += 1;
+                }
             }
         }
         println!("  layer: {} ({n_poly} polygons)", self.layer.name());

@@ -203,7 +203,7 @@ dependencies = [
 
 [[package]]
 name = "earthwyrm"
-version = "0.4.4"
+version = "0.5.0"
 dependencies = [
  "loam",
  "log",
@@ -218,7 +218,7 @@ dependencies = [
 
 [[package]]
 name = "earthwyrm-bin"
-version = "0.4.4"
+version = "0.5.0"
 dependencies = [
  "anyhow",
  "argh",
@@ -521,7 +521,7 @@ checksum = "c4cd1a83af159aa67994778be9070f0ae1bd732942279cabb14f86f986a21456"
 
 [[package]]
 name = "loam"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "bincode",
  "memmap2",
@@ -593,7 +593,7 @@ dependencies = [
 
 [[package]]
 name = "mvt"
-version = "0.8.1"
+version = "0.9.0"
 dependencies = [
  "log",
  "num-traits",
@@ -706,7 +706,7 @@ checksum = "8b870d8c151b6f2fb93e84a13146138f05d02ed11c7e7c54f8826aaaf7c9f184"
 
 [[package]]
 name = "pointy"
-version = "0.4.0"
+version = "0.5.0"
 dependencies = [
  "num-traits",
  "serde",
@@ -812,7 +812,7 @@ checksum = "c08c74e62047bb2de4ff487b251e4a92e24f48745648451635cec7d591162d9f"
 
 [[package]]
 name = "rosewood"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "loam",
  "log",
@@ -967,9 +967,9 @@ checksum = "2047c6ded9c721764247e62cd3b03c09ffc529b2ba5b10ec482ae507a4a70160"
 
 [[package]]
 name = "termcolor"
-version = "1.4.0"
+version = "1.4.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ff1bc3d3f05aff0403e8ac0d92ced918ec05b666a43f83297ccef5bea8a3d449"
+checksum = "06794f8f6c5c898b3275aebefa6b8a1cb24cd2c6c79397ab15774837a0bc5755"
 dependencies = [
  "winapi-util",
 ]

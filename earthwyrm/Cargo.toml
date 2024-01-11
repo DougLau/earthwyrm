@@ -10,7 +10,7 @@ version.workspace = true
 edition.workspace = true
 
 [dependencies]
-loam = "0.1"
+loam = "0.2"
 log = { workspace = true }
 muon-rs = { workspace = true }
 mvt = { workspace = true }

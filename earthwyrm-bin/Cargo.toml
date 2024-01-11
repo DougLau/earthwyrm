@@ -1,5 +1,6 @@
 [package]
 name = "earthwyrm-bin"
+description = "Vector tile map server using MVT"
 license = "MIT OR Apache-2.0"
 repository = "https://github.com/DougLau/earthwyrm/earthwyrm-bin"
 version.workspace = true

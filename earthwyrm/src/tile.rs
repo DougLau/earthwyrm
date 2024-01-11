@@ -105,7 +105,7 @@ impl LayerGroup {
         let t = Instant::now();
         let tile = self.query_tile(tile_cfg)?;
         log::info!(
-            "{} {}, fetched {} bytes in {:?}",
+            "{}/{}, fetched {} bytes in {:.2?}",
             self.name(),
             tile_cfg.tid,
             tile.compute_size(),

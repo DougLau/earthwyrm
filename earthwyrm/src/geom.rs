@@ -65,7 +65,7 @@ impl LayerDef {
 
 impl<D> GisEncode for gis::Points<f64, D> {
     fn encode(&self, bbox: BBox<f64>, t: Transform<f64>) -> Result<GeomData> {
-        let mut enc = GeomEncoder::new(GeomType::Point, t);
+        let mut enc = GeomEncoder::new(GeomType::Point).bbox(bbox).transform(t);
         for pt in self.iter() {
             if pt.bounded_by(bbox) {
                 enc.add_point(pt.x, pt.y)?;
@@ -110,7 +110,7 @@ impl PointTree {
         tile_cfg: &TileCfg,
     ) -> Result<Layer> {
         let bbox = tile_cfg.bbox();
-        log::debug!("tile bbox: {bbox:?}");
+        log::trace!("query_tile points: {bbox:?}");
         let transform = tile_cfg.transform();
         for points in self.tree.query(bbox) {
             let points = points?;
@@ -127,7 +127,9 @@ impl PointTree {
 
 impl<D> GisEncode for gis::Linestrings<f64, D> {
     fn encode(&self, bbox: BBox<f64>, t: Transform<f64>) -> Result<GeomData> {
-        let mut enc = GeomEncoder::new(GeomType::Linestring, t);
+        let mut enc = GeomEncoder::new(GeomType::Linestring)
+            .bbox(bbox)
+            .transform(t);
         for line in self.iter() {
             let mut connected = false;
             for seg in line.segments() {
@@ -184,7 +186,7 @@ impl LinestringTree {
         tile_cfg: &TileCfg,
     ) -> Result<Layer> {
         let bbox = tile_cfg.bbox();
-        log::debug!("tile bbox: {bbox:?}");
+        log::trace!("query_tile linestrings: {bbox:?}");
         let transform = tile_cfg.transform();
         for lines in self.tree.query(bbox) {
             let lines = lines?;
@@ -200,8 +202,9 @@ impl LinestringTree {
 }
 
 impl<D> GisEncode for gis::Polygons<f64, D> {
-    fn encode(&self, _bbox: BBox<f64>, t: Transform<f64>) -> Result<GeomData> {
-        let mut enc = GeomEncoder::new(GeomType::Polygon, t);
+    fn encode(&self, bbox: BBox<f64>, t: Transform<f64>) -> Result<GeomData> {
+        let mut enc =
+            GeomEncoder::new(GeomType::Polygon).bbox(bbox).transform(t);
         for ring in self.iter() {
             // NOTE: this assumes that rings are well-formed
             //       according to MVT spec
@@ -256,7 +259,7 @@ impl PolygonTree {
         tile_cfg: &TileCfg,
     ) -> Result<Layer> {
         let bbox = tile_cfg.bbox();
-        log::debug!("tile bbox: {bbox:?}");
+        log::trace!("query_tile polygons: {bbox:?}");
         let transform = tile_cfg.transform();
         for polygon in self.tree.query(bbox) {
             let polygon = polygon?;

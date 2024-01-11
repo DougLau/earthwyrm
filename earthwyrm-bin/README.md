@@ -19,7 +19,7 @@ Then, as root:
 install ~/.cargo/bin/earthwyrm /usr/local/bin/
 useradd --system earthwyrm
 mkdir /var/local/earthwyrm
-chown earthwyrm.earthwyrm /var/local/earthwyrm
+chown earthwyrm:earthwyrm /var/local/earthwyrm
 sudo -u earthwyrm /usr/local/bin/earthwyrm init
 ```
 

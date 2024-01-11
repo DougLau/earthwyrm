@@ -1,5 +1,3 @@
-# ![Logo]
-
 *EarthWyrm* is an open-source map server developed for the Minnesota Department
 of Transportation (MnDOT).  It can serve [OpenStreetMap] or other GIS data in
 [MVT] format.
@@ -64,7 +62,6 @@ From the server host, browse to [127.0.0.1:3030](http://127.0.0.1:3030/)
 
 
 [Geofabrik]: http://download.geofabrik.de/
-[Logo]: https://github.com/DougLau/earthwyrm/earthwyrm.svg
 [MVT]: https://github.com/mapbox/vector-tile-spec
 [OpenStreetMap]: https://www.openstreetmap.org/about
 [PBF format]: https://wiki.openstreetmap.org/wiki/PBF_Format

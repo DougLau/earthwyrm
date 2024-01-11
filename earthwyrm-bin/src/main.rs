@@ -23,8 +23,8 @@ use std::sync::Arc;
 use tokio::net::TcpListener;
 
 /// Get path to the newest OSM file
-fn osm_newest(cfg: &WyrmCfg) -> Result<PathBuf> {
-    let path = Path::new(cfg.base_dir()).join("osm");
+fn osm_newest() -> Result<PathBuf> {
+    let path = Path::new("osm");
     path.read_dir()
         .with_context(|| format!("reading directory: {path:?}"))?
         .filter_map(Result::ok)
@@ -140,7 +140,7 @@ where
 impl DigCommand {
     /// Dig loam layers from OSM file
     fn dig(self, cfg: WyrmCfg) -> Result<()> {
-        let osm = osm_newest(&cfg)?;
+        let osm = osm_newest()?;
         Ok(cfg.extract_osm(osm)?)
     }
 }

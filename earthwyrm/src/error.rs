@@ -1,19 +1,15 @@
 // error.rs
 //
-// Copyright (c) 2019-2023  Minnesota Department of Transportation
+// Copyright (c) 2019-2024  Minnesota Department of Transportation
 //
 use std::net::AddrParseError;
 use std::num::ParseIntError;
-use std::path::PathBuf;
 use std::{fmt, io};
 
 /// Earthwyrm error types
 #[non_exhaustive]
 #[derive(Debug)]
 pub enum Error {
-    /// Invalid base directory
-    InvalidBaseDir(PathBuf),
-
     /// Duplicate tag pattern
     DuplicatePattern(String),
 
@@ -60,7 +56,6 @@ pub type Result<T> = std::result::Result<T, Error>;
 impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
-            Error::InvalidBaseDir(b) => write!(f, "Invalid base dir: {b:?}"),
             Error::DuplicatePattern(v) => write!(f, "Duplicate patterm: {}", v),
             Error::InvalidAddress(e) => e.fmt(f),
             Error::Io(e) => e.fmt(f),

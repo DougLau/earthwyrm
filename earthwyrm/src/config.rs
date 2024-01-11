@@ -1,8 +1,8 @@
 // config.rs
 //
-// Copyright (c) 2019-2023  Minnesota Department of Transportation
+// Copyright (c) 2019-2024  Minnesota Department of Transportation
 //
-use crate::error::{Error, Result};
+use crate::error::Result;
 use serde_derive::Deserialize;
 use std::fmt;
 use std::fs::read_to_string;
@@ -11,9 +11,6 @@ use std::path::{Path, PathBuf};
 /// Configuration for Earthwyrm tile layers.
 #[derive(Debug, Deserialize)]
 pub struct WyrmCfg {
-    /// Base directory
-    pub base_dir: PathBuf,
-
     /// Address to bind server
     pub bind_address: String,
 
@@ -89,21 +86,12 @@ impl WyrmCfg {
         let path = base.as_ref().join("earthwyrm.muon");
         let cfg = read_to_string(path)?;
         let cfg: Self = muon_rs::from_str(&cfg)?;
-        if cfg.base_dir() == base.as_ref() {
-            Ok(cfg)
-        } else {
-            Err(Error::InvalidBaseDir(cfg.base_dir))
-        }
-    }
-
-    /// Get the base directory
-    pub fn base_dir(&self) -> &Path {
-        self.base_dir.as_path()
+        Ok(cfg)
     }
 
     /// Get path to a layer .loam file
     pub fn loam_path(&self, name: &str) -> PathBuf {
-        let mut path = self.base_dir.clone();
+        let mut path = PathBuf::new();
         path.push("loam");
         path.push(format!("{}.loam", name));
         path

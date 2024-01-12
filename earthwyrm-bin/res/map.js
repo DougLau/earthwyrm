@@ -77,7 +77,7 @@ function init_map() {
         leisure: leisure,
         cemetery: cemetery,
         retail: retail,
-        motorway: { color: "#ffd9a9", weight: 5 },
+        motorway: { color: "#ffd9a9", weight: 3 },
         trunk: { color: "#ffe0a9" },
         primary: { color: "#ffeaa9" },
         secondary: { color: "#fff4a9" },

@@ -10,9 +10,9 @@ bind_address: 127.0.0.1:3030
 # Tile properties
 #
 # Tile extent; width and height in pixels
-tile_extent: 256
+tile_extent: 128
 # Extent outside tile edges (pixels)
-edge_extent: 6
+edge_extent: 4
 
 # Layer groups are collections of MVT files containing related layers.
 #   - name: Base URI path name
@@ -72,6 +72,11 @@ layer_group: tile
     geom_type: polygon
     zoom: 13+
     tags: $osm_id ?name leisure
+  layer: cemetery
+    source: osm
+    geom_type: polygon
+    zoom: 13+
+    tags: $osm_id ?name landuse=cemetery
   layer: lake
     source: osm
     geom_type: polygon
@@ -102,6 +107,16 @@ layer_group: tile
     geom_type: polygon
     zoom: 14+
     tags: $osm_id ?name landuse=retail
+  layer: parking
+    source: osm
+    geom_type: polygon
+    zoom: 15+
+    tags: $osm_id ?name amenity=parking
+  layer: building
+    source: osm
+    geom_type: polygon
+    zoom: 15+
+    tags: $osm_id ?name building
   layer: motorway
     source: osm
     geom_type: linestring
@@ -135,15 +150,5 @@ layer_group: tile
   layer: paths
     source: osm
     geom_type: linestring
-    zoom: 15+
+    zoom: 16+
     tags: $osm_id ?name highway=pedestrian|footway|track|bridleway|steps|corridor|cycleway|path
-  layer: parking
-    source: osm
-    geom_type: polygon
-    zoom: 15+
-    tags: $osm_id ?name amenity=parking
-  layer: building
-    source: osm
-    geom_type: polygon
-    zoom: 15+
-    tags: $osm_id ?name building

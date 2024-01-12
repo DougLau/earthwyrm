@@ -39,6 +39,14 @@ function init_map() {
         color: '#000000',
         opacity: 0.6,
     };
+    var cemetery = {
+        fill: true,
+        fillOpacity: 0.6,
+        fillColor: "#aaccaa",
+        weight: 0.1,
+        color: '#000000',
+        opacity: 0.6,
+    };
     var building = {
         fill: true,
         fillOpacity: 0.7,
@@ -67,6 +75,7 @@ function init_map() {
         pond: water,
         wetland: wetland,
         leisure: leisure,
+        cemetery: cemetery,
         retail: retail,
         motorway: { color: "#ffd9a9", weight: 5 },
         trunk: { color: "#ffe0a9" },

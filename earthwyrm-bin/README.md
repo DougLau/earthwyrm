@@ -10,7 +10,7 @@ EarthWyrm uses the pervasive [Web Mercator] projection (EPSG:3857), with the
 These instructions have been tested on Fedora Linux.
 
 ```bash
-cargo install --locked earthwyrm-bin
+cargo install earthwyrm-bin
 ```
 
 Then, as root:

@@ -53,7 +53,10 @@ impl LayerDef {
         let tags = obj.tags();
         match self.geom_tp() {
             GeomType::Point | GeomType::Linestring => self.check_tags(tags),
-            GeomType::Polygon => obj.is_relation() && self.check_tags(tags),
+            GeomType::Polygon => {
+                // polygons are relations or closed ways
+                (obj.is_relation() || obj.is_way()) && self.check_tags(tags)
+            }
         }
     }
 }
@@ -154,6 +157,25 @@ impl GeometryMaker {
         }
     }
 
+    /// Make polygon geometry from a `Way`
+    fn way_polygon(&self, way: &Way) -> Option<gis::Polygons<f64, Values>> {
+        if way.is_open() || way.nodes.is_empty() {
+            return None;
+        }
+        let (w0, w1) = end_points(&way.nodes);
+        if w0 != w1 {
+            log::trace!("way {} not closed {} .. {}", way.id.0, w0.0, w1.0);
+            return None;
+        }
+        let values = self.tag_values(way.id.0, &way.tags);
+        let len = way.nodes.len();
+        let pts = self.lookup_nodes(&way.nodes);
+        let mut polygon = gis::Polygons::new(values);
+        polygon.push_outer(pts);
+        log::debug!("added way with {len} nodes ({:?})", polygon.data());
+        Some(polygon)
+    }
+
     /// Get the member way nodes for a relation
     fn way_nodes(&self, id: OsmId) -> Vec<NodeId> {
         if let Some(member) = self.objs.get(&id) {
@@ -246,10 +268,18 @@ impl GeometryMaker {
     {
         let mut writer = BulkWriter::new(loam)?;
         let mut n_poly = 0;
-        for rel in self.objs.iter().filter_map(|(_, obj)| obj.relation()) {
-            // NOTE: check tags again because relations are nebulous
-            if self.layer.check_tags(&rel.tags) {
-                if let Some(geom) = self.rel_polygon(rel) {
+        for (_id, obj) in self.objs.iter() {
+            if let Some(rel) = obj.relation() {
+                // NOTE: check tags again because relations are nebulous
+                if self.layer.check_tags(&rel.tags) {
+                    if let Some(geom) = self.rel_polygon(rel) {
+                        writer.push(&geom)?;
+                        n_poly += 1;
+                    }
+                }
+            }
+            if let Some(way) = obj.way() {
+                if let Some(geom) = self.way_polygon(way) {
                     writer.push(&geom)?;
                     n_poly += 1;
                 }

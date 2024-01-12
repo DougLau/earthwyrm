@@ -64,26 +64,9 @@ impl fmt::Display for LayerGroupCfg {
 }
 
 impl WyrmCfg {
-    /// Default base directory path
-    const BASE_DEFAULT: &'static str = "/var/local/earthwyrm/";
-
-    /// Make base directory path
-    pub fn base_path<P>(base: Option<P>) -> PathBuf
-    where
-        P: AsRef<Path>,
-    {
-        match base {
-            Some(base) => PathBuf::from(base.as_ref().as_os_str()),
-            None => PathBuf::from(Self::BASE_DEFAULT),
-        }
-    }
-
     /// Read the configuration file
-    pub fn from_dir<P>(base: P) -> Result<Self>
-    where
-        P: AsRef<Path>,
-    {
-        let path = base.as_ref().join("earthwyrm.muon");
+    pub fn load() -> Result<Self> {
+        let path = Path::new("earthwyrm.muon");
         let cfg = read_to_string(path)?;
         let cfg: Self = muon_rs::from_str(&cfg)?;
         Ok(cfg)

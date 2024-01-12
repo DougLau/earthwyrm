@@ -49,10 +49,6 @@ fn is_pbf_file(de: &DirEntry) -> bool {
 /// Command-line arguments
 #[derive(FromArgs, PartialEq, Debug)]
 struct Args {
-    /// base directory
-    #[argh(option, short = 'b')]
-    base: Option<PathBuf>,
-
     #[argh(subcommand)]
     cmd: Command,
 }
@@ -106,21 +102,17 @@ struct ServeCommand {
 
 impl InitCommand {
     /// Initialize earthwyrm configuration
-    fn init<P>(self, base: Option<P>) -> Result<()>
-    where
-        P: AsRef<Path>,
-    {
-        let base = WyrmCfg::base_path(base);
-        let osm_path = Path::new(&base).join("osm");
+    fn init(self) -> Result<()> {
+        let osm_path = Path::new("osm");
         std::fs::create_dir_all(osm_path)?;
-        let loam_path = Path::new(&base).join("loam");
+        let loam_path = Path::new("loam");
         std::fs::create_dir_all(loam_path)?;
         write_file(
-            Path::new(&base).join("earthwyrm.muon"),
+            Path::new("earthwyrm.muon"),
             include_bytes!("../res/earthwyrm.muon"),
         )?;
         write_file(
-            Path::new(&base).join("earthwyrm.service"),
+            Path::new("earthwyrm.service"),
             include_bytes!("../res/earthwyrm.service"),
         )?;
         Ok(())
@@ -264,20 +256,13 @@ impl TryFrom<&TileParams> for TileId {
 }
 
 impl Args {
-    /// Read the configuration file into a string
-    fn read_config(&self) -> Result<WyrmCfg> {
-        let base = WyrmCfg::base_path(self.base.as_ref());
-        WyrmCfg::from_dir(&base)
-            .with_context(|| format!("read_config {base:?}"))
-    }
-
     /// Run selected command
     fn run(self) -> Result<()> {
         match &self.cmd {
-            Command::Init(cmd) => cmd.init(self.base.as_ref()),
-            Command::Dig(cmd) => cmd.dig(self.read_config()?),
-            Command::Query(cmd) => cmd.query(self.read_config()?),
-            Command::Serve(cmd) => cmd.serve(self.read_config()?),
+            Command::Init(cmd) => cmd.init(),
+            Command::Dig(cmd) => cmd.dig(WyrmCfg::load()?),
+            Command::Query(cmd) => cmd.query(WyrmCfg::load()?),
+            Command::Serve(cmd) => cmd.serve(WyrmCfg::load()?),
         }
     }
 }

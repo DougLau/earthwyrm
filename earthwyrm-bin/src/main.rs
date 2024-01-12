@@ -14,6 +14,7 @@ use axum::{
     Router,
 };
 use earthwyrm::{TileId, Wyrm, WyrmCfg};
+use mvt::{WebMercatorPos, Wgs84Pos};
 use pointy::BBox;
 use serde::Deserialize;
 use std::fs::{DirEntry, File};
@@ -141,7 +142,9 @@ impl QueryCommand {
     /// Query a lat/lon position
     fn query(&self, cfg: WyrmCfg) -> Result<()> {
         let wyrm = Wyrm::try_from(&cfg)?;
-        let bbox = BBox::new([(self.lon, self.lat)]);
+        let pos = Wgs84Pos::new(self.lat, self.lon);
+        let pos = WebMercatorPos::from(pos);
+        let bbox = BBox::new([pos]);
         wyrm.query_features(bbox)?;
         Ok(())
     }

@@ -1,26 +1,23 @@
 *EarthWyrm* is an open-source map server developed for the Minnesota Department
-of Transportation (MnDOT).  It can serve [OpenStreetMap] or other GIS data in
-[MVT] format.
+of Transportation (MnDOT).  It can serve GIS data from [OpenStreetMap] or other
+sources.
 
-EarthWyrm uses the pervasive [Web Mercator] projection (EPSG:3857), with the
-`Z/X/Y.mvt` tile naming convention.
+Features:
 
-## Installation
+- Layers configurable by zoom level
+- [Web Mercator] projection (EPSG:3857)
+- Vector tiles in [MVT] format, with `Z/X/Y.mvt` naming convention
+- Quick setup in under 10 minutes
 
-These instructions have been tested on Fedora Linux.
+👉 Install using cargo (tested on Fedora Linux):
 
 ```bash
 cargo install earthwyrm-bin
-```
-
-Then, as root:
-
-```bash
+sudo bash
+«enter password at prompt»
 install ~/.cargo/bin/earthwyrm /usr/local/bin/
-useradd --system earthwyrm
-mkdir /var/local/earthwyrm
-chown earthwyrm:earthwyrm /var/local/earthwyrm
-sudo -u earthwyrm /usr/local/bin/earthwyrm init
+useradd --system -m -b /var/local earthwyrm
+sudo -i -u earthwyrm /usr/local/bin/earthwyrm init
 ```
 
 This file tree will be created:
@@ -32,23 +29,23 @@ This file tree will be created:
 └── osm/
 ```
 
-Edit the __configuration__ file at `/var/local/earthwyrm/earthwyrm.muon`.  It
+👉 __Edit__ the configuration file at `/var/local/earthwyrm/earthwyrm.muon`.  It
 contains examples and instructions.
 
-__Download__ an OpenStreetMap extract of your region in [PBF format] into the
+👉 __Download__ an OpenStreetMap extract of your region in [PBF format] into the
 `/var/local/earthwyrm/osm/` directory.  For example, files such as
 `minnesota-latest.osm.pbf` are provided daily from [Geofabrik].
 
-__Dig__ the configured layers into `.loam` cache files.  This step may take a
-long time, depending on the region size.
+👉 __Dig__ the configured layers into `.loam` cache files:
 
 ```bash
-sudo -u earthwyrm /usr/local/bin/earthwyrm dig
+sudo -i -u earthwyrm /usr/local/bin/earthwyrm dig
 ```
 
-### Configure service
+NOTE: This step may take a while, depending on the region size.
 
-As root:
+👉 Configure service
+
 ```bash
 cp /var/local/earthwyrm/earthwyrm.service /etc/systemd/system/
 systemctl daemon-reload
@@ -56,7 +53,7 @@ systemctl enable earthwyrm
 systemctl start earthwyrm
 ```
 
-### Test
+👉 Test
 
 From the server host, browse to [127.0.0.1:3030](http://127.0.0.1:3030/)
 

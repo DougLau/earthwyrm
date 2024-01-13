@@ -16,7 +16,7 @@ function init_map() {
         fill: true,
         fillOpacity: 0.2,
         weight: 0.1,
-        color: '#000000',
+        color: '#000',
         opacity: 0.6,
     };
     var water = {
@@ -36,7 +36,7 @@ function init_map() {
         fillOpacity: 0.6,
         fillColor: "#88cc88",
         weight: 0.1,
-        color: '#000000',
+        color: '#000',
         opacity: 0.6,
     };
     var cemetery = {
@@ -44,7 +44,7 @@ function init_map() {
         fillOpacity: 0.6,
         fillColor: "#aaccaa",
         weight: 0.1,
-        color: '#000000',
+        color: '#000',
         opacity: 0.6,
     };
     var building = {
@@ -66,6 +66,12 @@ function init_map() {
         fillColor: "#cca",
         stroke: false,
     };
+    var paths = {
+        color: '#000',
+        opacity: 0.5,
+        weight: 1,
+        dashArray: "1 3",
+    };
     var styles = {
         county: Object.assign(boundary, { fillColor: '#f8f4f2' }),
         city: Object.assign(boundary, { fillColor: '#f1eee8' }),
@@ -83,7 +89,7 @@ function init_map() {
         secondary: { color: "#fff4a9" },
         tertiary: { color: "#ffffa9" },
         roads: { color: "#eee", weight: 2 },
-        paths: { color: "#333", weight: 1, dashArray: "1 3" },
+        paths: paths,
         building: building,
         parking: parking,
     };

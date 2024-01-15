@@ -72,6 +72,13 @@ function init_map() {
         weight: 1,
         dashArray: "1 3",
     };
+    var railways = {
+        color: '#642',
+        opacity: 0.6,
+        weight: 2.5,
+        lineCap: "butt",
+        dashArray: "1 1.5",
+    };
     var styles = {
         county: Object.assign(boundary, { fillColor: '#f8f4f2' }),
         city: Object.assign(boundary, { fillColor: '#f1eee8' }),
@@ -90,6 +97,7 @@ function init_map() {
         tertiary: { color: "#ffffa9" },
         roads: { color: "#eee", weight: 2 },
         paths: paths,
+        railways: railways,
         building: building,
         parking: parking,
     };

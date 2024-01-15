@@ -146,6 +146,11 @@ layer_group: tile
     geom_type: linestring
     zoom: 14+
     tags: $osm_id ?name ?ref highway=unclassified|residential|living_street|service|road
+  layer: railways
+    source: osm
+    geom_type: linestring
+    zoom: 15+
+    tags: $osm_id ?name railway
   layer: paths
     source: osm
     geom_type: linestring

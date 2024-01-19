@@ -217,6 +217,7 @@ impl<D> GisEncode for gis::Polygons<f64, D> {
                 }
                 enc.add_point(seg.p1.x, seg.p1.y)?;
             }
+            enc.complete_geom()?;
         }
         Ok(enc.encode()?)
     }

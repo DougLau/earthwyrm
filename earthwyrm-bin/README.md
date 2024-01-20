@@ -44,7 +44,7 @@ sudo -i -u earthwyrm /usr/local/bin/earthwyrm dig
 
 NOTE: This step may take a while, depending on the region size.
 
-👉 Configure service
+👉 Configure [systemd] service
 
 ```bash
 cp /var/local/earthwyrm/earthwyrm.service /etc/systemd/system/
@@ -62,4 +62,5 @@ From the server host, browse to [127.0.0.1:3030](http://127.0.0.1:3030/)
 [MVT]: https://github.com/mapbox/vector-tile-spec
 [OpenStreetMap]: https://www.openstreetmap.org/about
 [PBF format]: https://wiki.openstreetmap.org/wiki/PBF_Format
+[systemd]: https://docs.fedoraproject.org/en-US/quick-docs/systemd-understanding-and-administering/
 [Web Mercator]: https://en.wikipedia.org/wiki/Web_Mercator_projection

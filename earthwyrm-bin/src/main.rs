@@ -19,6 +19,7 @@ use pointy::BBox;
 use serde::Deserialize;
 use std::fs::{DirEntry, File};
 use std::io::Write;
+use std::os::unix::fs::PermissionsExt;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use tokio::net::TcpListener;
@@ -108,6 +109,8 @@ impl InitCommand {
         std::fs::create_dir_all(osm_path)?;
         let loam_path = Path::new("loam");
         std::fs::create_dir_all(loam_path)?;
+        // Set loam directory permissions: drwxrwxr-x
+        std::fs::metadata(loam_path)?.permissions().set_mode(0o775);
         write_file(
             Path::new("earthwyrm.muon"),
             include_bytes!("../res/earthwyrm.muon"),

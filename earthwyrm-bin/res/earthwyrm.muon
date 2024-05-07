@@ -141,17 +141,17 @@ layer_group: tile
     geom_type: linestring
     zoom: 13+
     tags: $osm_id ?name ?ref highway=tertiary|tertiary_link
-  layer: roads
+  layer: road
     source: osm
     geom_type: linestring
     zoom: 14+
     tags: $osm_id ?name ?ref highway=unclassified|residential|living_street|service|road
-  layer: railways
+  layer: railway
     source: osm
     geom_type: linestring
     zoom: 15+
     tags: $osm_id ?name railway
-  layer: paths
+  layer: path
     source: osm
     geom_type: linestring
     zoom: 16+

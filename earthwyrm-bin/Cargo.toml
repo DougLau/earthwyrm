@@ -11,7 +11,7 @@ anyhow = "1.0"
 argh = "0.1"
 axum = "0.7"
 earthwyrm = { workspace = true }
-env_logger = "0.10"
+env_logger = "0.11"
 log = { workspace = true }
 muon-rs = { workspace = true }
 mvt = { workspace = true }

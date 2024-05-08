@@ -5,7 +5,7 @@
 use crate::config::WyrmCfg;
 use crate::error::Result;
 use crate::geom::Values;
-use crate::layer::{DataSource, LayerDef};
+use crate::layer::LayerDef;
 use mvt::{GeomType, WebMercatorPos, Wgs84Pos};
 use osmpbfreader::{
     Node, NodeId, OsmId, OsmObj, OsmPbfReader, Relation, Tags, Way,
@@ -358,7 +358,7 @@ fn end_points(way: &[NodeId]) -> (NodeId, NodeId) {
 }
 
 impl WyrmCfg {
-    /// Extract the `osm` layer group, creating a loam file for each layer
+    /// Extract `osm` layer groups, creating a loam file for each layer
     pub fn extract_osm<P>(&self, osm: P) -> Result<()>
     where
         P: AsRef<Path> + std::fmt::Debug,
@@ -366,9 +366,9 @@ impl WyrmCfg {
         let mut extractor = OsmExtractor::new(&osm)?;
         println!("Extracting layers from {:?}", osm);
         for group in &self.layer_group {
-            for layer in &group.layer {
-                let layer = LayerDef::try_from(layer)?;
-                if layer.source() == DataSource::Osm {
+            if group.osm {
+                for layer in &group.layer {
+                    let layer = LayerDef::try_from(layer)?;
                     let objs = extractor.extract_layer(&layer)?;
                     let loam = self.loam_path(layer.name());
                     let maker = GeometryMaker::new(layer, objs);

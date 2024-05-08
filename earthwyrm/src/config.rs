@@ -30,6 +30,9 @@ pub struct LayerGroupCfg {
     /// Layer group name
     pub name: String,
 
+    /// OpenStreetMap data source
+    pub osm: bool,
+
     /// Layers in group
     pub layer: Vec<LayerCfg>,
 }
@@ -39,9 +42,6 @@ pub struct LayerGroupCfg {
 pub struct LayerCfg {
     /// Layer name
     pub name: String,
-
-    /// Data source (`osm`, `json`)
-    pub source: String,
 
     /// Type for geometry (`point`, `linestring` or `polygon`)
     pub geom_type: String,

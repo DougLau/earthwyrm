@@ -1,6 +1,6 @@
 // one_tile.rs
 //
-// Copyright (c) 2019-2022  Minnesota Department of Transportation
+// Copyright (c) 2019-2024  Minnesota Department of Transportation
 //
 use earthwyrm::{TileId, Wyrm, WyrmCfg};
 use std::env;
@@ -11,8 +11,8 @@ bind_address:
 tile_extent: 256
 edge_extent: 6
 layer_group: tile
+  osm: true
   layer: city
-    source: osm
     geom_type: polygon
     zoom: 1+
     tags: ?name ?population boundary=administrative admin_level=8

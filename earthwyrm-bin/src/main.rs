@@ -110,7 +110,7 @@ impl InitCommand {
         let loam_path = Path::new("loam");
         std::fs::create_dir_all(loam_path)?;
         // Set loam directory permissions: drwxrwxr-x
-        std::fs::metadata(loam_path)?.permissions().set_mode(0o775);
+        std::fs::set_permissions(loam_path, PermissionsExt::from_mode(0o775))?;
         write_file(
             Path::new("earthwyrm.muon"),
             include_bytes!("../res/earthwyrm.muon"),

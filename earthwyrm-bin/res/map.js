@@ -66,13 +66,13 @@ function init_map() {
         fillColor: "#cca",
         stroke: false,
     };
-    var paths = {
+    var path = {
         color: '#000',
         opacity: 0.5,
         weight: 1,
         dashArray: "1 3",
     };
-    var railways = {
+    var railway = {
         color: '#642',
         opacity: 0.6,
         weight: 2.5,
@@ -95,9 +95,9 @@ function init_map() {
         primary: { color: "#ffeaa9" },
         secondary: { color: "#fff4a9" },
         tertiary: { color: "#ffffa9" },
-        roads: { color: "#eee", weight: 2 },
-        paths: paths,
-        railways: railways,
+        road: { color: "#eee", weight: 2 },
+        path: path,
+        railway: railway,
         building: building,
         parking: parking,
     };

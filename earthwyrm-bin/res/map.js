@@ -1,10 +1,10 @@
 function init_map() {
-    var map = L.map('mapid', {
+    let map = L.map('mapid', {
         center: [45, -93],
         zoom: 12,
     });
-    var url = "http://127.0.0.1:3030/tile/{z}/{x}/{y}.mvt";
-    var highlight_style = {
+    const url = "http://127.0.0.1:3030/tile/{z}/{x}/{y}.mvt";
+    const highlight_style = {
         fill: true,
         fillColor: 'red',
         fillOpacity: 0.1,
@@ -12,26 +12,26 @@ function init_map() {
         color: 'red',
         opacity: 0.1,
     };
-    var boundary = {
+    let boundary = {
         fill: true,
         fillOpacity: 0.2,
         weight: 0.1,
         color: '#000',
         opacity: 0.6,
     };
-    var water = {
+    let water = {
         fill: true,
         fillOpacity: 0.8,
         fillColor: "#b5d0d0",
         stroke: false,
     };
-    var wetland = {
+    let wetland = {
         fill: true,
         fillOpacity: 0.8,
         fillColor: "#b8d0bd",
         stroke: false,
     };
-    var leisure = {
+    let leisure = {
         fill: true,
         fillOpacity: 0.6,
         fillColor: "#88cc88",
@@ -39,7 +39,7 @@ function init_map() {
         color: '#000',
         opacity: 0.6,
     };
-    var cemetery = {
+    let cemetery = {
         fill: true,
         fillOpacity: 0.6,
         fillColor: "#aaccaa",
@@ -47,39 +47,39 @@ function init_map() {
         color: '#000',
         opacity: 0.6,
     };
-    var building = {
+    let building = {
         fill: true,
         fillOpacity: 0.7,
         fillColor: "#bca9a9",
         weight: 0.7,
         color: "#baa",
     };
-    var retail = {
+    let retail = {
         fill: true,
         fillOpacity: 0.25,
         fillColor: "#b99",
         stroke: false,
     };
-    var parking = {
+    let parking = {
         fill: true,
         fillOpacity: 0.6,
         fillColor: "#cca",
         stroke: false,
     };
-    var path = {
+    let path = {
         color: '#000',
         opacity: 0.5,
         weight: 1,
         dashArray: "1 3",
     };
-    var railway = {
+    let railway = {
         color: '#642',
         opacity: 0.6,
         weight: 2.5,
         lineCap: "butt",
         dashArray: "1 1.5",
     };
-    var styles = {
+    let styles = {
         county: Object.assign(boundary, { fillColor: '#f8f4f2' }),
         city: Object.assign(boundary, { fillColor: '#f1eee8' }),
         lake: water,
@@ -101,7 +101,7 @@ function init_map() {
         building: building,
         parking: parking,
     };
-    var options = {
+    let options = {
         renderFactory: L.svg.tile,
         interactive: true,
         vectorTileLayerStyles: styles,

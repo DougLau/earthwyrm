@@ -58,9 +58,6 @@ pub struct Wyrm {
     /// Tile extent; width and height in pixels
     tile_extent: u32,
 
-    /// Extent outside tile edges (pixels)
-    edge_extent: u32,
-
     /// Tile layer groups
     groups: Vec<LayerGroup>,
 }
@@ -156,7 +153,6 @@ impl TryFrom<&WyrmCfg> for Wyrm {
         Ok(Wyrm {
             grid,
             tile_extent: wyrm_cfg.tile_extent,
-            edge_extent: wyrm_cfg.edge_extent,
             groups,
         })
     }
@@ -200,7 +196,7 @@ impl Wyrm {
         let tile_extent = self.tile_extent;
         let mut bbox = self.grid.tile_bbox(tid);
         // increase bounding box by edge extent
-        let edge = f64::from(self.edge_extent) / f64::from(tile_extent);
+        let edge = zoom_edge(tid);
         let edge_x = edge * (bbox.x_max() - bbox.x_min());
         let edge_y = edge * (bbox.y_max() - bbox.y_min());
         bbox.extend([
@@ -215,6 +211,20 @@ impl Wyrm {
             bbox,
             transform,
         }
+    }
+}
+
+/// Calculate edge ratio based on tile zoom
+///
+/// Edge must be larger for higher zoom levels to prevent corrupt polygons.
+fn zoom_edge(tid: TileId) -> f64 {
+    match tid.z() {
+        0..=12 => 1.0 / 32.0,
+        13 => 1.0 / 16.0,
+        14 => 1.0 / 8.0,
+        15 => 1.0 / 4.0,
+        16 => 1.0 / 2.0,
+        _ => 1.0,
     }
 }
 

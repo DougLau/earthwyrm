@@ -9,7 +9,6 @@ use std::fs::File;
 const MUON: &str = &r#"
 bind_address:
 tile_extent: 256
-edge_extent: 6
 layer_group: tile
   osm: true
   layer: city

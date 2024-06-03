@@ -17,9 +17,6 @@ pub struct WyrmCfg {
     /// Tile extent; width and height
     pub tile_extent: u32,
 
-    /// Extent outside tile edges
-    pub edge_extent: u32,
-
     /// Configuration for all layer groups
     pub layer_group: Vec<LayerGroupCfg>,
 }

@@ -125,7 +125,7 @@ function init_map() {
             layers.setFeatureStyle(highlight, highlight_style);
             var name = e.layer.properties.ref || e.layer.properties.name;
             if (typeof name != "undefined") {
-                L.popup({ closeButton: false})
+                L.popup({ closeButton: false })
                  .setContent(name)
                  .setLatLng(e.latlng)
                  .openOn(map);

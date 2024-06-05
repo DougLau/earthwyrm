@@ -105,6 +105,9 @@ struct ServeCommand {
 impl InitCommand {
     /// Initialize earthwyrm configuration
     fn init(self) -> Result<()> {
+        let home_path = Path::new(".");
+        // Set home directory permissions: drwxr-x---
+        std::fs::set_permissions(home_path, PermissionsExt::from_mode(0o750))?;
         let osm_path = Path::new("osm");
         std::fs::create_dir_all(osm_path)?;
         let loam_path = Path::new("loam");

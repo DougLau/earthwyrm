@@ -12,10 +12,11 @@ Features:
 👉 Install using cargo (tested on Fedora Linux):
 
 ```bash
+cd
 cargo install earthwyrm-bin
 sudo bash
 «enter password at prompt»
-install ~/.cargo/bin/earthwyrm /usr/local/bin/
+install .cargo/bin/earthwyrm /usr/local/bin/
 useradd --system -m -b /var/local earthwyrm
 sudo -i -u earthwyrm /usr/local/bin/earthwyrm init
 ```

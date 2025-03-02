@@ -1,6 +1,6 @@
 // main.rs
 //
-// Copyright (c) 2021-2024  Minnesota Department of Transportation
+// Copyright (c) 2021-2025  Minnesota Department of Transportation
 //
 #![forbid(unsafe_code)]
 
@@ -238,7 +238,7 @@ fn tile_mvt(wyrm: Arc<Wyrm>) -> Router {
         }
     }
     Router::new()
-        .route("/:group/:z/:x/:tail", get(handler))
+        .route("/{group}/{z}/{x}/{tail}", get(handler))
         .with_state(wyrm)
 }
 

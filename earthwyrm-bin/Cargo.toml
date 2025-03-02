@@ -9,7 +9,7 @@ edition.workspace = true
 [dependencies]
 anyhow = "1.0"
 argh = "0.1"
-axum = "0.7"
+axum = "0.8"
 earthwyrm = { workspace = true }
 env_logger = "0.11"
 log = { workspace = true }

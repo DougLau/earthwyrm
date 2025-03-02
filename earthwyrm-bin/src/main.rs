@@ -4,14 +4,14 @@
 //
 #![forbid(unsafe_code)]
 
-use anyhow::{anyhow, Context, Result};
+use anyhow::{Context, Result, anyhow};
 use argh::FromArgs;
 use axum::{
+    Router,
     extract::{Path as AxumPath, State},
-    http::{header, StatusCode},
+    http::{StatusCode, header},
     response::IntoResponse,
     routing::get,
-    Router,
 };
 use earthwyrm::{TileId, Wyrm, WyrmCfg};
 use mvt::{WebMercatorPos, Wgs84Pos};

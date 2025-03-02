@@ -10,7 +10,7 @@ use mvt::{GeomType, WebMercatorPos, Wgs84Pos};
 use osmpbfreader::{
     Node, NodeId, OsmId, OsmObj, OsmPbfReader, Relation, Tags, Way,
 };
-use rosewood::{gis, gis::Gis, BulkWriter};
+use rosewood::{BulkWriter, gis, gis::Gis};
 use std::collections::BTreeMap;
 use std::fs::File;
 use std::path::Path;

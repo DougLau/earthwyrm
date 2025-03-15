@@ -3,16 +3,16 @@ members = ["earthwyrm", "earthwyrm-bin"]
 resolver = "2"
 
 [workspace.package]
-version = "0.9.0"
+version = "0.10.0"
 edition = "2024"
 
 [workspace.dependencies]
-earthwyrm = "0.9.0"
+earthwyrm = "0.10.0"
 log = "0.4"
 muon-rs = "0.2"
-mvt = "0.9.4"
-pointy = "0.6"
-rosewood = "0.3"
+mvt = "0.10.0"
+pointy = "0.7"
+rosewood = "0.4"
 serde = "1.0"
 serde_derive = "1.0"
 

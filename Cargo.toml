@@ -3,7 +3,7 @@ members = ["earthwyrm", "earthwyrm-bin"]
 resolver = "2"
 
 [workspace.package]
-version = "0.10.1"
+version = "0.10.2"
 edition = "2024"
 
 [workspace.dependencies]

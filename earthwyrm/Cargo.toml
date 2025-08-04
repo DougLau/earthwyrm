@@ -6,6 +6,7 @@ documentation = "https://docs.rs/earthwyrm"
 repository = "https://github.com/DougLau/earthwyrm/earthwyrm"
 readme = "README.md"
 keywords = ["cartography", "gis", "osm", "server"]
+categories = ["science::geo"]
 version.workspace = true
 edition.workspace = true
 

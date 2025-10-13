@@ -178,12 +178,11 @@ impl GeometryMaker {
 
     /// Get the member way nodes for a relation
     fn way_nodes(&self, id: OsmId) -> Vec<NodeId> {
-        if let Some(member) = self.objs.get(&id) {
-            if let Some(way) = member.way() {
-                if way.nodes.len() > 1 {
-                    return way.nodes.clone();
-                }
-            }
+        if let Some(member) = self.objs.get(&id)
+            && let Some(way) = member.way()
+            && way.nodes.len() > 1
+        {
+            return way.nodes.clone();
         }
         Vec::new()
     }
@@ -271,18 +270,18 @@ impl GeometryMaker {
         for (_id, obj) in self.objs.iter() {
             if let Some(rel) = obj.relation() {
                 // NOTE: check tags again because relations are nebulous
-                if self.layer.check_tags(&rel.tags) {
-                    if let Some(geom) = self.rel_polygon(rel) {
-                        writer.push(&geom)?;
-                        n_poly += 1;
-                    }
-                }
-            }
-            if let Some(way) = obj.way() {
-                if let Some(geom) = self.way_polygon(way) {
+                if self.layer.check_tags(&rel.tags)
+                    && let Some(geom) = self.rel_polygon(rel)
+                {
                     writer.push(&geom)?;
                     n_poly += 1;
                 }
+            }
+            if let Some(way) = obj.way()
+                && let Some(geom) = self.way_polygon(way)
+            {
+                writer.push(&geom)?;
+                n_poly += 1;
             }
         }
         println!("  layer: {} ({n_poly} polygons)", self.layer.name());

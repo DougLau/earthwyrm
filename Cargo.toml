@@ -3,11 +3,11 @@ members = ["earthwyrm", "earthwyrm-bin"]
 resolver = "2"
 
 [workspace.package]
-version = "0.10.2"
+version = "0.11.0"
 edition = "2024"
 
 [workspace.dependencies]
-earthwyrm = "0.10.2"
+earthwyrm = "0.11.0"
 log = "0.4"
 muon-rs = "0.2"
 mvt = "0.10"

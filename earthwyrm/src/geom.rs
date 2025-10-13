@@ -1,6 +1,6 @@
 // geom.rs
 //
-// Copyright (c) 2019-2024  Minnesota Department of Transportation
+// Copyright (c) 2019-2025  Minnesota Department of Transportation
 //
 use crate::error::Result;
 use crate::layer::LayerDef;
@@ -82,7 +82,7 @@ impl PointTree {
         P: AsRef<Path>,
     {
         log::debug!("PointTree: {:?}", path.as_ref());
-        let tree = RTree::new(path)?;
+        let tree = RTree::new(path);
         Ok(Self { tree })
     }
 
@@ -156,7 +156,7 @@ impl LinestringTree {
         P: AsRef<Path>,
     {
         log::debug!("LinestringTree: {:?}", path.as_ref());
-        let tree = RTree::new(path)?;
+        let tree = RTree::new(path);
         Ok(Self { tree })
     }
 
@@ -230,7 +230,7 @@ impl PolygonTree {
         P: AsRef<Path>,
     {
         log::debug!("PolygonTree: {:?}", path.as_ref());
-        let tree = RTree::new(path)?;
+        let tree = RTree::new(path);
         Ok(Self { tree })
     }
 

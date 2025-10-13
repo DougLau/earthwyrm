@@ -7,12 +7,12 @@ version = "0.10.2"
 edition = "2024"
 
 [workspace.dependencies]
-earthwyrm = "0.10.1"
+earthwyrm = "0.10.2"
 log = "0.4"
 muon-rs = "0.2"
 mvt = "0.10"
 pointy = "0.7"
-rosewood = "0.4"
+rosewood = "0.5"
 serde = "1.0"
 serde_derive = "1.0"
 

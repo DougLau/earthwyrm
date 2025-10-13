@@ -255,10 +255,10 @@ impl TryFrom<&TileParams> for TileId {
     type Error = mvt::Error;
 
     fn try_from(params: &TileParams) -> Result<Self, Self::Error> {
-        if let Some(y) = params.tail.strip_suffix(".mvt") {
-            if let Ok(y) = y.parse::<u32>() {
-                return TileId::new(params.x, y, params.z);
-            }
+        if let Some(y) = params.tail.strip_suffix(".mvt")
+            && let Ok(y) = y.parse::<u32>()
+        {
+            return TileId::new(params.x, y, params.z);
         }
         Err(mvt::Error::InvalidTid())
     }

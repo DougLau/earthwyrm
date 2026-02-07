@@ -218,7 +218,7 @@ dependencies = [
 
 [[package]]
 name = "earthwyrm"
-version = "0.11.0"
+version = "0.11.1"
 dependencies = [
  "loam",
  "log",
@@ -233,7 +233,7 @@ dependencies = [
 
 [[package]]
 name = "earthwyrm-bin"
-version = "0.11.0"
+version = "0.11.1"
 dependencies = [
  "anyhow",
  "argh",

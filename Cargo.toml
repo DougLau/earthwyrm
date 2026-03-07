@@ -1,5 +1,5 @@
 [workspace]
-members = ["earthwyrm", "earthwyrm-bin", "wyrmcast"]
+members = ["earthwyrm", "wyrmcast"]
 resolver = "2"
 
 [workspace.package]
@@ -17,6 +17,3 @@ serde = "1.0"
 serde_derive = "1.0"
 
 [patch.crates-io]
-loam = { path = "../loam" }
-rosewood = { path = "../loam" }
-earthwyrm = { path = "earthwyrm" }

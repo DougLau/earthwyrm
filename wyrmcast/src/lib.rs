@@ -1,0 +1,12 @@
+// lib.rs
+//
+// Copyright (c) 2019-2026  Minnesota Department of Transportation
+//
+#![forbid(unsafe_code)]
+
+pub mod config;
+pub mod error;
+mod geom;
+mod layer;
+mod osm;
+pub mod tile;

@@ -1,6 +1,4 @@
-NOTE: as of version 0.11.2, `earthwyrm-bin` has been renamed to [WyrmCast].
-
-*EarthWyrm* is an open-source map server developed for the Minnesota Department
+*WyrmCast* is an open-source map server developed for the Minnesota Department
 of Transportation (MnDOT).  It can serve GIS data from [OpenStreetMap] or other
 sources.
 
@@ -15,34 +13,34 @@ Features:
 
 ```bash
 cd
-cargo install earthwyrm-bin
+cargo install wyrmcast
 sudo bash
 «enter password at prompt»
-install .cargo/bin/earthwyrm /usr/local/bin/
-useradd --system -m -b /var/local earthwyrm
-sudo -i -u earthwyrm /usr/local/bin/earthwyrm init
+install .cargo/bin/wyrmcast /usr/local/bin/
+useradd --system -m -b /var/local wyrmcast
+sudo -i -u wyrmcast /usr/local/bin/wyrmcast init
 ```
 
 This file tree will be created:
 ```
-/var/local/earthwyrm/
-├── earthwyrm.muon
-├── earthwyrm.service
+/var/local/wyrmcast/
+├── wyrmcast.muon
+├── wyrmcast.service
 ├── loam/
 └── osm/
 ```
 
-👉 __Edit__ the configuration file at `/var/local/earthwyrm/earthwyrm.muon`.  It
+👉 __Edit__ the configuration file at `/var/local/wyrmcast/wyrmcast.muon`.  It
 contains examples and instructions.
 
 👉 __Download__ an OpenStreetMap extract of your region in [PBF format] into the
-`/var/local/earthwyrm/osm/` directory.  For example, files such as
+`/var/local/wyrmcast/osm/` directory.  For example, files such as
 `minnesota-latest.osm.pbf` are provided daily from [Geofabrik].
 
 👉 __Dig__ the configured layers into `.loam` cache files:
 
 ```bash
-sudo -i -u earthwyrm /usr/local/bin/earthwyrm dig
+sudo -i -u wyrmcast /usr/local/bin/wyrmcast dig
 ```
 
 NOTE: This step may take a while, depending on the region size.
@@ -50,10 +48,10 @@ NOTE: This step may take a while, depending on the region size.
 👉 Configure [systemd] service
 
 ```bash
-cp /var/local/earthwyrm/earthwyrm.service /etc/systemd/system/
+cp /var/local/wyrmcast/wyrmcast.service /etc/systemd/system/
 systemctl daemon-reload
-systemctl enable earthwyrm
-systemctl start earthwyrm
+systemctl enable wyrmcast
+systemctl start wyrmcast
 ```
 
 👉 Test
@@ -67,4 +65,3 @@ From the server host, browse to [127.0.0.1:3030](http://127.0.0.1:3030/)
 [PBF format]: https://wiki.openstreetmap.org/wiki/PBF_Format
 [systemd]: https://docs.fedoraproject.org/en-US/quick-docs/systemd-understanding-and-administering/
 [Web Mercator]: https://en.wikipedia.org/wiki/Web_Mercator_projection
-[WyrmCast]: https://github.com/DougLau/earthwyrm/tree/master/wyrmcast/

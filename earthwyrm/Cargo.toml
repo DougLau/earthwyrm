@@ -1,11 +1,11 @@
 [package]
 name = "earthwyrm"
-description = "Vector tile map server for openstreetmap data"
+description = "Vector tiles for openstreetmap data"
 license = "MIT OR Apache-2.0"
 documentation = "https://docs.rs/earthwyrm"
 repository = "https://github.com/DougLau/earthwyrm/earthwyrm"
 readme = "README.md"
-keywords = ["cartography", "gis", "osm", "server"]
+keywords = ["cartography", "gis", "osm"]
 categories = ["science::geo"]
 version.workspace = true
 edition.workspace = true

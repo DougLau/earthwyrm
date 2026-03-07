@@ -3,8 +3,8 @@ It can serve [OpenStreetMap] or other GIS data.
 
 ## Links
 
-* [earthwyrm-bin] map server
 * Library [documentation]
+* [WyrmCast] map server
 
 ## Layers
 
@@ -14,8 +14,8 @@ uses [Web Mercator] projection (EPSG:3857).
 
 
 [documentation]: https://docs.rs/earthwyrm
-[earthwyrm-bin]: https://github.com/DougLau/earthwyrm/tree/master/earthwyrm-bin/
 [MVT]: https://github.com/mapbox/vector-tile-spec
 [OpenStreetMap]: https://www.openstreetmap.org/about
 [rosewood]: https://docs.rs/rosewood
 [Web Mercator]: https://en.wikipedia.org/wiki/Web_Mercator_projection
+[WyrmCast]: https://github.com/DougLau/earthwyrm/tree/master/wyrmcast/

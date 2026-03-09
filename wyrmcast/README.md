@@ -2,6 +2,9 @@
 of Transportation (MnDOT).  It can serve GIS data from [OpenStreetMap] or other
 sources.
 
+GIS data is stored as R-Trees in a [rosewood] file for each layer.  They
+contain `point`, `linestring` or `polygon` features, with associated tags.
+
 Features:
 
 - Layers configurable by zoom level
@@ -63,5 +66,6 @@ From the server host, browse to [127.0.0.1:3030](http://127.0.0.1:3030/)
 [MVT]: https://github.com/mapbox/vector-tile-spec
 [OpenStreetMap]: https://www.openstreetmap.org/about
 [PBF format]: https://wiki.openstreetmap.org/wiki/PBF_Format
+[rosewood]: https://docs.rs/rosewood
 [systemd]: https://docs.fedoraproject.org/en-US/quick-docs/systemd-understanding-and-administering/
 [Web Mercator]: https://en.wikipedia.org/wiki/Web_Mercator_projection

@@ -1,8 +1,10 @@
 // one_tile.rs
 //
-// Copyright (c) 2019-2024  Minnesota Department of Transportation
+// Copyright (c) 2019-2026  Minnesota Department of Transportation
 //
-use earthwyrm::{TileId, Wyrm, WyrmCfg};
+use mvt::TileId;
+use wyrmcast::config::WyrmCfg;
+use wyrmcast::tile::Wyrm;
 use std::env;
 use std::fs::File;
 

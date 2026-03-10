@@ -9,7 +9,8 @@ Features:
 
 - Layers configurable by zoom level
 - [Web Mercator] projection (EPSG:3857)
-- Vector tiles in [MVT] format, with `Z/X/Y.mvt` naming convention
+- [ZXY] tile naming scheme
+- Tiles in `Wyrm` or [MVT] format
 - Quick setup in under 10 minutes
 
 👉 Install using cargo (tested on Fedora Linux):
@@ -69,3 +70,4 @@ From the server host, browse to [127.0.0.1:3030](http://127.0.0.1:3030/)
 [rosewood]: https://docs.rs/rosewood
 [systemd]: https://docs.fedoraproject.org/en-US/quick-docs/systemd-understanding-and-administering/
 [Web Mercator]: https://en.wikipedia.org/wiki/Web_Mercator_projection
+[ZXY]: https://wiki.openstreetmap.org/wiki/Slippy_map_tilenames

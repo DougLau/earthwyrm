@@ -11,12 +11,3 @@ version.workspace = true
 edition.workspace = true
 
 [dependencies]
-loam = "0.5"
-log = "0.4"
-muon-rs = "0.2"
-mvt = "0.10"
-osmpbfreader = "0.19"
-pointy = "0.7"
-rosewood = "0.5"
-serde = "1.0"
-serde_derive = "1.0"

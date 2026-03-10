@@ -16,10 +16,10 @@ rounded to the nearest integer.
 _Example Wyrm tile_
 
 ```html
-<g class="layer_1">
+<g class="wyrm-123" data-name="Landmark X">
   <path d="M-8 108L-8 -8L264 -8L264 264L-8 264L-8 108L-8 108z" />
 </g>
-<g class="layer_2">
+<g class="wyrm-321 wyrm-city" data-name="Place Name">
   <path d="M88 180L88 179L87 179L87 177L86 177L88 177L88 180L88 180z" />
 </g>
 ```

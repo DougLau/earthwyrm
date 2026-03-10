@@ -2,7 +2,7 @@
 name = "wyrmcast"
 description = "Vector tile map server"
 license = "MIT OR Apache-2.0"
-repository = "https://github.com/DougLau/earthwyrm/wyrmcast"
+repository = "https://github.com/DougLau/earthwyrm/tree/master/wyrmcast"
 categories = ["science::geo"]
 version.workspace = true
 edition.workspace = true

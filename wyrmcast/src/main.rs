@@ -13,9 +13,9 @@ use axum::{
     response::IntoResponse,
     routing::get,
 };
-use mvt::{TileId, WebMercatorPos, Wgs84Pos};
 use pointy::BBox;
 use serde::Deserialize;
+use squarepeg::{Peg, WebMercatorPos, Wgs84Pos};
 use std::fs::{DirEntry, File};
 use std::io::Write;
 use std::os::unix::fs::PermissionsExt;
@@ -220,11 +220,11 @@ fn tile_mvt(wyrm: Arc<Wyrm>) -> Router {
             params.x,
             params.tail
         );
-        let Ok(tid) = TileId::try_from(&params) else {
+        let Ok(peg) = Peg::try_from(&params) else {
             return (StatusCode::NOT_FOUND, "Not Found".into_response());
         };
         let mut out = vec![];
-        match state.fetch_tile(&mut out, &params.group, tid) {
+        match state.fetch_tile(&mut out, &params.group, peg) {
             Ok(()) => (StatusCode::OK, out.into_response()),
             Err(wyrmcast::error::Error::TileEmpty()) => {
                 (StatusCode::NOT_FOUND, "Not Found".into_response())
@@ -252,16 +252,18 @@ struct TileParams {
     tail: String,
 }
 
-impl TryFrom<&TileParams> for TileId {
+impl TryFrom<&TileParams> for Peg {
     type Error = mvt::Error;
 
     fn try_from(params: &TileParams) -> Result<Self, Self::Error> {
         if let Some(y) = params.tail.strip_suffix(".mvt")
             && let Ok(y) = y.parse::<u32>()
+            && let Some(peg) = Peg::new(params.x, y, params.z)
         {
-            return TileId::new(params.x, y, params.z);
+            Ok(peg)
+        } else {
+            Err(mvt::Error::InvalidTid())
         }
-        Err(mvt::Error::InvalidTid())
     }
 }
 

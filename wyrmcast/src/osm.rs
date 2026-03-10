@@ -6,11 +6,12 @@ use crate::config::WyrmCfg;
 use crate::error::Result;
 use crate::geom::Values;
 use crate::layer::LayerDef;
-use mvt::{GeomType, WebMercatorPos, Wgs84Pos};
+use mvt::GeomType;
 use osmpbfreader::{
     Node, NodeId, OsmId, OsmObj, OsmPbfReader, Relation, Tags, Way,
 };
 use rosewood::{BulkWriter, gis, gis::Gis};
+use squarepeg::{WebMercatorPos, Wgs84Pos};
 use std::collections::BTreeMap;
 use std::fs::File;
 use std::path::Path;

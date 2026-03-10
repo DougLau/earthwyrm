@@ -645,7 +645,7 @@ dependencies = [
 
 [[package]]
 name = "mvt"
-version = "0.10.3"
+version = "0.11.0"
 dependencies = [
  "log",
  "num-traits",
@@ -1033,6 +1033,15 @@ checksum = "3a766e1110788c36f4fa1c2b71b387a7815aa65f88ce0229841826633d93723e"
 dependencies = [
  "libc",
  "windows-sys 0.61.2",
+]
+
+[[package]]
+name = "squarepeg"
+version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "2ba1fec9809ef1fb94ab2ef7dee39652df01634b6c4425115a3b48fa5eea375f"
+dependencies = [
+ "pointy",
 ]
 
 [[package]]
@@ -1471,6 +1480,7 @@ dependencies = [
  "rosewood",
  "serde",
  "serde_derive",
+ "squarepeg",
  "tokio",
 ]
 

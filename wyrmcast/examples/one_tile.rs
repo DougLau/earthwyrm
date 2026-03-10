@@ -2,11 +2,12 @@
 //
 // Copyright (c) 2019-2026  Minnesota Department of Transportation
 //
-use mvt::TileId;
-use wyrmcast::config::WyrmCfg;
-use wyrmcast::tile::Wyrm;
+use squarepeg::Peg;
 use std::env;
 use std::fs::File;
+use wyrmcast::config::WyrmCfg;
+use wyrmcast::error::Error;
+use wyrmcast::tile::Wyrm;
 
 const MUON: &str = &r#"
 bind_address:
@@ -27,8 +28,8 @@ fn write_tile(
     let wyrm_cfg: WyrmCfg = muon_rs::from_str(MUON)?;
     let wyrm = Wyrm::try_from(&wyrm_cfg)?;
     let mut file = File::create("./one_tile.mvt")?;
-    let tid = TileId::new(x, y, z)?;
-    wyrm.fetch_tile(&mut file, "tile", tid)?;
+    let peg = Peg::new(x, y, z).ok_or(Error::InvalidZoomLevel(z))?;
+    wyrm.fetch_tile(&mut file, "tile", peg)?;
     Ok(())
 }
 

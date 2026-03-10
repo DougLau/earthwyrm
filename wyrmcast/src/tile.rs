@@ -6,8 +6,9 @@ use crate::config::{LayerGroupCfg, WyrmCfg};
 use crate::error::{Error, Result};
 use crate::geom::GeomTree;
 use crate::layer::LayerDef;
-use mvt::{Layer, MapGrid, Tile, TileId};
+use mvt::{Layer, Tile};
 use pointy::{BBox, Transform};
+use squarepeg::{MapGrid, Peg};
 use std::io::Write;
 use std::time::Instant;
 
@@ -16,8 +17,8 @@ pub struct TileCfg {
     /// Tile extent; width and height in pixels
     tile_extent: u32,
 
-    /// Tile ID
-    tid: TileId,
+    /// Peg (tile ID)
+    peg: Peg,
 
     /// Bounding box of tile (including edge extent)
     bbox: BBox<f64>,
@@ -65,7 +66,7 @@ pub struct Wyrm {
 impl TileCfg {
     /// Get the zoom level
     pub fn zoom(&self) -> u32 {
-        self.tid.z()
+        self.peg.z()
     }
 
     /// Get the bounding box (including edge extent)
@@ -104,7 +105,7 @@ impl LayerGroup {
         log::info!(
             "{}/{}, fetched {} bytes in {:.2?}",
             self.name(),
-            tile_cfg.tid,
+            tile_cfg.peg,
             tile.compute_size(),
             t.elapsed()
         );
@@ -134,7 +135,7 @@ impl LayerGroup {
             tile.write_to(out)?;
             Ok(())
         } else {
-            log::debug!("tile {} empty (no layers)", tile_cfg.tid);
+            log::debug!("tile {} empty (no layers)", tile_cfg.peg);
             Err(Error::TileEmpty())
         }
     }
@@ -174,16 +175,16 @@ impl Wyrm {
     ///
     /// * `out` Writer to write MVT data.
     /// * `group_name` Name of layer group.
-    /// * `tid` Tile ID.
+    /// * `peg` Peg (tile ID).
     pub fn fetch_tile<W: Write>(
         &self,
         out: &mut W,
         group_name: &str,
-        tid: TileId,
+        peg: Peg,
     ) -> Result<()> {
         for group in &self.groups {
             if group_name == group.name() {
-                let tile_cfg = self.tile_config(tid);
+                let tile_cfg = self.tile_config(peg);
                 return group.write_tile(out, tile_cfg);
             }
         }
@@ -191,12 +192,12 @@ impl Wyrm {
         Err(Error::UnknownGroupName())
     }
 
-    /// Create tile config for a tile ID
-    fn tile_config(&self, tid: TileId) -> TileCfg {
+    /// Create tile config for a Peg (tile ID)
+    fn tile_config(&self, peg: Peg) -> TileCfg {
         let tile_extent = self.tile_extent;
-        let mut bbox = self.grid.tile_bbox(tid);
+        let mut bbox = self.grid.bbox_peg(peg);
         // increase bounding box by edge extent
-        let edge = zoom_edge(tid);
+        let edge = zoom_edge(peg);
         let edge_x = edge * (bbox.x_max() - bbox.x_min());
         let edge_y = edge * (bbox.y_max() - bbox.y_min());
         bbox.extend([
@@ -204,10 +205,10 @@ impl Wyrm {
             (bbox.x_max() + edge_x, bbox.y_max() + edge_y),
         ]);
         let ts = f64::from(tile_extent);
-        let transform = self.grid.tile_transform(tid).scale(ts, ts);
+        let transform = self.grid.transform_peg(peg).scale(ts, ts);
         TileCfg {
             tile_extent,
-            tid,
+            peg,
             bbox,
             transform,
         }
@@ -217,8 +218,8 @@ impl Wyrm {
 /// Calculate edge ratio based on tile zoom
 ///
 /// Edge must be larger for higher zoom levels to prevent corrupt polygons.
-fn zoom_edge(tid: TileId) -> f64 {
-    match tid.z() {
+fn zoom_edge(peg: Peg) -> f64 {
+    match peg.z() {
         0..=12 => 1.0 / 32.0,
         13 => 1.0 / 16.0,
         14 => 1.0 / 8.0,

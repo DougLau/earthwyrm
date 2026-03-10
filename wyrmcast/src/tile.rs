@@ -3,9 +3,9 @@
 // Copyright (c) 2019-2026  Minnesota Department of Transportation
 //
 use crate::config::{LayerGroupCfg, WyrmCastCfg};
-use crate::error::{Error, Result};
 use crate::geom::GeomTree;
 use crate::layer::LayerDef;
+use anyhow::{Result, anyhow};
 use mvt::{Layer, Tile};
 use pointy::{BBox, Transform};
 use squarepeg::{MapGrid, Peg};
@@ -129,20 +129,20 @@ impl LayerGroup {
         &self,
         out: &mut W,
         tile_cfg: TileCfg,
-    ) -> Result<()> {
+    ) -> Result<bool> {
         let tile = self.fetch_tile(&tile_cfg)?;
         if tile.num_layers() > 0 {
             tile.write_to(out)?;
-            Ok(())
+            Ok(true)
         } else {
             log::debug!("tile {} empty (no layers)", tile_cfg.peg);
-            Err(Error::TileEmpty())
+            Ok(false)
         }
     }
 }
 
 impl TryFrom<&WyrmCastCfg> for WyrmCast {
-    type Error = Error;
+    type Error = anyhow::Error;
 
     fn try_from(cfg: &WyrmCastCfg) -> Result<Self> {
         // Only Web Mercator supported for now
@@ -181,15 +181,14 @@ impl WyrmCast {
         out: &mut W,
         group_name: &str,
         peg: Peg,
-    ) -> Result<()> {
+    ) -> Result<bool> {
         for group in &self.groups {
             if group_name == group.name() {
                 let tile_cfg = self.tile_config(peg);
                 return group.write_tile(out, tile_cfg);
             }
         }
-        log::debug!("unknown group name: {}", group_name);
-        Err(Error::UnknownGroupName())
+        Err(anyhow!("Unknown group name: {group_name}"))
     }
 
     /// Create tile config for a Peg (tile ID)

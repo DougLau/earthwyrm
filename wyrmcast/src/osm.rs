@@ -3,9 +3,9 @@
 // Copyright (c) 2021-2026  Minnesota Department of Transportation
 //
 use crate::config::WyrmCastCfg;
-use crate::error::Result;
 use crate::geom::Values;
 use crate::layer::LayerDef;
+use anyhow::Result;
 use mvt::GeomType;
 use osmpbfreader::{
     Node, NodeId, OsmId, OsmObj, OsmPbfReader, Relation, Tags, Way,

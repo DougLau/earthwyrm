@@ -3,7 +3,7 @@
 // Copyright (c) 2019-2026  Minnesota Department of Transportation
 //
 use crate::config::LayerCfg;
-use crate::error::{Error, Result};
+use anyhow::{Result, anyhow};
 use mvt::GeomType;
 use osmpbfreader::Tags;
 use std::fmt;
@@ -229,7 +229,7 @@ fn parse_zoom(zoom: &str) -> Result<u32> {
     if zoom <= ZOOM_MAX {
         Ok(zoom)
     } else {
-        Err(Error::InvalidZoomLevel(zoom))
+        Err(anyhow!("Invalid zoom level: {zoom}"))
     }
 }
 
@@ -240,7 +240,7 @@ fn parse_patterns(tags: &[String]) -> Result<Vec<TagPattern>> {
         let p = TagPattern::parse(pat);
         let tag = p.tag();
         if patterns.iter().any(|p| p.tag() == tag) {
-            return Err(Error::DuplicatePattern(pat.to_string()));
+            return Err(anyhow!("Duplicate pattern: {pat}"));
         }
         log::trace!("tag pattern: {p}");
         patterns.push(p);
@@ -254,12 +254,12 @@ fn parse_geom_type(geom_tp: &str) -> Result<GeomType> {
         "point" => Ok(GeomType::Point),
         "linestring" => Ok(GeomType::Linestring),
         "polygon" => Ok(GeomType::Polygon),
-        _ => Err(Error::UnknownGeometryType()),
+        _ => Err(anyhow!("Unknown geometry type: {geom_tp}")),
     }
 }
 
 impl TryFrom<&LayerCfg> for LayerDef {
-    type Error = Error;
+    type Error = anyhow::Error;
 
     fn try_from(layer: &LayerCfg) -> Result<Self> {
         let name = layer.name.to_string();

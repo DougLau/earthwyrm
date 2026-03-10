@@ -2,11 +2,11 @@
 //
 // Copyright (c) 2019-2026  Minnesota Department of Transportation
 //
+use anyhow::{Result, anyhow};
 use squarepeg::Peg;
 use std::env;
 use std::fs::File;
 use wyrmcast::config::WyrmCastCfg;
-use wyrmcast::error::Error;
 use wyrmcast::tile::WyrmCast;
 
 const MUON: &str = &r#"
@@ -20,20 +20,16 @@ layer_group: tile
     tags: ?name ?population boundary=administrative admin_level=8
 "#;
 
-fn write_tile(
-    x: u32,
-    y: u32,
-    z: u32,
-) -> Result<(), Box<dyn std::error::Error>> {
+fn write_tile(x: u32, y: u32, z: u32) -> Result<()> {
     let cfg: WyrmCastCfg = muon_rs::from_str(MUON)?;
     let caster = WyrmCast::try_from(&cfg)?;
     let mut file = File::create("./one_tile.mvt")?;
-    let peg = Peg::new(x, y, z).ok_or(Error::InvalidZoomLevel(z))?;
+    let peg = Peg::new(x, y, z).ok_or(anyhow!("Invalid zoom level {z}"))?;
     caster.fetch_tile(&mut file, "tile", peg)?;
     Ok(())
 }
 
-fn main() -> Result<(), Box<dyn std::error::Error>> {
+fn main() -> Result<()> {
     let mut args = env::args();
     args.next().unwrap();
     let x = args.next().expect("missing x").parse()?;

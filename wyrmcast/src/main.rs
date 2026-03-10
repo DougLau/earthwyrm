@@ -141,7 +141,7 @@ impl DigCommand {
     /// Dig loam layers from OSM file
     fn dig(self, cfg: WyrmCastCfg) -> Result<()> {
         let osm = osm_newest()?;
-        Ok(cfg.extract_osm(osm)?)
+        cfg.extract_osm(osm)
     }
 }
 
@@ -225,10 +225,8 @@ fn tile_mvt(caster: Arc<WyrmCast>) -> Router {
         };
         let mut out = vec![];
         match state.fetch_tile(&mut out, &params.group, peg) {
-            Ok(()) => (StatusCode::OK, out.into_response()),
-            Err(wyrmcast::error::Error::TileEmpty()) => {
-                (StatusCode::NOT_FOUND, "Not Found".into_response())
-            }
+            Ok(true) => (StatusCode::OK, out.into_response()),
+            Ok(false) => (StatusCode::NOT_FOUND, "Not Found".into_response()),
             Err(err) => {
                 log::warn!("fetch_tile: {err:?}");
                 (

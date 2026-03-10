@@ -2,7 +2,7 @@
 //
 // Copyright (c) 2019-2026  Minnesota Department of Transportation
 //
-use crate::error::Result;
+use anyhow::Result;
 use serde_derive::Deserialize;
 use std::fmt;
 use std::fs::read_to_string;

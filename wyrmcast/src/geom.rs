@@ -2,9 +2,9 @@
 //
 // Copyright (c) 2019-2026  Minnesota Department of Transportation
 //
-use crate::error::Result;
 use crate::layer::LayerDef;
 use crate::tile::TileCfg;
+use anyhow::Result;
 use mvt::{Feature, GeomData, GeomEncoder, GeomType, Layer};
 use pointy::{BBox, Bounded, Transform};
 use rosewood::{RTree, gis, gis::Gis};

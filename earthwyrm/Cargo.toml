@@ -1,6 +1,6 @@
 [package]
 name = "earthwyrm"
-description = "Vector tiles for openstreetmap data"
+description = "Vector tile map widget for WebAssembly"
 license = "MIT OR Apache-2.0"
 documentation = "https://docs.rs/earthwyrm"
 repository = "https://github.com/DougLau/earthwyrm/tree/master/earthwyrm"

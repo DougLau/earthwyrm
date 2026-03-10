@@ -1,5 +1,5 @@
-*EarthWyrm* is a Rust library for displaying vector tiles in WebAssembly
-contexts.
+*EarthWyrm* is a Rust library for displaying vector tile maps in a WebAssembly
+context.
 
 Wyrm tiles are geographic vector maps designed for fluid browser interactivity.
 A single tile is a "snippet" or fragment of [SVG] designed to be inserted into

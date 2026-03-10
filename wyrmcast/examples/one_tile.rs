@@ -5,9 +5,9 @@
 use squarepeg::Peg;
 use std::env;
 use std::fs::File;
-use wyrmcast::config::WyrmCfg;
+use wyrmcast::config::WyrmCastCfg;
 use wyrmcast::error::Error;
-use wyrmcast::tile::Wyrm;
+use wyrmcast::tile::WyrmCast;
 
 const MUON: &str = &r#"
 bind_address:
@@ -25,11 +25,11 @@ fn write_tile(
     y: u32,
     z: u32,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    let wyrm_cfg: WyrmCfg = muon_rs::from_str(MUON)?;
-    let wyrm = Wyrm::try_from(&wyrm_cfg)?;
+    let cfg: WyrmCastCfg = muon_rs::from_str(MUON)?;
+    let caster = WyrmCast::try_from(&cfg)?;
     let mut file = File::create("./one_tile.mvt")?;
     let peg = Peg::new(x, y, z).ok_or(Error::InvalidZoomLevel(z))?;
-    wyrm.fetch_tile(&mut file, "tile", peg)?;
+    caster.fetch_tile(&mut file, "tile", peg)?;
     Ok(())
 }
 

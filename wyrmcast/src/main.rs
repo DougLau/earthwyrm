@@ -22,8 +22,8 @@ use std::os::unix::fs::PermissionsExt;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use tokio::net::TcpListener;
-use wyrmcast::config::WyrmCfg;
-use wyrmcast::tile::Wyrm;
+use wyrmcast::config::WyrmCastCfg;
+use wyrmcast::tile::WyrmCast;
 
 /// Get path to the newest OSM file
 fn osm_newest() -> Result<PathBuf> {
@@ -139,7 +139,7 @@ where
 
 impl DigCommand {
     /// Dig loam layers from OSM file
-    fn dig(self, cfg: WyrmCfg) -> Result<()> {
+    fn dig(self, cfg: WyrmCastCfg) -> Result<()> {
         let osm = osm_newest()?;
         Ok(cfg.extract_osm(osm)?)
     }
@@ -147,27 +147,27 @@ impl DigCommand {
 
 impl QueryCommand {
     /// Query a lat/lon position
-    fn query(&self, cfg: WyrmCfg) -> Result<()> {
-        let wyrm = Wyrm::try_from(&cfg)?;
+    fn query(&self, cfg: WyrmCastCfg) -> Result<()> {
+        let caster = WyrmCast::try_from(&cfg)?;
         let pos = Wgs84Pos::new(self.lat, self.lon);
         let pos = WebMercatorPos::from(pos);
         let bbox = BBox::new([pos]);
-        wyrm.query_features(bbox)?;
+        caster.query_features(bbox)?;
         Ok(())
     }
 }
 
 impl ServeCommand {
     /// Serve tiles using http
-    fn serve(&self, cfg: WyrmCfg) -> Result<()> {
-        let wyrm = Arc::new(Wyrm::try_from(&cfg)?);
+    fn serve(&self, cfg: WyrmCastCfg) -> Result<()> {
+        let caster = Arc::new(WyrmCast::try_from(&cfg)?);
         let rt = tokio::runtime::Runtime::new()?;
         rt.block_on(async {
             let mut app = Router::new();
             if self.leaflet {
                 app = app.merge(index_html()).merge(map_css()).merge(map_js());
             }
-            app = app.merge(tile_mvt(wyrm));
+            app = app.merge(tile_mvt(caster));
             let listener = TcpListener::bind(cfg.bind_address).await.unwrap();
             axum::serve(listener, app).await.unwrap();
         });
@@ -208,10 +208,10 @@ fn map_js() -> Router {
 }
 
 /// Get a tile `.mvt` as response
-fn tile_mvt(wyrm: Arc<Wyrm>) -> Router {
+fn tile_mvt(caster: Arc<WyrmCast>) -> Router {
     async fn handler(
         AxumPath(params): AxumPath<TileParams>,
-        State(state): State<Arc<Wyrm>>,
+        State(state): State<Arc<WyrmCast>>,
     ) -> impl IntoResponse {
         log::debug!(
             "req: {}/{}/{}/{}",
@@ -240,7 +240,7 @@ fn tile_mvt(wyrm: Arc<Wyrm>) -> Router {
     }
     Router::new()
         .route("/{group}/{z}/{x}/{tail}", get(handler))
-        .with_state(wyrm)
+        .with_state(caster)
 }
 
 /// Tile route parameters
@@ -272,9 +272,9 @@ impl Args {
     fn run(self) -> Result<()> {
         match &self.cmd {
             Command::Init(cmd) => cmd.init(),
-            Command::Dig(cmd) => cmd.dig(WyrmCfg::load()?),
-            Command::Query(cmd) => cmd.query(WyrmCfg::load()?),
-            Command::Serve(cmd) => cmd.serve(WyrmCfg::load()?),
+            Command::Dig(cmd) => cmd.dig(WyrmCastCfg::load()?),
+            Command::Query(cmd) => cmd.query(WyrmCastCfg::load()?),
+            Command::Serve(cmd) => cmd.serve(WyrmCastCfg::load()?),
         }
     }
 }

@@ -2,7 +2,7 @@
 //
 // Copyright (c) 2021-2026  Minnesota Department of Transportation
 //
-use crate::config::WyrmCfg;
+use crate::config::WyrmCastCfg;
 use crate::error::Result;
 use crate::geom::Values;
 use crate::layer::LayerDef;
@@ -357,7 +357,7 @@ fn end_points(way: &[NodeId]) -> (NodeId, NodeId) {
     (way[0], way[len])
 }
 
-impl WyrmCfg {
+impl WyrmCastCfg {
     /// Extract `osm` layer groups, creating a loam file for each layer
     pub fn extract_osm<P>(&self, osm: P) -> Result<()>
     where

@@ -8,9 +8,9 @@ use std::fmt;
 use std::fs::read_to_string;
 use std::path::{Path, PathBuf};
 
-/// Configuration for Earthwyrm tile layers.
+/// Configuration for WyrmCast tile layers.
 #[derive(Debug, Deserialize)]
-pub struct WyrmCfg {
+pub struct WyrmCastCfg {
     /// Address to bind server
     pub bind_address: String,
 
@@ -60,7 +60,7 @@ impl fmt::Display for LayerGroupCfg {
     }
 }
 
-impl WyrmCfg {
+impl WyrmCastCfg {
     /// Read the configuration file
     pub fn load() -> Result<Self> {
         let path = Path::new("wyrmcast.muon");

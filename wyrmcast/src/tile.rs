@@ -2,7 +2,7 @@
 //
 // Copyright (c) 2019-2026  Minnesota Department of Transportation
 //
-use crate::config::{LayerGroupCfg, WyrmCfg};
+use crate::config::{LayerGroupCfg, WyrmCastCfg};
 use crate::error::{Error, Result};
 use crate::geom::GeomTree;
 use crate::layer::LayerDef;
@@ -45,14 +45,14 @@ struct LayerGroup {
     layers: Vec<LayerTree>,
 }
 
-/// Wyrm tile fetcher.
+/// WyrmCast tile fetcher.
 ///
 /// To create:
-/// * Use `serde` to deserialize a [WyrmCfg]
-/// * `let wyrm = Wyrm::try_from(wyrm_cfg)?;`
+/// * Use `serde` to deserialize a [WyrmCastCfg]
+/// * `let caster = WyrmCast::try_from(cfg)?;`
 ///
-/// [WyrmCfg]: struct.WyrmCfg.html
-pub struct Wyrm {
+/// [WyrmCastCfg]: struct.WyrmCastCfg.html
+pub struct WyrmCast {
     /// Map grid configuration
     grid: MapGrid,
 
@@ -82,12 +82,12 @@ impl TileCfg {
 
 impl LayerGroup {
     /// Create a new layer group
-    fn new(group: &LayerGroupCfg, wyrm: &WyrmCfg) -> Result<Self> {
+    fn new(group: &LayerGroupCfg, cfg: &WyrmCastCfg) -> Result<Self> {
         let name = group.name.to_string();
         let mut layers = vec![];
         for layer_cfg in &group.layer {
             let layer_def = LayerDef::try_from(layer_cfg)?;
-            layers.push(LayerTree::new(layer_def, wyrm)?);
+            layers.push(LayerTree::new(layer_def, cfg)?);
         }
         log::info!("{} layers in {group}", layers.len());
         Ok(LayerGroup { name, layers })
@@ -141,25 +141,25 @@ impl LayerGroup {
     }
 }
 
-impl TryFrom<&WyrmCfg> for Wyrm {
+impl TryFrom<&WyrmCastCfg> for WyrmCast {
     type Error = Error;
 
-    fn try_from(wyrm_cfg: &WyrmCfg) -> Result<Self> {
+    fn try_from(cfg: &WyrmCastCfg) -> Result<Self> {
         // Only Web Mercator supported for now
         let grid = MapGrid::default();
         let mut groups = vec![];
-        for group in &wyrm_cfg.layer_group {
-            groups.push(LayerGroup::new(group, wyrm_cfg)?);
+        for group in &cfg.layer_group {
+            groups.push(LayerGroup::new(group, cfg)?);
         }
-        Ok(Wyrm {
+        Ok(WyrmCast {
             grid,
-            tile_extent: wyrm_cfg.tile_extent,
+            tile_extent: cfg.tile_extent,
             groups,
         })
     }
 }
 
-impl Wyrm {
+impl WyrmCast {
     /// Query features in a bounding box
     pub fn query_features(&self, bbox: BBox<f64>) -> Result<()> {
         for group in &self.groups {
@@ -231,8 +231,8 @@ fn zoom_edge(peg: Peg) -> f64 {
 
 impl LayerTree {
     /// Create a new layer tree
-    fn new(layer_def: LayerDef, wyrm: &WyrmCfg) -> Result<Self> {
-        let loam = wyrm.loam_path(layer_def.name());
+    fn new(layer_def: LayerDef, cfg: &WyrmCastCfg) -> Result<Self> {
+        let loam = cfg.loam_path(layer_def.name());
         let tree = GeomTree::new(layer_def.geom_tp(), loam)?;
         Ok(LayerTree { layer_def, tree })
     }

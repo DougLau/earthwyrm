@@ -219,17 +219,6 @@ dependencies = [
 [[package]]
 name = "earthwyrm"
 version = "0.11.2"
-dependencies = [
- "loam",
- "log",
- "muon-rs",
- "mvt",
- "osmpbfreader",
- "pointy",
- "rosewood",
- "serde",
- "serde_derive",
-]
 
 [[package]]
 name = "either"

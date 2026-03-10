@@ -1,8 +1,8 @@
 *WyrmCast* is an open-source map server developed for the Minnesota Department
-of Transportation (MnDOT).  It can serve GIS data from [OpenStreetMap] or other
+of Transportation (MnDOT).  It can serve maps from [OpenStreetMap] or other
 sources.
 
-GIS data is stored as R-Trees in a [rosewood] file for each layer.  They
+Map data is cached as [R-Tree]s in a [rosewood] file for each layer.  They
 contain `point`, `linestring` or `polygon` features, with associated tags.
 
 Features:
@@ -37,8 +37,8 @@ This file tree will be created:
 👉 __Edit__ the configuration file at `/var/local/wyrmcast/wyrmcast.muon`.  It
 contains examples and instructions.
 
-👉 __Download__ an OpenStreetMap extract of your region in [PBF format] into the
-`/var/local/wyrmcast/osm/` directory.  For example, files such as
+👉 __Download__ an OpenStreetMap extract of your region in [PBF format] into
+the `/var/local/wyrmcast/osm/` directory.  For example, files such as
 `minnesota-latest.osm.pbf` are provided daily from [Geofabrik].
 
 👉 __Dig__ the configured layers into `.loam` cache files:
@@ -67,6 +67,7 @@ From the server host, browse to [127.0.0.1:3030](http://127.0.0.1:3030/)
 [MVT]: https://github.com/mapbox/vector-tile-spec
 [OpenStreetMap]: https://www.openstreetmap.org/about
 [PBF format]: https://wiki.openstreetmap.org/wiki/PBF_Format
+[R-Tree]: https://en.wikipedia.org/wiki/R-tree
 [rosewood]: https://docs.rs/rosewood
 [systemd]: https://docs.fedoraproject.org/en-US/quick-docs/systemd-understanding-and-administering/
 [Web Mercator]: https://en.wikipedia.org/wiki/Web_Mercator_projection

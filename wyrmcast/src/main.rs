@@ -254,7 +254,7 @@ struct TileParams {
 }
 
 impl TryFrom<&TileParams> for Peg {
-    type Error = mvt::Error;
+    type Error = anyhow::Error;
 
     fn try_from(params: &TileParams) -> Result<Self, Self::Error> {
         if let Some(y) = params.tail.strip_suffix(".mvt")
@@ -263,7 +263,7 @@ impl TryFrom<&TileParams> for Peg {
         {
             Ok(peg)
         } else {
-            Err(mvt::Error::InvalidTid())
+            Err(anyhow!("Invalid tile ID"))
         }
     }
 }

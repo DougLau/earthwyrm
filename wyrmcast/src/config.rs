@@ -62,9 +62,8 @@ impl fmt::Display for LayerGroupCfg {
 
 impl WyrmCastCfg {
     /// Read the configuration file
-    pub fn load() -> Result<Self> {
-        let path = Path::new("wyrmcast.muon");
-        let cfg = read_to_string(path)?;
+    pub fn load(path: &(impl AsRef<Path> + ?Sized)) -> Result<Self> {
+        let cfg = read_to_string(path.as_ref())?;
         let cfg: Self = muon_rs::from_str(&cfg)?;
         Ok(cfg)
     }

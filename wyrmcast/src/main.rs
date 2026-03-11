@@ -25,6 +25,9 @@ use tokio::net::TcpListener;
 use wyrmcast::config::WyrmCastCfg;
 use wyrmcast::tile::WyrmCast;
 
+/// Path to configuration file
+const CFG_PATH: &str = "wyrmcast.muon";
+
 /// Get path to the newest OSM file
 fn osm_newest() -> Result<PathBuf> {
     let path = Path::new("osm");
@@ -116,7 +119,7 @@ impl InitCommand {
         // Set loam directory permissions: drwxrwxr-x
         std::fs::set_permissions(loam_path, PermissionsExt::from_mode(0o775))?;
         write_file(
-            Path::new("wyrmcast.muon"),
+            Path::new(CFG_PATH),
             include_bytes!("../res/wyrmcast.muon"),
         )?;
         write_file(
@@ -270,9 +273,9 @@ impl Args {
     fn run(self) -> Result<()> {
         match &self.cmd {
             Command::Init(cmd) => cmd.init(),
-            Command::Dig(cmd) => cmd.dig(WyrmCastCfg::load()?),
-            Command::Query(cmd) => cmd.query(WyrmCastCfg::load()?),
-            Command::Serve(cmd) => cmd.serve(WyrmCastCfg::load()?),
+            Command::Dig(cmd) => cmd.dig(WyrmCastCfg::load(CFG_PATH)?),
+            Command::Query(cmd) => cmd.query(WyrmCastCfg::load(CFG_PATH)?),
+            Command::Serve(cmd) => cmd.serve(WyrmCastCfg::load(CFG_PATH)?),
         }
     }
 }

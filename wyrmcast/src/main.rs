@@ -16,6 +16,7 @@ use axum::{
 use pointy::BBox;
 use serde::Deserialize;
 use squarepeg::{Peg, WebMercatorPos, Wgs84Pos};
+use std::fmt;
 use std::fs::{DirEntry, File};
 use std::io::Write;
 use std::os::unix::fs::PermissionsExt;
@@ -215,13 +216,7 @@ fn tile_mvt(caster: Arc<WyrmCastDef>) -> Router {
         AxumPath(params): AxumPath<TileParams>,
         State(caster): State<Arc<WyrmCastDef>>,
     ) -> impl IntoResponse {
-        log::debug!(
-            "req: {}/{}/{}/{}",
-            &params.group,
-            params.z,
-            params.x,
-            params.tail
-        );
+        log::debug!("req: {params:?}");
         let Ok(peg) = Peg::try_from(&params) else {
             return (StatusCode::NOT_FOUND, "Not Found".into_response());
         };
@@ -250,6 +245,12 @@ struct TileParams {
     z: u32,
     x: u32,
     tail: String,
+}
+
+impl fmt::Debug for TileParams {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}/{}/{}/{}", &self.group, self.z, self.x, self.tail)
+    }
 }
 
 impl TryFrom<&TileParams> for Peg {

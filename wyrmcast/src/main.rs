@@ -8,9 +8,10 @@ use anyhow::{Context, Result, anyhow};
 use argh::FromArgs;
 use axum::{
     Router,
+    body::Body,
     extract::{Path as AxumPath, State},
     http::{StatusCode, header},
-    response::IntoResponse,
+    response::{IntoResponse, Response},
     routing::get,
 };
 use pointy::BBox;
@@ -170,7 +171,7 @@ impl ServeCommand {
             if self.leaflet {
                 app = app.merge(index_html()).merge(map_css()).merge(map_js());
             }
-            app = app.merge(tile_mvt(caster));
+            app = app.merge(tile_routes(caster));
             let listener = TcpListener::bind(cfg.bind_address).await.unwrap();
             axum::serve(listener, app).await.unwrap();
         });
@@ -210,32 +211,51 @@ fn map_js() -> Router {
     Router::new().route("/map.js", get(handler))
 }
 
-/// Get a tile `.mvt` as response
-fn tile_mvt(caster: Arc<WyrmCastDef>) -> Router {
+/// Router for `.wyrm` or `.mvt` tiles
+fn tile_routes(caster: Arc<WyrmCastDef>) -> Router {
     async fn handler(
         AxumPath(params): AxumPath<TileParams>,
         State(caster): State<Arc<WyrmCastDef>>,
-    ) -> impl IntoResponse {
+    ) -> (StatusCode, Response<Body>) {
         log::debug!("req: {params:?}");
-        let Ok(peg) = Peg::try_from(&params) else {
-            return (StatusCode::NOT_FOUND, "Not Found".into_response());
-        };
-        let mut out = vec![];
-        match caster.fetch_mvt(&mut out, &params.group, peg) {
-            Ok(true) => (StatusCode::OK, out.into_response()),
-            Ok(false) => (StatusCode::NOT_FOUND, "Not Found".into_response()),
-            Err(err) => {
-                log::warn!("fetch_tile: {err:?}");
-                (
-                    StatusCode::INTERNAL_SERVER_ERROR,
-                    "Internal Error".into_response(),
-                )
-            }
+        match (params.peg(), params.ext()) {
+            (Some(peg), Some("mvt")) => tile_mvt(&caster, &params.group, peg),
+            (Some(peg), Some("wyrm")) => tile_wyrm(&caster, &params.group, peg),
+            _ => (StatusCode::NOT_FOUND, "Not Found".into_response()),
         }
     }
     Router::new()
         .route("/{group}/{z}/{x}/{tail}", get(handler))
         .with_state(caster)
+}
+
+/// Get a tile `.mvt` as response
+fn tile_mvt(
+    caster: &WyrmCastDef,
+    group: &str,
+    peg: Peg,
+) -> (StatusCode, Response<Body>) {
+    let mut out = vec![];
+    match caster.fetch_mvt(&mut out, group, peg) {
+        Ok(true) => (StatusCode::OK, out.into_response()),
+        Ok(false) => (StatusCode::NOT_FOUND, "Not Found".into_response()),
+        Err(err) => {
+            log::warn!("tile_mvt: {err:?}");
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                "Internal Error".into_response(),
+            )
+        }
+    }
+}
+
+/// Get a tile `.wyrm` as response
+fn tile_wyrm(
+    _caster: &WyrmCastDef,
+    _group: &str,
+    _peg: Peg,
+) -> (StatusCode, Response<Body>) {
+    todo!()
 }
 
 /// Tile route parameters
@@ -253,18 +273,22 @@ impl fmt::Debug for TileParams {
     }
 }
 
-impl TryFrom<&TileParams> for Peg {
-    type Error = anyhow::Error;
+impl TileParams {
+    /// Parse Y parameter
+    fn y(&self) -> Option<u32> {
+        self.tail
+            .split_once('.')
+            .and_then(|(y, _ext)| y.parse::<u32>().ok())
+    }
 
-    fn try_from(params: &TileParams) -> Result<Self, Self::Error> {
-        if let Some(y) = params.tail.strip_suffix(".mvt")
-            && let Ok(y) = y.parse::<u32>()
-            && let Some(peg) = Peg::new(params.x, y, params.z)
-        {
-            Ok(peg)
-        } else {
-            Err(anyhow!("Invalid tile ID"))
-        }
+    /// Get `Peg` (tile ID)
+    fn peg(&self) -> Option<Peg> {
+        self.y().and_then(|y| Peg::new(self.x, y, self.z))
+    }
+
+    /// Get file extension
+    fn ext(&self) -> Option<&str> {
+        self.tail.split_once('.').map(|(_y, ext)| ext)
     }
 }
 

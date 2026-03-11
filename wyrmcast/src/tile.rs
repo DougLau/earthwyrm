@@ -3,7 +3,7 @@
 // Copyright (c) 2019-2026  Minnesota Department of Transportation
 //
 use pointy::{BBox, Transform};
-use squarepeg::Peg;
+use squarepeg::{MapGrid, Peg};
 
 /// Tile configuration
 pub struct TileCfg {
@@ -22,12 +22,18 @@ pub struct TileCfg {
 
 impl TileCfg {
     /// Create a new tile config
-    pub fn new(
-        tile_extent: u32,
-        peg: Peg,
-        bbox: BBox<f64>,
-        transform: Transform<f64>,
-    ) -> Self {
+    pub fn new(grid: &MapGrid, peg: Peg, tile_extent: u32) -> Self {
+        let mut bbox = grid.bbox_peg(peg);
+        // increase bounding box by edge extent
+        let edge = zoom_edge(peg);
+        let edge_x = edge * (bbox.x_max() - bbox.x_min());
+        let edge_y = edge * (bbox.y_max() - bbox.y_min());
+        bbox.extend([
+            (bbox.x_min() - edge_x, bbox.y_min() - edge_y),
+            (bbox.x_max() + edge_x, bbox.y_max() + edge_y),
+        ]);
+        let ts = f64::from(tile_extent);
+        let transform = grid.transform_peg(peg).scale(ts, ts);
         TileCfg {
             tile_extent,
             peg,
@@ -54,5 +60,19 @@ impl TileCfg {
     /// Get the tile transform
     pub fn transform(&self) -> Transform<f64> {
         self.transform
+    }
+}
+
+/// Calculate edge ratio based on tile zoom
+///
+/// Edge must be larger for higher zoom levels to prevent corrupt polygons.
+fn zoom_edge(peg: Peg) -> f64 {
+    match peg.z() {
+        0..=12 => 1.0 / 32.0,
+        13 => 1.0 / 16.0,
+        14 => 1.0 / 8.0,
+        15 => 1.0 / 4.0,
+        16 => 1.0 / 2.0,
+        _ => 1.0,
     }
 }

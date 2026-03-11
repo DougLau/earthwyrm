@@ -208,7 +208,7 @@ impl WyrmCastDef {
     ) -> Result<bool> {
         for group in self.groups() {
             if group_name == group.name() {
-                let tile_cfg = self.tile_config(peg);
+                let tile_cfg = self.tile_cfg(peg);
                 return group.write_mvt(out, tile_cfg);
             }
         }

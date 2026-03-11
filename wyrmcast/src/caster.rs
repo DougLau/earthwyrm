@@ -98,33 +98,7 @@ impl WyrmCastDef {
     }
 
     /// Create tile config for a Peg (tile ID)
-    pub fn tile_config(&self, peg: Peg) -> TileCfg {
-        let tile_extent = self.tile_extent;
-        let mut bbox = self.grid.bbox_peg(peg);
-        // increase bounding box by edge extent
-        let edge = zoom_edge(peg);
-        let edge_x = edge * (bbox.x_max() - bbox.x_min());
-        let edge_y = edge * (bbox.y_max() - bbox.y_min());
-        bbox.extend([
-            (bbox.x_min() - edge_x, bbox.y_min() - edge_y),
-            (bbox.x_max() + edge_x, bbox.y_max() + edge_y),
-        ]);
-        let ts = f64::from(tile_extent);
-        let transform = self.grid.transform_peg(peg).scale(ts, ts);
-        TileCfg::new(tile_extent, peg, bbox, transform)
-    }
-}
-
-/// Calculate edge ratio based on tile zoom
-///
-/// Edge must be larger for higher zoom levels to prevent corrupt polygons.
-fn zoom_edge(peg: Peg) -> f64 {
-    match peg.z() {
-        0..=12 => 1.0 / 32.0,
-        13 => 1.0 / 16.0,
-        14 => 1.0 / 8.0,
-        15 => 1.0 / 4.0,
-        16 => 1.0 / 2.0,
-        _ => 1.0,
+    pub fn tile_cfg(&self, peg: Peg) -> TileCfg {
+        TileCfg::new(&self.grid, peg, self.tile_extent)
     }
 }

@@ -227,7 +227,7 @@ fn tile_mvt(caster: Arc<WyrmCast>) -> Router {
             return (StatusCode::NOT_FOUND, "Not Found".into_response());
         };
         let mut out = vec![];
-        match state.fetch_tile(&mut out, &params.group, peg) {
+        match state.fetch_mvt(&mut out, &params.group, peg) {
             Ok(true) => (StatusCode::OK, out.into_response()),
             Ok(false) => (StatusCode::NOT_FOUND, "Not Found".into_response()),
             Err(err) => {

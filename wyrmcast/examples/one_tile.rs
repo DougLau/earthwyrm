@@ -25,7 +25,7 @@ fn write_tile(x: u32, y: u32, z: u32) -> Result<()> {
     let caster = WyrmCast::try_from(&cfg)?;
     let mut file = File::create("./one_tile.mvt")?;
     let peg = Peg::new(x, y, z).ok_or(anyhow!("Invalid zoom level {z}"))?;
-    caster.fetch_tile(&mut file, "tile", peg)?;
+    caster.fetch_mvt(&mut file, "tile", peg)?;
     Ok(())
 }
 

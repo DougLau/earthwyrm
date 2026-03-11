@@ -5,12 +5,9 @@
 use crate::config::{LayerGroupCfg, WyrmCastCfg};
 use crate::geom::GeomTree;
 use crate::layer::LayerDef;
-use anyhow::{Result, anyhow};
-use mvt::{Layer, Tile};
+use anyhow::Result;
 use pointy::{BBox, Transform};
 use squarepeg::{MapGrid, Peg};
-use std::io::Write;
-use std::time::Instant;
 
 /// Tile configuration
 pub struct TileCfg {
@@ -28,7 +25,7 @@ pub struct TileCfg {
 }
 
 /// Layer tree
-struct LayerTree {
+pub struct LayerTree {
     /// Layer definition
     layer_def: LayerDef,
 
@@ -37,7 +34,7 @@ struct LayerTree {
 }
 
 /// Group of layers for making tiles
-struct LayerGroup {
+pub struct LayerGroup {
     /// Name of group
     name: String,
 
@@ -64,6 +61,16 @@ pub struct WyrmCast {
 }
 
 impl TileCfg {
+    /// Get the tile extent
+    pub fn tile_extent(&self) -> u32 {
+        self.tile_extent
+    }
+
+    /// Get the tile Peg
+    pub fn peg(&self) -> Peg {
+        self.peg
+    }
+
     /// Get the zoom level
     pub fn zoom(&self) -> u32 {
         self.peg.z()
@@ -98,46 +105,9 @@ impl LayerGroup {
         &self.name
     }
 
-    /// Fetch a tile
-    fn fetch_tile(&self, tile_cfg: &TileCfg) -> Result<Tile> {
-        let t = Instant::now();
-        let tile = self.query_tile(tile_cfg)?;
-        log::info!(
-            "{}/{}, fetched {} bytes in {:.2?}",
-            self.name(),
-            tile_cfg.peg,
-            tile.compute_size(),
-            t.elapsed()
-        );
-        Ok(tile)
-    }
-
-    /// Query one tile from trees
-    fn query_tile(&self, tile_cfg: &TileCfg) -> Result<Tile> {
-        let mut tile = Tile::new(tile_cfg.tile_extent);
-        for layer_tree in &self.layers {
-            let layer = layer_tree.query_tile(&tile, tile_cfg)?;
-            if layer.num_features() > 0 {
-                tile.add_layer(layer)?;
-            }
-        }
-        Ok(tile)
-    }
-
-    /// Write group layers to a tile
-    fn write_tile<W: Write>(
-        &self,
-        out: &mut W,
-        tile_cfg: TileCfg,
-    ) -> Result<bool> {
-        let tile = self.fetch_tile(&tile_cfg)?;
-        if tile.num_layers() > 0 {
-            tile.write_to(out)?;
-            Ok(true)
-        } else {
-            log::debug!("tile {} empty (no layers)", tile_cfg.peg);
-            Ok(false)
-        }
+    /// Get layers in the group
+    pub fn layers(&self) -> &[LayerTree] {
+        &self.layers
     }
 }
 
@@ -160,6 +130,11 @@ impl TryFrom<&WyrmCastCfg> for WyrmCast {
 }
 
 impl WyrmCast {
+    /// Get layer groups
+    pub fn groups(&self) -> &[LayerGroup] {
+        &self.groups
+    }
+
     /// Query features in a bounding box
     pub fn query_features(&self, bbox: BBox<f64>) -> Result<()> {
         for group in &self.groups {
@@ -171,28 +146,8 @@ impl WyrmCast {
         Ok(())
     }
 
-    /// Fetch one tile.
-    ///
-    /// * `out` Writer to write MVT data.
-    /// * `group_name` Name of layer group.
-    /// * `peg` Peg (tile ID).
-    pub fn fetch_tile<W: Write>(
-        &self,
-        out: &mut W,
-        group_name: &str,
-        peg: Peg,
-    ) -> Result<bool> {
-        for group in &self.groups {
-            if group_name == group.name() {
-                let tile_cfg = self.tile_config(peg);
-                return group.write_tile(out, tile_cfg);
-            }
-        }
-        Err(anyhow!("Unknown group name: {group_name}"))
-    }
-
     /// Create tile config for a Peg (tile ID)
-    fn tile_config(&self, peg: Peg) -> TileCfg {
+    pub fn tile_config(&self, peg: Peg) -> TileCfg {
         let tile_extent = self.tile_extent;
         let mut bbox = self.grid.bbox_peg(peg);
         // increase bounding box by edge extent
@@ -236,18 +191,18 @@ impl LayerTree {
         Ok(LayerTree { layer_def, tree })
     }
 
+    /// Get layer definition
+    pub fn layer_def(&self) -> &LayerDef {
+        &self.layer_def
+    }
+
+    /// Get geometry tree
+    pub fn tree(&self) -> &GeomTree {
+        &self.tree
+    }
+
     /// Query layer features in a bounding box
     fn query_features(&self, bbox: BBox<f64>) -> Result<()> {
         self.tree.query_features(&self.layer_def, bbox)
-    }
-
-    /// Query tile features
-    fn query_tile(&self, tile: &Tile, tile_cfg: &TileCfg) -> Result<Layer> {
-        let layer = tile.create_layer(self.layer_def.name());
-        if self.layer_def.check_zoom(tile_cfg.zoom()) {
-            self.tree.query_mvt(&self.layer_def, layer, tile_cfg)
-        } else {
-            Ok(layer)
-        }
     }
 }

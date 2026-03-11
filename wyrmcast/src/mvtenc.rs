@@ -4,11 +4,14 @@
 //
 use crate::geom::{GeomTree, LinestringTree, PointTree, PolygonTree};
 use crate::layer::LayerDef;
-use crate::tile::TileCfg;
-use anyhow::Result;
-use mvt::{Feature, GeomData, GeomEncoder, GeomType, Layer};
+use crate::tile::{LayerGroup, LayerTree, TileCfg, WyrmCast};
+use anyhow::{Result, anyhow};
+use mvt::{Feature, GeomData, GeomEncoder, GeomType, Layer, Tile};
 use pointy::{BBox, Bounded, Transform};
 use rosewood::{gis, gis::Gis};
+use squarepeg::Peg;
+use std::io::Write;
+use std::time::Instant;
 
 /// Geometry which can be encoded to MVT GeomData
 trait MvtEncode {
@@ -187,6 +190,84 @@ impl GeomTree {
             GeomTree::Polygon(tree) => {
                 tree.query_mvt(layer_def, layer, tile_cfg)
             }
+        }
+    }
+}
+
+impl WyrmCast {
+    /// Fetch one MVT tile.
+    ///
+    /// * `out` Writer to write MVT data.
+    /// * `group_name` Name of layer group.
+    /// * `peg` Peg (tile ID).
+    pub fn fetch_mvt<W: Write>(
+        &self,
+        out: &mut W,
+        group_name: &str,
+        peg: Peg,
+    ) -> Result<bool> {
+        for group in self.groups() {
+            if group_name == group.name() {
+                let tile_cfg = self.tile_config(peg);
+                return group.write_mvt(out, tile_cfg);
+            }
+        }
+        Err(anyhow!("Unknown group name: {group_name}"))
+    }
+}
+
+impl LayerGroup {
+    /// Fetch a tile
+    fn fetch_mvt(&self, tile_cfg: &TileCfg) -> Result<Tile> {
+        let t = Instant::now();
+        let tile = self.query_mvt(tile_cfg)?;
+        log::info!(
+            "{}/{}, fetched {} bytes in {:.2?}",
+            self.name(),
+            tile_cfg.peg(),
+            tile.compute_size(),
+            t.elapsed()
+        );
+        Ok(tile)
+    }
+
+    /// Query one MVT from trees
+    fn query_mvt(&self, tile_cfg: &TileCfg) -> Result<Tile> {
+        let mut tile = Tile::new(tile_cfg.tile_extent());
+        for layer_tree in self.layers() {
+            let layer = layer_tree.query_mvt(&tile, tile_cfg)?;
+            if layer.num_features() > 0 {
+                tile.add_layer(layer)?;
+            }
+        }
+        Ok(tile)
+    }
+
+    /// Write group layers to a tile
+    fn write_mvt<W: Write>(
+        &self,
+        out: &mut W,
+        tile_cfg: TileCfg,
+    ) -> Result<bool> {
+        let tile = self.fetch_mvt(&tile_cfg)?;
+        if tile.num_layers() > 0 {
+            tile.write_to(out)?;
+            Ok(true)
+        } else {
+            log::debug!("tile {} empty (no layers)", tile_cfg.peg());
+            Ok(false)
+        }
+    }
+}
+
+impl LayerTree {
+    /// Query MVT features
+    fn query_mvt(&self, tile: &Tile, tile_cfg: &TileCfg) -> Result<Layer> {
+        let layer = tile.create_layer(self.layer_def().name());
+        if self.layer_def().check_zoom(tile_cfg.zoom()) {
+            self.tree().query_mvt(self.layer_def(), layer, tile_cfg)
+        } else {
+            Ok(layer)
         }
     }
 }

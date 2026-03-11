@@ -46,11 +46,6 @@ impl TileCfg {
         self.peg
     }
 
-    /// Get the zoom level
-    pub fn zoom(&self) -> u32 {
-        self.peg.z()
-    }
-
     /// Get the bounding box (including edge extent)
     pub fn bbox(&self) -> BBox<f64> {
         self.bbox

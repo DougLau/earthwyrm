@@ -266,7 +266,7 @@ impl LayerTree {
     /// Query MVT features
     fn query_mvt(&self, tile: &Tile, tile_cfg: &TileCfg) -> Result<Layer> {
         let layer = tile.create_layer(self.layer_def().name());
-        if self.layer_def().check_zoom(tile_cfg.zoom()) {
+        if self.layer_def().check_zoom(tile_cfg.peg().z()) {
             self.tree().query_mvt(self.layer_def(), layer, tile_cfg)
         } else {
             Ok(layer)

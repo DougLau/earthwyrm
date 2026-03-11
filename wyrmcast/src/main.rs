@@ -213,7 +213,7 @@ fn map_js() -> Router {
 fn tile_mvt(caster: Arc<WyrmCastDef>) -> Router {
     async fn handler(
         AxumPath(params): AxumPath<TileParams>,
-        State(state): State<Arc<WyrmCastDef>>,
+        State(caster): State<Arc<WyrmCastDef>>,
     ) -> impl IntoResponse {
         log::debug!(
             "req: {}/{}/{}/{}",
@@ -226,7 +226,7 @@ fn tile_mvt(caster: Arc<WyrmCastDef>) -> Router {
             return (StatusCode::NOT_FOUND, "Not Found".into_response());
         };
         let mut out = vec![];
-        match state.fetch_mvt(&mut out, &params.group, peg) {
+        match caster.fetch_mvt(&mut out, &params.group, peg) {
             Ok(true) => (StatusCode::OK, out.into_response()),
             Ok(false) => (StatusCode::NOT_FOUND, "Not Found".into_response()),
             Err(err) => {

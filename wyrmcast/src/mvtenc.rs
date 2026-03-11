@@ -3,7 +3,7 @@
 // Copyright (c) 2019-2026  Minnesota Department of Transportation
 //
 use crate::caster::CasterDef;
-use crate::geom::{GeomTree, LinestringTree, PointTree, PolygonTree};
+use crate::geom::{GeomTree, LinestringTree, PointTree, PolygonTree, Values};
 use crate::group::LayerGroupDef;
 use crate::layer::{LayerDef, LayerTree};
 use crate::tile::TileCfg;
@@ -20,9 +20,6 @@ trait MvtEncode {
     /// Encode into MVT GeomData
     fn encode(&self, bbox: BBox<f64>, t: Transform<f64>) -> Result<GeomData>;
 }
-
-/// Tag values, in order specified by tag pattern rule
-pub type Values = Vec<Option<String>>;
 
 impl LayerDef {
     /// Add tag values to a feature
@@ -176,7 +173,7 @@ impl PolygonTree {
 
 impl GeomTree {
     /// Query geometry in a tile
-    pub fn query_mvt(
+    fn query_mvt(
         &self,
         layer_def: &LayerDef,
         layer: Layer,

@@ -245,7 +245,7 @@ impl LayerTree {
     fn query_tile(&self, tile: &Tile, tile_cfg: &TileCfg) -> Result<Layer> {
         let layer = tile.create_layer(self.layer_def.name());
         if self.layer_def.check_zoom(tile_cfg.zoom()) {
-            self.tree.query_tile(&self.layer_def, layer, tile_cfg)
+            self.tree.query_mvt(&self.layer_def, layer, tile_cfg)
         } else {
             Ok(layer)
         }

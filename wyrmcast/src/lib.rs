@@ -7,5 +7,6 @@
 pub mod config;
 mod geom;
 mod layer;
+mod mvtenc;
 mod osm;
 pub mod tile;

@@ -2,7 +2,7 @@
 //
 // Copyright (c) 2019-2026  Minnesota Department of Transportation
 //
-use crate::caster::WyrmCastCfg;
+use crate::caster::CasterCfg;
 use crate::layer::{LayerCfg, LayerDef, LayerTree};
 use anyhow::Result;
 use serde::Deserialize;
@@ -42,7 +42,7 @@ impl fmt::Display for LayerGroupCfg {
 
 impl LayerGroupDef {
     /// Create a new layer group
-    pub fn new(group: &LayerGroupCfg, cfg: &WyrmCastCfg) -> Result<Self> {
+    pub fn new(group: &LayerGroupCfg, cfg: &CasterCfg) -> Result<Self> {
         let name = group.name.to_string();
         let mut layers = vec![];
         for layer_cfg in &group.layer {

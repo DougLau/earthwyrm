@@ -2,7 +2,7 @@
 //
 // Copyright (c) 2019-2026  Minnesota Department of Transportation
 //
-use crate::caster::WyrmCastDef;
+use crate::caster::CasterDef;
 use crate::geom::{GeomTree, LinestringTree, PointTree, PolygonTree};
 use crate::group::LayerGroupDef;
 use crate::layer::{LayerDef, LayerTree};
@@ -194,7 +194,7 @@ impl GeomTree {
     }
 }
 
-impl WyrmCastDef {
+impl CasterDef {
     /// Fetch one MVT tile.
     ///
     /// * `out` Writer to write MVT data.

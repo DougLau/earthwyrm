@@ -24,7 +24,7 @@ use std::os::unix::fs::PermissionsExt;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use tokio::net::TcpListener;
-use wyrmcast::{WyrmCastCfg, WyrmCastDef};
+use wyrmcast::{CasterCfg, CasterDef};
 
 /// Path to configuration file
 const CFG_PATH: &str = "wyrmcast.muon";
@@ -143,7 +143,7 @@ where
 
 impl DigCommand {
     /// Dig loam layers from OSM file
-    fn dig(self, cfg: WyrmCastCfg) -> Result<()> {
+    fn dig(self, cfg: CasterCfg) -> Result<()> {
         let osm = osm_newest()?;
         cfg.extract_osm(osm)
     }
@@ -151,8 +151,8 @@ impl DigCommand {
 
 impl QueryCommand {
     /// Query a lat/lon position
-    fn query(&self, cfg: WyrmCastCfg) -> Result<()> {
-        let caster = WyrmCastDef::try_from(&cfg)?;
+    fn query(&self, cfg: CasterCfg) -> Result<()> {
+        let caster = CasterDef::try_from(&cfg)?;
         let pos = Wgs84Pos::new(self.lat, self.lon);
         let pos = WebMercatorPos::from(pos);
         let bbox = BBox::new([pos]);
@@ -163,8 +163,8 @@ impl QueryCommand {
 
 impl ServeCommand {
     /// Serve tiles using http
-    fn serve(&self, cfg: WyrmCastCfg) -> Result<()> {
-        let caster = Arc::new(WyrmCastDef::try_from(&cfg)?);
+    fn serve(&self, cfg: CasterCfg) -> Result<()> {
+        let caster = Arc::new(CasterDef::try_from(&cfg)?);
         let rt = tokio::runtime::Runtime::new()?;
         rt.block_on(async {
             let mut app = Router::new();
@@ -212,10 +212,10 @@ fn map_js() -> Router {
 }
 
 /// Router for `.wyrm` or `.mvt` tiles
-fn tile_routes(caster: Arc<WyrmCastDef>) -> Router {
+fn tile_routes(caster: Arc<CasterDef>) -> Router {
     async fn handler(
         AxumPath(params): AxumPath<TileParams>,
-        State(caster): State<Arc<WyrmCastDef>>,
+        State(caster): State<Arc<CasterDef>>,
     ) -> (StatusCode, Response<Body>) {
         log::debug!("req: {params:?}");
         match (params.peg(), params.ext()) {
@@ -231,7 +231,7 @@ fn tile_routes(caster: Arc<WyrmCastDef>) -> Router {
 
 /// Get a tile `.mvt` as response
 fn tile_mvt(
-    caster: &WyrmCastDef,
+    caster: &CasterDef,
     group: &str,
     peg: Peg,
 ) -> (StatusCode, Response<Body>) {
@@ -251,7 +251,7 @@ fn tile_mvt(
 
 /// Get a tile `.wyrm` as response
 fn tile_wyrm(
-    _caster: &WyrmCastDef,
+    _caster: &CasterDef,
     _group: &str,
     _peg: Peg,
 ) -> (StatusCode, Response<Body>) {
@@ -297,9 +297,9 @@ impl Args {
     fn run(self) -> Result<()> {
         match &self.cmd {
             Command::Init(cmd) => cmd.init(),
-            Command::Dig(cmd) => cmd.dig(WyrmCastCfg::load(CFG_PATH)?),
-            Command::Query(cmd) => cmd.query(WyrmCastCfg::load(CFG_PATH)?),
-            Command::Serve(cmd) => cmd.serve(WyrmCastCfg::load(CFG_PATH)?),
+            Command::Dig(cmd) => cmd.dig(CasterCfg::load(CFG_PATH)?),
+            Command::Query(cmd) => cmd.query(CasterCfg::load(CFG_PATH)?),
+            Command::Serve(cmd) => cmd.serve(CasterCfg::load(CFG_PATH)?),
         }
     }
 }

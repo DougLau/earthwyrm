@@ -12,4 +12,4 @@ mod mvtenc;
 mod osm;
 mod tile;
 
-pub use caster::{WyrmCastCfg, WyrmCastDef};
+pub use caster::{CasterCfg, CasterDef};

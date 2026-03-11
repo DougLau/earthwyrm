@@ -197,7 +197,7 @@ impl GeometryMaker {
                 let pos = WebMercatorPos::from(pos);
                 pts.push((pos.x, pos.y));
             } else {
-                log::error!("node not found: {:?}", node);
+                log::error!("node not found: {node:?}");
                 return Vec::new();
             }
         }
@@ -363,7 +363,7 @@ impl WyrmCastCfg {
         P: AsRef<Path> + std::fmt::Debug,
     {
         let mut extractor = OsmExtractor::new(&osm)?;
-        println!("Extracting layers from {:?}", osm);
+        println!("Extracting layers from {osm:?}");
         for group in &self.layer_group {
             if group.osm {
                 for layer in &group.layer {

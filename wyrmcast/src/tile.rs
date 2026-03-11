@@ -47,7 +47,7 @@ impl TileCfg {
         self.tile_extent
     }
 
-    /// Get the tile Peg
+    /// Get the tile `Peg`
     pub fn peg(&self) -> Peg {
         self.peg
     }

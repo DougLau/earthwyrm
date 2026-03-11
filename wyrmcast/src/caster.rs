@@ -1,4 +1,4 @@
-// config.rs
+// caster.rs
 //
 // Copyright (c) 2019-2026  Minnesota Department of Transportation
 //
@@ -11,7 +11,7 @@ use squarepeg::{MapGrid, Peg};
 use std::fs::read_to_string;
 use std::path::{Path, PathBuf};
 
-/// Configuration for WyrmCast tile layers.
+/// Configuration for WyrmCast tile layers
 #[derive(Debug, Deserialize)]
 pub struct WyrmCastCfg {
     /// Address to bind server
@@ -53,7 +53,7 @@ impl WyrmCastCfg {
         Ok(cfg)
     }
 
-    /// Get path to a layer .loam file
+    /// Get path to a layer `.loam` file
     pub fn loam_path(&self, name: &str) -> PathBuf {
         let mut path = PathBuf::new();
         path.push("loam");
@@ -97,7 +97,7 @@ impl WyrmCastDef {
         Ok(())
     }
 
-    /// Create tile config for a Peg (tile ID)
+    /// Create tile config for a `Peg` (tile ID)
     pub fn tile_cfg(&self, peg: Peg) -> TileCfg {
         TileCfg::new(&self.grid, peg, self.tile_extent)
     }

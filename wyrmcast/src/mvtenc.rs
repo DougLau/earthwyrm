@@ -23,7 +23,7 @@ trait MvtEncode {
 
 impl LayerDef {
     /// Add tag values to a feature
-    pub fn add_tags(&self, feature: &mut Feature, values: &Values) {
+    fn add_tags(&self, feature: &mut Feature, values: &Values) {
         for (tag, value, sint) in self.tag_values(values) {
             log::trace!("layer {}, {tag}={value}", self.name());
             if sint {

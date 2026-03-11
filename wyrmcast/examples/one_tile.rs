@@ -6,8 +6,7 @@ use anyhow::{Result, anyhow};
 use squarepeg::Peg;
 use std::env;
 use std::fs::File;
-use wyrmcast::config::WyrmCastCfg;
-use wyrmcast::tile::WyrmCast;
+use wyrmcast::{WyrmCastCfg, WyrmCastDef};
 
 const MUON: &str = &r#"
 bind_address:
@@ -22,7 +21,7 @@ layer_group: tile
 
 fn write_tile(x: u32, y: u32, z: u32) -> Result<()> {
     let cfg: WyrmCastCfg = muon_rs::from_str(MUON)?;
-    let caster = WyrmCast::try_from(&cfg)?;
+    let caster = WyrmCastDef::try_from(&cfg)?;
     let mut file = File::create("./one_tile.mvt")?;
     let peg = Peg::new(x, y, z).ok_or(anyhow!("Invalid zoom level {z}"))?;
     caster.fetch_mvt(&mut file, "tile", peg)?;

@@ -2,9 +2,11 @@
 //
 // Copyright (c) 2019-2026  Minnesota Department of Transportation
 //
+use crate::caster::WyrmCastDef;
 use crate::geom::{GeomTree, LinestringTree, PointTree, PolygonTree};
-use crate::layer::LayerDef;
-use crate::tile::{LayerGroup, LayerTree, TileCfg, WyrmCast};
+use crate::group::LayerGroupDef;
+use crate::layer::{LayerDef, LayerTree};
+use crate::tile::TileCfg;
 use anyhow::{Result, anyhow};
 use mvt::{Feature, GeomData, GeomEncoder, GeomType, Layer, Tile};
 use pointy::{BBox, Bounded, Transform};
@@ -194,7 +196,7 @@ impl GeomTree {
     }
 }
 
-impl WyrmCast {
+impl WyrmCastDef {
     /// Fetch one MVT tile.
     ///
     /// * `out` Writer to write MVT data.
@@ -216,7 +218,7 @@ impl WyrmCast {
     }
 }
 
-impl LayerGroup {
+impl LayerGroupDef {
     /// Fetch a tile
     fn fetch_mvt(&self, tile_cfg: &TileCfg) -> Result<Tile> {
         let t = Instant::now();

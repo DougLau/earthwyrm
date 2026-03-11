@@ -2,14 +2,32 @@
 //
 // Copyright (c) 2019-2026  Minnesota Department of Transportation
 //
-use crate::config::LayerCfg;
-use crate::geom::GeomTp;
+use crate::geom::{GeomTp, GeomTree};
 use anyhow::{Result, anyhow};
 use osmpbfreader::Tags;
+use pointy::BBox;
+use serde::Deserialize;
 use std::fmt;
+use std::path::Path;
 
 /// Max zoom level
 const ZOOM_MAX: u32 = 30;
+
+/// Layer configuration
+#[derive(Debug, Deserialize)]
+pub struct LayerCfg {
+    /// Layer name
+    pub name: String,
+
+    /// Type for geometry (`point`, `linestring` or `polygon`)
+    pub geom_type: String,
+
+    /// Zoom range
+    pub zoom: String,
+
+    /// Tag patterns
+    pub tags: Vec<String>,
+}
 
 /// Layer rule definition
 #[derive(Debug)]
@@ -90,6 +108,15 @@ enum Equality {
 
     /// Pattern not equal value
     NotEqual,
+}
+
+/// Layer geometry tree
+pub struct LayerTree {
+    /// Layer definition
+    layer_def: LayerDef,
+
+    /// R-Tree of geometry
+    tree: GeomTree,
 }
 
 impl fmt::Display for TagPattern {
@@ -331,5 +358,31 @@ impl LayerDef {
             .filter_map(|((tag, sint), val)| {
                 val.as_ref().map(|val| (tag, &val[..], sint))
             })
+    }
+}
+
+impl LayerTree {
+    /// Create a new layer tree
+    pub fn new<P>(layer_def: LayerDef, path: P) -> Result<Self>
+    where
+        P: AsRef<Path>,
+    {
+        let tree = GeomTree::new(layer_def.geom_tp(), path)?;
+        Ok(LayerTree { layer_def, tree })
+    }
+
+    /// Get layer definition
+    pub fn layer_def(&self) -> &LayerDef {
+        &self.layer_def
+    }
+
+    /// Get geometry tree
+    pub fn tree(&self) -> &GeomTree {
+        &self.tree
+    }
+
+    /// Query layer features in a bounding box
+    pub fn query_features(&self, bbox: BBox<f64>) -> Result<()> {
+        self.tree.query_features(&self.layer_def, bbox)
     }
 }

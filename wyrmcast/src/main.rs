@@ -22,8 +22,7 @@ use std::os::unix::fs::PermissionsExt;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use tokio::net::TcpListener;
-use wyrmcast::config::WyrmCastCfg;
-use wyrmcast::tile::WyrmCast;
+use wyrmcast::{WyrmCastCfg, WyrmCastDef};
 
 /// Path to configuration file
 const CFG_PATH: &str = "wyrmcast.muon";
@@ -151,7 +150,7 @@ impl DigCommand {
 impl QueryCommand {
     /// Query a lat/lon position
     fn query(&self, cfg: WyrmCastCfg) -> Result<()> {
-        let caster = WyrmCast::try_from(&cfg)?;
+        let caster = WyrmCastDef::try_from(&cfg)?;
         let pos = Wgs84Pos::new(self.lat, self.lon);
         let pos = WebMercatorPos::from(pos);
         let bbox = BBox::new([pos]);
@@ -163,7 +162,7 @@ impl QueryCommand {
 impl ServeCommand {
     /// Serve tiles using http
     fn serve(&self, cfg: WyrmCastCfg) -> Result<()> {
-        let caster = Arc::new(WyrmCast::try_from(&cfg)?);
+        let caster = Arc::new(WyrmCastDef::try_from(&cfg)?);
         let rt = tokio::runtime::Runtime::new()?;
         rt.block_on(async {
             let mut app = Router::new();
@@ -211,10 +210,10 @@ fn map_js() -> Router {
 }
 
 /// Get a tile `.mvt` as response
-fn tile_mvt(caster: Arc<WyrmCast>) -> Router {
+fn tile_mvt(caster: Arc<WyrmCastDef>) -> Router {
     async fn handler(
         AxumPath(params): AxumPath<TileParams>,
-        State(state): State<Arc<WyrmCast>>,
+        State(state): State<Arc<WyrmCastDef>>,
     ) -> impl IntoResponse {
         log::debug!(
             "req: {}/{}/{}/{}",

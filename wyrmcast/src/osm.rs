@@ -2,7 +2,7 @@
 //
 // Copyright (c) 2021-2026  Minnesota Department of Transportation
 //
-use crate::config::WyrmCastCfg;
+use crate::caster::WyrmCastCfg;
 use crate::geom::{GeomTp, Values};
 use crate::layer::LayerDef;
 use anyhow::Result;

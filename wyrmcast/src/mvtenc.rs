@@ -28,15 +28,13 @@ impl LayerDef {
     /// Add tag values to a feature
     pub fn add_tags(&self, feature: &mut Feature, values: &Values) {
         for (tag, value, sint) in self.tag_values(values) {
-            log::trace!("layer {}, {}={}", self.name(), tag, value);
+            log::trace!("layer {}, {tag}={value}", self.name());
             if sint {
                 match value.parse() {
                     Ok(val) => feature.add_tag_sint(tag, val),
                     Err(_) => log::warn!(
-                        "layer {}, {} invalid sint: {}",
+                        "layer {}, {tag} invalid sint: {value}",
                         self.name(),
-                        tag,
-                        value,
                     ),
                 }
             } else {

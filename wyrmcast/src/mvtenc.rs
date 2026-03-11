@@ -180,9 +180,7 @@ impl GeomTree {
         tile_cfg: &TileCfg,
     ) -> Result<Layer> {
         match self {
-            GeomTree::Point(tree) => {
-                tree.query_mvt(layer_def, layer, tile_cfg)
-            }
+            GeomTree::Point(tree) => tree.query_mvt(layer_def, layer, tile_cfg),
             GeomTree::Linestring(tree) => {
                 tree.query_mvt(layer_def, layer, tile_cfg)
             }

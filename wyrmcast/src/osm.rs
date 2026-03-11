@@ -3,10 +3,9 @@
 // Copyright (c) 2021-2026  Minnesota Department of Transportation
 //
 use crate::config::WyrmCastCfg;
-use crate::geom::Values;
+use crate::geom::{GeomTp, Values};
 use crate::layer::LayerDef;
 use anyhow::Result;
-use mvt::GeomType;
 use osmpbfreader::{
     Node, NodeId, OsmId, OsmObj, OsmPbfReader, Relation, Tags, Way,
 };
@@ -53,8 +52,8 @@ impl LayerDef {
     fn check_obj(&self, obj: &OsmObj) -> bool {
         let tags = obj.tags();
         match self.geom_tp() {
-            GeomType::Point | GeomType::Linestring => self.check_tags(tags),
-            GeomType::Polygon => {
+            GeomTp::Point | GeomTp::Linestring => self.check_tags(tags),
+            GeomTp::Polygon => {
                 // polygons are relations or closed ways
                 (obj.is_relation() || obj.is_way()) && self.check_tags(tags)
             }
@@ -300,9 +299,9 @@ impl GeometryMaker {
         P: AsRef<Path>,
     {
         match self.layer.geom_tp() {
-            GeomType::Point => self.make_points(loam),
-            GeomType::Linestring => self.make_linestrings(loam),
-            GeomType::Polygon => self.make_polygons(loam),
+            GeomTp::Point => self.make_points(loam),
+            GeomTp::Linestring => self.make_linestrings(loam),
+            GeomTp::Polygon => self.make_polygons(loam),
         }
     }
 }

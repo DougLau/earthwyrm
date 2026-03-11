@@ -4,10 +4,21 @@
 //
 use crate::layer::LayerDef;
 use anyhow::Result;
-use mvt::GeomType;
 use pointy::{BBox, Bounded};
 use rosewood::{RTree, gis, gis::Gis};
 use std::path::Path;
+
+/// Geometry types
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub enum GeomTp {
+    /// Point geometry
+    #[default]
+    Point,
+    /// Linestring geometry
+    Linestring,
+    /// Polygon geometry
+    Polygon,
+}
 
 /// Tag values, in order specified by tag pattern rule
 pub type Values = Vec<Option<String>>;
@@ -124,16 +135,16 @@ impl PolygonTree {
 
 impl GeomTree {
     /// Make a tree to read geometry
-    pub fn new<P>(geom_tp: GeomType, path: P) -> Result<Self>
+    pub fn new<P>(geom_tp: GeomTp, path: P) -> Result<Self>
     where
         P: AsRef<Path>,
     {
         match geom_tp {
-            GeomType::Point => Ok(GeomTree::Point(PointTree::new(path)?)),
-            GeomType::Linestring => {
+            GeomTp::Point => Ok(GeomTree::Point(PointTree::new(path)?)),
+            GeomTp::Linestring => {
                 Ok(GeomTree::Linestring(LinestringTree::new(path)?))
             }
-            GeomType::Polygon => Ok(GeomTree::Polygon(PolygonTree::new(path)?)),
+            GeomTp::Polygon => Ok(GeomTree::Polygon(PolygonTree::new(path)?)),
         }
     }
 

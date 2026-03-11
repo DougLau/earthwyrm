@@ -3,8 +3,8 @@
 // Copyright (c) 2019-2026  Minnesota Department of Transportation
 //
 use crate::config::LayerCfg;
+use crate::geom::GeomTp;
 use anyhow::{Result, anyhow};
-use mvt::GeomType;
 use osmpbfreader::Tags;
 use std::fmt;
 
@@ -18,7 +18,7 @@ pub struct LayerDef {
     name: String,
 
     /// Geometry type
-    geom_tp: GeomType,
+    geom_tp: GeomTp,
 
     /// Minimum zoom level
     zoom_min: u32,
@@ -249,11 +249,11 @@ fn parse_patterns(tags: &[String]) -> Result<Vec<TagPattern>> {
 }
 
 /// Parse geometry type
-fn parse_geom_type(geom_tp: &str) -> Result<GeomType> {
+fn parse_geom_type(geom_tp: &str) -> Result<GeomTp> {
     match geom_tp {
-        "point" => Ok(GeomType::Point),
-        "linestring" => Ok(GeomType::Linestring),
-        "polygon" => Ok(GeomType::Polygon),
+        "point" => Ok(GeomTp::Point),
+        "linestring" => Ok(GeomTp::Linestring),
+        "polygon" => Ok(GeomTp::Polygon),
         _ => Err(anyhow!("Unknown geometry type: {geom_tp}")),
     }
 }
@@ -284,7 +284,7 @@ impl LayerDef {
     }
 
     /// Get the geometry type
-    pub fn geom_tp(&self) -> GeomType {
+    pub fn geom_tp(&self) -> GeomTp {
         self.geom_tp
     }
 

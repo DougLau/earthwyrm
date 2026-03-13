@@ -251,11 +251,21 @@ fn tile_mvt(
 
 /// Get a tile `.wyrm` as response
 fn tile_wyrm(
-    _caster: &CasterDef,
-    _group: &str,
-    _peg: Peg,
+    caster: &CasterDef,
+    group: &str,
+    peg: Peg,
 ) -> (StatusCode, Response<Body>) {
-    todo!()
+    match caster.fetch_wyrm(group, peg) {
+        Ok(Some(page)) => (StatusCode::OK, page.into_response()),
+        Ok(None) => (StatusCode::NOT_FOUND, "Not Found".into_response()),
+        Err(err) => {
+            log::warn!("tile_wyrm: {err:?}");
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                "Internal Error".into_response(),
+            )
+        }
+    }
 }
 
 /// Tile route parameters

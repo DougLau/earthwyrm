@@ -18,7 +18,11 @@ use std::time::Instant;
 /// Geometry which can be encoded to MVT GeomData
 trait MvtEncode {
     /// Encode into MVT GeomData
-    fn encode(&self, bbox: BBox<f64>, t: Transform<f64>) -> Result<GeomData>;
+    fn mvt_encode(
+        &self,
+        bbox: BBox<f64>,
+        t: Transform<f64>,
+    ) -> Result<GeomData>;
 }
 
 impl LayerDef {
@@ -42,7 +46,11 @@ impl LayerDef {
 }
 
 impl<D> MvtEncode for gis::Points<f64, D> {
-    fn encode(&self, bbox: BBox<f64>, t: Transform<f64>) -> Result<GeomData> {
+    fn mvt_encode(
+        &self,
+        bbox: BBox<f64>,
+        t: Transform<f64>,
+    ) -> Result<GeomData> {
         let mut enc = GeomEncoder::new(GeomType::Point).bbox(bbox).transform(t);
         for pt in self.iter() {
             if pt.bounded_by(bbox) {
@@ -66,7 +74,7 @@ impl PointTree {
         let transform = tile_cfg.transform();
         for points in self.tree.query(bbox) {
             let points = points?;
-            let geom = points.encode(bbox, transform)?;
+            let geom = points.mvt_encode(bbox, transform)?;
             if !geom.is_empty() {
                 let mut feature = layer.into_feature(geom);
                 layer_def.add_tags(&mut feature, points.data());
@@ -78,7 +86,11 @@ impl PointTree {
 }
 
 impl<D> MvtEncode for gis::Linestrings<f64, D> {
-    fn encode(&self, bbox: BBox<f64>, t: Transform<f64>) -> Result<GeomData> {
+    fn mvt_encode(
+        &self,
+        bbox: BBox<f64>,
+        t: Transform<f64>,
+    ) -> Result<GeomData> {
         let mut enc = GeomEncoder::new(GeomType::Linestring)
             .bbox(bbox)
             .transform(t);
@@ -114,7 +126,7 @@ impl LinestringTree {
         let transform = tile_cfg.transform();
         for lines in self.tree.query(bbox) {
             let lines = lines?;
-            let geom = lines.encode(bbox, transform)?;
+            let geom = lines.mvt_encode(bbox, transform)?;
             if !geom.is_empty() {
                 let mut feature = layer.into_feature(geom);
                 layer_def.add_tags(&mut feature, lines.data());
@@ -126,7 +138,11 @@ impl LinestringTree {
 }
 
 impl<D> MvtEncode for gis::Polygons<f64, D> {
-    fn encode(&self, bbox: BBox<f64>, t: Transform<f64>) -> Result<GeomData> {
+    fn mvt_encode(
+        &self,
+        bbox: BBox<f64>,
+        t: Transform<f64>,
+    ) -> Result<GeomData> {
         let mut enc =
             GeomEncoder::new(GeomType::Polygon).bbox(bbox).transform(t);
         for ring in self.iter() {
@@ -160,7 +176,7 @@ impl PolygonTree {
         let transform = tile_cfg.transform();
         for polygon in self.tree.query(bbox) {
             let polygon = polygon?;
-            let geom = polygon.encode(bbox, transform)?;
+            let geom = polygon.mvt_encode(bbox, transform)?;
             if !geom.is_empty() {
                 let mut feature = layer.into_feature(geom);
                 layer_def.add_tags(&mut feature, polygon.data());

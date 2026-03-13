@@ -380,6 +380,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "841d1cc9bed7f9236f321df977030373f4a4163ae1a7dbfe1a51a2c1a51d9100"
 
 [[package]]
+name = "hatmil"
+version = "1.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c6d10f5b3480569ed3f6460fda75397fa91b4484791267302d7ec4a2c908211f"
+
+[[package]]
 name = "heck"
 version = "0.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -561,7 +567,7 @@ checksum = "32a66949e030da00e8c7d4434b251670a91556f4144941d37452769c25d58a53"
 
 [[package]]
 name = "loam"
-version = "0.5.0"
+version = "0.6.0"
 dependencies = [
  "bincode",
  "memmap2",
@@ -634,7 +640,7 @@ dependencies = [
 
 [[package]]
 name = "mvt"
-version = "0.11.0"
+version = "0.12.0"
 dependencies = [
  "log",
  "num-traits",
@@ -723,7 +729,7 @@ checksum = "8b870d8c151b6f2fb93e84a13146138f05d02ed11c7e7c54f8826aaaf7c9f184"
 
 [[package]]
 name = "pointy"
-version = "0.7.0"
+version = "0.8.0"
 dependencies = [
  "num-traits",
  "serde",
@@ -866,7 +872,7 @@ checksum = "dc897dd8d9e8bd1ed8cdad82b5966c3e0ecae09fb1907d58efaa013543185d0a"
 
 [[package]]
 name = "rosewood"
-version = "0.5.0"
+version = "0.6.0"
 dependencies = [
  "loam",
  "log",
@@ -1026,9 +1032,9 @@ dependencies = [
 
 [[package]]
 name = "squarepeg"
-version = "0.1.0"
+version = "0.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2ba1fec9809ef1fb94ab2ef7dee39652df01634b6c4425115a3b48fa5eea375f"
+checksum = "8a20de2eccea9e27d8caa032f68736ef3ec4c493a8286227a371181634ee3d8d"
 dependencies = [
  "pointy",
 ]
@@ -1460,6 +1466,7 @@ dependencies = [
  "argh",
  "axum",
  "env_logger",
+ "hatmil",
  "loam",
  "log",
  "muon-rs",

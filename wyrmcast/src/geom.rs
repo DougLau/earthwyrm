@@ -40,8 +40,11 @@ pub struct PolygonTree {
 
 /// Tree of geometry
 pub enum GeomTree {
+    /// Point geometry
     Point(PointTree),
+    /// Linestring geometry
     Linestring(LinestringTree),
+    /// Polygon geometry
     Polygon(PolygonTree),
 }
 

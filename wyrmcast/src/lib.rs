@@ -11,5 +11,6 @@ mod layer;
 mod mvtenc;
 mod osm;
 mod tile;
+mod wyrmenc;
 
 pub use caster::{CasterCfg, CasterDef};

@@ -273,6 +273,7 @@ impl LinestringEncoder {
 
     /// Encode one linestring
     fn encode_linestring(&mut self, line: &gis::Linestring<f64>) {
+        self.start = true;
         let mut prev = Vec::with_capacity(2);
         for pt in line.iter() {
             if let Some(ppt) = prev.last()
@@ -296,7 +297,6 @@ impl LinestringEncoder {
         while !prev.is_empty() {
             self.add_point(prev.remove(0));
         }
-        self.start = true;
     }
 
     /// Check if point `p1` should be simplified
@@ -395,57 +395,68 @@ impl PolygonEncoder {
     /// Encode polygons
     fn encode_polygons(&mut self, polygons: &gis::Polygons<f64, Values>) {
         for ring in polygons.iter() {
-            /*
-            let mut prev = Vec::with_capacity(2);
-            if pgon.bounded_by(self.bbox) {
-                for pt in pgon.iter() {
-                    if let Some(ppt) = prev.last()
-                        && let Some(seg) = Seg::new(ppt, pt).clip(self.bbox)
-                    {
-                        if prev.len() == 2
-                            && self.should_simplify(&prev[0], &prev[1], &seg.p1)
-                        {
-                            prev.pop();
-                        }
-                        while prev.len() > 1 {
-                            self.add_point(prev.remove(0));
-                        }
-                        prev.push(seg.p1);
-                    } else {
-                        prev.clear();
-                        self.start = true;
-                        prev.push(*pt);
-                    }
-                }
+            if ring.bounded_by(self.bbox) {
+                self.encode_ring(ring);
             }
-            while !prev.is_empty() {
-                self.add_point(prev.remove(0));
-            }*/
         }
+    }
+
+    /// Encode one ring (polygon)
+    fn encode_ring(&mut self, ring: &gis::Polygon<f64>) {
+        self.start = true;
+        let mut prev = Vec::with_capacity(2);
+        for pt in ring.iter() {
+            if let Some(ppt) = prev.last()
+                && let Some(seg) = Seg::new(ppt, pt).clip(self.bbox)
+            {
+                let len = prev.len();
+                if len >= 2
+                    && self.should_simplify(&prev[len - 2], ppt, &seg.p1)
+                {
+                    prev.pop();
+                }
+                while prev.len() > 1 {
+                    //self.add_point(prev.remove(0));
+                }
+                prev.push(seg.p1);
+            } else {
+                prev.push(*pt);
+            }
+        }
+        while !prev.is_empty() {
+            //self.add_point(prev.remove(0));
+        }
+    }
+
+    /// Check if point `p1` should be simplified
+    fn should_simplify(
+        &self,
+        p0: &Pt<f64>,
+        p1: &Pt<f64>,
+        p2: &Pt<f64>,
+    ) -> bool {
+        let (p0x, p0y) = self.make_point(p0);
+        let (p1x, p1y) = self.make_point(p1);
+        let (p2x, p2y) = self.make_point(p2);
+        if p0x == p1x && p1x == p2x {
+            return (p0y < p1y && p1y < p2y) || (p0y > p1y && p1y > p2y);
+        }
+        if p0y == p1y && p1y == p2y {
+            return (p0x < p1x && p1x < p2x) || (p0x > p1x && p1x > p2x);
+        }
+        false
+    }
+
+    /// Make point with tile coörindates
+    fn make_point(&self, pt: &Pt<f64>) -> (i32, i32) {
+        let p = self.transform * self.bbox.clamp(pt);
+        let x = p.x.round() as i32;
+        let y = p.y.round() as i32;
+        (x, y)
     }
 }
 
 /*
-    /// Push one point with relative coörindates
-    fn push_point(&mut self, x: i32, y: i32) {
-        log::trace!("push_point: {x},{y}");
-        self.pt0 = self.pt1;
-        let (px, py) = self.pt0.unwrap_or((0, 0));
-        self.data.push(ParamInt::new(x.saturating_sub(px)).encode());
-        self.data.push(ParamInt::new(y.saturating_sub(py)).encode());
-        self.pt1 = Some((x, y));
-        self.count += 1;
-    }
-
-    /// Pop most recent point
-    fn pop_point(&mut self) {
-        log::trace!("pop_point");
-        self.data.pop();
-        self.data.pop();
-        self.pt1 = self.pt0;
-        self.count -= 1;
-    }
-
     /// Add a point
     fn add_point(&mut self, x: f64, y: f64) {
         self.add_boundary_points(x, y);
@@ -466,12 +477,7 @@ impl PolygonEncoder {
                 }
             }
         }
-        match self.geom_tp {
-            GeomTp::Linestring | GeomTp::Polygon => {
-                self.xy_end = Some(Pt::from((x, y)));
-            }
-            _ => (),
-        }
+        self.xy_end = Some(Pt::from((x, y)));
     }
 
     /// Add a tile point
@@ -484,27 +490,13 @@ impl PolygonEncoder {
             log::trace!("skipping redundant point: {px},{py}");
             return;
         }
-        match self.geom_tp {
-            GeomTp::Point => {
-                if self.count == 0 {
-                    self.push_command(Command::MoveTo);
-                }
-            }
-            GeomTp::Linestring => match self.count {
-                0 => self.push_command(Command::MoveTo),
-                1 => self.push_command(Command::LineTo),
-                _ => (),
-            },
-            GeomTp::Polygon => {
-                match self.count {
-                    0 => self.push_command(Command::MoveTo),
-                    1 => self.push_command(Command::LineTo),
-                    _ => (),
-                }
-                if self.count >= 2 && self.should_simplify_point(pt.0, pt.1) {
-                    self.pop_point();
-                }
-            }
+        match self.count {
+            0 => self.push_command(Command::MoveTo),
+            1 => self.push_command(Command::LineTo),
+            _ => (),
+        }
+        if self.count >= 2 && self.should_simplify_point(pt.0, pt.1) {
+            self.pop_point();
         }
         self.push_point(pt.0, pt.1);
     }
@@ -530,29 +522,13 @@ impl PolygonEncoder {
         false
     }
 
-    /// Complete the current geometry (for multilinestring / multipolygon)
+    /// Complete the current geometry
     fn complete_geom(&mut self) {
-        match self.geom_tp {
-            GeomTp::Point => {
-                // early return skips geometry reset
-                return;
-            }
-            GeomTp::Linestring => (),
-            GeomTp::Polygon => {
-                if self.count > 1 {
-                    self.push_command(Command::ClosePath);
-                }
-            }
+        if self.count > 1 {
+            self.push_command(Command::ClosePath);
         }
-        // reset linestring / polygon geometry state
         self.count = 0;
         self.xy_end = None;
         self.pt0 = None;
-    }
-
-    /// Complete the current geometry (for multilinestring / multipolygon)
-    pub fn complete(mut self) -> Self {
-        self.complete_geom();
-        self
     }
 }*/

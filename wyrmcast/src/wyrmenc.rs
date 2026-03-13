@@ -3,9 +3,7 @@
 // Copyright (c) 2026  Minnesota Department of Transportation
 //
 use crate::caster::CasterDef;
-use crate::geom::{
-    GeomTree, LinestringTree, PointTree, PolygonTree, Values,
-};
+use crate::geom::{GeomTree, LinestringTree, PointTree, PolygonTree, Values};
 use crate::group::LayerGroupDef;
 use crate::layer::{LayerDef, LayerTree};
 use crate::tile::TileCfg;
@@ -161,7 +159,8 @@ impl PointTree {
             let points = points?;
             if enc.contains(&points) {
                 found = true;
-                for (tag, value, _sint) in layer_def.tag_values(points.data()) {
+                for (_tag, _value, _sint) in layer_def.tag_values(points.data())
+                {
                     // FIXME: add classes
                 }
                 enc.encode_points(&points, &mut g.g());
@@ -224,14 +223,21 @@ impl LinestringTree {
             let mut enc = LinestringEncoder::new(bbox, transform);
             if enc.contains(&lines) {
                 found = true;
-                for (tag, value, _sint) in layer_def.tag_values(lines.data()) {
+                for (_tag, _value, _sint) in layer_def.tag_values(lines.data())
+                {
                     // FIXME: add classes
                 }
                 enc.encode_linestrings(&lines);
-                // FIXME: get encoded path def
+                g.path().d(String::from(enc)).close();
             }
         }
         Ok(found)
+    }
+}
+
+impl From<LinestringEncoder> for String {
+    fn from(enc: LinestringEncoder) -> Self {
+        String::from(enc.builder)
     }
 }
 
@@ -259,32 +265,38 @@ impl LinestringEncoder {
         linestrings: &gis::Linestrings<f64, Values>,
     ) {
         for line in linestrings.iter() {
-            let mut prev = Vec::with_capacity(2);
             if line.bounded_by(self.bbox) {
-                for pt in line.iter() {
-                    if let Some(ppt) = prev.last()
-                        && let Some(seg) = Seg::new(ppt, pt).clip(self.bbox)
-                    {
-                        if prev.len() == 2
-                            && self.should_simplify(&prev[0], &prev[1], &seg.p1)
-                        {
-                            prev.pop();
-                        }
-                        while prev.len() > 1 {
-                            self.add_point(prev.remove(0));
-                        }
-                        prev.push(seg.p1);
-                    } else {
-                        prev.clear();
-                        self.start = true;
-                        prev.push(*pt);
-                    }
-                }
-            }
-            while !prev.is_empty() {
-                self.add_point(prev.remove(0));
+                self.encode_linestring(line);
             }
         }
+    }
+
+    /// Encode one linestring
+    fn encode_linestring(&mut self, line: &gis::Linestring<f64>) {
+        let mut prev = Vec::with_capacity(2);
+        for pt in line.iter() {
+            if let Some(ppt) = prev.last()
+                && let Some(seg) = Seg::new(ppt, pt).clip(self.bbox)
+            {
+                if prev.len() == 2
+                    && self.should_simplify(&prev[0], &ppt, &seg.p1)
+                {
+                    prev.pop();
+                }
+                while prev.len() > 1 {
+                    self.add_point(prev.remove(0));
+                }
+                prev.push(seg.p1);
+            } else {
+                prev.clear();
+                self.start = true;
+                prev.push(*pt);
+            }
+        }
+        while !prev.is_empty() {
+            self.add_point(prev.remove(0));
+        }
+        self.start = true;
     }
 
     /// Check if point `p1` should be simplified
@@ -343,14 +355,22 @@ impl PolygonTree {
             let mut enc = PolygonEncoder::new(bbox, transform);
             if enc.contains(&polygons) {
                 found = true;
-                for (tag, value, _sint) in layer_def.tag_values(polygons.data()) {
+                for (_tag, _value, _sint) in
+                    layer_def.tag_values(polygons.data())
+                {
                     // FIXME: add classes
                 }
-                //enc.encode_polygons(&polygons);
-                // FIXME: get encoded path def
+                enc.encode_polygons(&polygons);
+                g.path().d(String::from(enc)).close();
             }
         }
         Ok(found)
+    }
+}
+
+impl From<PolygonEncoder> for String {
+    fn from(enc: PolygonEncoder) -> Self {
+        String::from(enc.builder)
     }
 }
 
@@ -371,9 +391,41 @@ impl PolygonEncoder {
     fn contains(&self, polygons: &gis::Polygons<f64, Values>) -> bool {
         polygons.iter().any(|pg| pg.bounded_by(self.bbox))
     }
-}
-/*
 
+    /// Encode polygons
+    fn encode_polygons(&mut self, polygons: &gis::Polygons<f64, Values>) {
+        for ring in polygons.iter() {
+            /*
+            let mut prev = Vec::with_capacity(2);
+            if pgon.bounded_by(self.bbox) {
+                for pt in pgon.iter() {
+                    if let Some(ppt) = prev.last()
+                        && let Some(seg) = Seg::new(ppt, pt).clip(self.bbox)
+                    {
+                        if prev.len() == 2
+                            && self.should_simplify(&prev[0], &prev[1], &seg.p1)
+                        {
+                            prev.pop();
+                        }
+                        while prev.len() > 1 {
+                            self.add_point(prev.remove(0));
+                        }
+                        prev.push(seg.p1);
+                    } else {
+                        prev.clear();
+                        self.start = true;
+                        prev.push(*pt);
+                    }
+                }
+            }
+            while !prev.is_empty() {
+                self.add_point(prev.remove(0));
+            }*/
+        }
+    }
+}
+
+/*
     /// Push one point with relative coörindates
     fn push_point(&mut self, x: i32, y: i32) {
         log::trace!("push_point: {x},{y}");

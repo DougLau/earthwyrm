@@ -127,12 +127,8 @@ impl PointChain {
 
     /// Pop the front point in the chain
     pub fn pop_front(&mut self) -> Option<Pt<f64>> {
-        while self.pts.len() >= 2 {
-            self.simplify_coincident();
-        }
-        while self.pts.len() >= 3 {
-            self.simplify_linear();
-        }
+        while self.simplify_coincident() {}
+        while self.simplify_linear() {}
         if !self.pts.is_empty() {
             Some(self.pts.remove(0))
         } else {
@@ -141,20 +137,26 @@ impl PointChain {
     }
 
     /// Simplify coincident points (in tile coordinates)
-    fn simplify_coincident(&mut self) {
-        let (p0x, p0y) = self.tile_cfg.xform(self.pts[0]);
-        let (p1x, p1y) = self.tile_cfg.xform(self.pts[1]);
-        if (p0x == p1x) && (p0y == p1y) {
-            self.pts.remove(0);
+    fn simplify_coincident(&mut self) -> bool {
+        if self.pts.len() >= 2 {
+            let (p0x, p0y) = self.tile_cfg.xform(self.pts[0]);
+            let (p1x, p1y) = self.tile_cfg.xform(self.pts[1]);
+            if (p0x == p1x) && (p0y == p1y) {
+                self.pts.remove(0);
+                return true;
+            }
         }
+        false
     }
 
     /// Simplify linear points
-    fn simplify_linear(&mut self) {
-        if self.should_simplify_linear() {
+    fn simplify_linear(&mut self) -> bool {
+        if self.pts.len() >= 3 && self.should_simplify_linear() {
             // remove second point
             self.pts.remove(1);
+            return true;
         }
+        false
     }
 
     /// Check if second point should be simplified (linear)

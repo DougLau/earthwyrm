@@ -14,7 +14,7 @@ pub struct TileCfg {
     peg: Peg,
     /// Bounding box of tile (including edge extent)
     bbox: BBox<f64>,
-    /// Transform from spatial to tile coordinates
+    /// Transform from spatial to tile coörindates
     transform: Transform<f64>,
 }
 
@@ -136,7 +136,7 @@ impl PointChain {
         }
     }
 
-    /// Simplify coincident points (in tile coordinates)
+    /// Simplify coincident points (in tile coörindates)
     fn simplify_coincident(&mut self) -> bool {
         if self.pts.len() >= 2 {
             let (p0x, p0y) = self.tile_cfg.xform(self.pts[0]);

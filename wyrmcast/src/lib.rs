@@ -8,8 +8,11 @@ mod caster;
 mod geom;
 mod group;
 mod layer;
+mod linestring;
 mod mvtenc;
 mod osm;
+mod point;
+mod polygon;
 mod tile;
 mod wyrmenc;
 

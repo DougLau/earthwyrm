@@ -35,7 +35,7 @@ pub struct CasterDef {
     /// Map grid configuration
     grid: MapGrid,
 
-    /// Tile extent; width and height in pixels
+    /// Tile extent; width and height in tile units
     tile_extent: u32,
 
     /// Tile layer groups

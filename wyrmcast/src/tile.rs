@@ -8,7 +8,7 @@ use squarepeg::{MapGrid, Peg};
 /// Tile configuration
 #[derive(Clone)]
 pub struct TileCfg {
-    /// Tile extent; width and height in pixels
+    /// Tile extent; width and height in tile units
     tile_extent: u32,
     /// Peg (tile ID)
     peg: Peg,

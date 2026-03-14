@@ -9,25 +9,21 @@ use crate::layer::{LayerDef, LayerTree};
 use crate::tile::TileCfg;
 use anyhow::{Result, anyhow};
 use hatmil::{Page, PathDefBuilder, svg};
-use pointy::{BBox, Bounded, Pt, Seg, Transform};
+use pointy::{Bounded, Pt, Seg};
 use rosewood::{gis, gis::Gis};
 use squarepeg::Peg;
 use std::time::Instant;
 
 /// Wyrm point layer encoder
 struct PointEncoder {
-    /// Bounding box (projected coordinates)
-    bbox: BBox<f64>,
-    /// Transform to Peg coordinates
-    transform: Transform<f64>,
+    /// Tile config
+    tile_cfg: TileCfg,
 }
 
 /// Wyrm linestring layer encoder
 struct LinestringEncoder {
-    /// Bounding box (projected coordinates)
-    bbox: BBox<f64>,
-    /// Transform to Peg coordinates
-    transform: Transform<f64>,
+    /// Tile config
+    tile_cfg: TileCfg,
     /// Path definition builder
     builder: PathDefBuilder,
     /// Start flag
@@ -36,10 +32,8 @@ struct LinestringEncoder {
 
 /// Wyrm polygon layer encoder
 struct PolygonEncoder {
-    /// Bounding box (projected coordinates)
-    bbox: BBox<f64>,
-    /// Transform to Peg coordinates
-    transform: Transform<f64>,
+    /// Tile config
+    tile_cfg: TileCfg,
     /// Path definition builder
     builder: PathDefBuilder,
     /// Start flag
@@ -152,8 +146,7 @@ impl PointTree {
     ) -> Result<bool> {
         let bbox = tile_cfg.bbox();
         log::trace!("query_wyrm points: {bbox:?}");
-        let transform = tile_cfg.transform();
-        let enc = PointEncoder::new(bbox, transform);
+        let enc = PointEncoder::new(tile_cfg);
         let mut found = false;
         for points in self.tree.query(bbox) {
             let points = points?;
@@ -172,13 +165,16 @@ impl PointTree {
 
 impl PointEncoder {
     /// Create a new point layer encoder
-    fn new(bbox: BBox<f64>, transform: Transform<f64>) -> Self {
-        PointEncoder { bbox, transform }
+    fn new(tile_cfg: &TileCfg) -> Self {
+        PointEncoder {
+            tile_cfg: tile_cfg.clone(),
+        }
     }
 
     /// Check if bounding box contains points
     fn contains(&self, points: &gis::Points<f64, Values>) -> bool {
-        points.iter().any(|pt| pt.bounded_by(self.bbox))
+        let bbox = self.tile_cfg.bbox();
+        points.iter().any(|pt| pt.bounded_by(bbox))
     }
 
     /// Encode points
@@ -187,22 +183,15 @@ impl PointEncoder {
         points: &gis::Points<f64, Values>,
         g: &'p mut svg::G<'p>,
     ) {
+        let bbox = self.tile_cfg.bbox();
         for pt in points.iter() {
-            if pt.bounded_by(self.bbox) {
-                let (x, y) = self.xform(*pt);
+            if pt.bounded_by(bbox) {
+                let (x, y) = self.tile_cfg.xform(*pt);
                 // FIXME: add href attribute and rotate transform
                 g.r#use().x(x).y(y).close();
             }
         }
         g.close();
-    }
-
-    /// Transform point to tile coörindates
-    fn xform(&self, pt: Pt<f64>) -> (i32, i32) {
-        let p = self.bbox.clamp(pt) * self.transform;
-        let x = p.x.round() as i32;
-        let y = p.y.round() as i32;
-        (x, y)
     }
 }
 
@@ -216,11 +205,10 @@ impl LinestringTree {
     ) -> Result<bool> {
         let bbox = tile_cfg.bbox();
         log::trace!("query_wyrm linestrings: {bbox:?}");
-        let transform = tile_cfg.transform();
         let mut found = false;
         for lines in self.tree.query(bbox) {
             let lines = lines?;
-            let mut enc = LinestringEncoder::new(bbox, transform);
+            let mut enc = LinestringEncoder::new(tile_cfg);
             if enc.contains(&lines) {
                 found = true;
                 for (_tag, _value, _sint) in layer_def.tag_values(lines.data())
@@ -243,12 +231,11 @@ impl From<LinestringEncoder> for String {
 
 impl LinestringEncoder {
     /// Create a new linesting layer encoder
-    pub fn new(bbox: BBox<f64>, transform: Transform<f64>) -> Self {
+    pub fn new(tile_cfg: &TileCfg) -> Self {
         let mut builder = svg::Path::def_builder();
         builder.precision(0);
         LinestringEncoder {
-            bbox,
-            transform,
+            tile_cfg: tile_cfg.clone(),
             builder,
             start: true,
         }
@@ -256,7 +243,8 @@ impl LinestringEncoder {
 
     /// Check if bounding box contains lines
     fn contains(&self, lines: &gis::Linestrings<f64, Values>) -> bool {
-        lines.iter().any(|ln| ln.bounded_by(self.bbox))
+        let bbox = self.tile_cfg.bbox();
+        lines.iter().any(|ln| ln.bounded_by(bbox))
     }
 
     /// Encode linesstrings
@@ -264,8 +252,9 @@ impl LinestringEncoder {
         &mut self,
         linestrings: &gis::Linestrings<f64, Values>,
     ) {
+        let bbox = self.tile_cfg.bbox();
         for line in linestrings.iter() {
-            if line.bounded_by(self.bbox) {
+            if line.bounded_by(bbox) {
                 self.encode_linestring(line);
             }
         }
@@ -274,7 +263,7 @@ impl LinestringEncoder {
     /// Encode one linestring
     fn encode_linestring(&mut self, line: &gis::Linestring<f64>) {
         self.start = true;
-        let mut chain = PointChain::new(&self.bbox, &self.transform);
+        let mut chain = PointChain::new(&self.tile_cfg);
         for pt in line.iter() {
             chain.push_back(pt);
             while chain.len() > 2 {
@@ -290,21 +279,13 @@ impl LinestringEncoder {
 
     /// Add a point
     fn add_point(&mut self, pt: Pt<f64>) {
-        let (x, y) = self.xform(pt);
+        let (x, y) = self.tile_cfg.xform(pt);
         if self.start {
             self.builder.move_to((x, y));
             self.start = false;
         } else {
             self.builder.line((x, y));
         }
-    }
-
-    /// Transform point to tile coörindates
-    fn xform(&self, pt: Pt<f64>) -> (i32, i32) {
-        let p = self.bbox.clamp(pt) * self.transform;
-        let x = p.x.round() as i32;
-        let y = p.y.round() as i32;
-        (x, y)
     }
 }
 
@@ -318,11 +299,10 @@ impl PolygonTree {
     ) -> Result<bool> {
         let bbox = tile_cfg.bbox();
         log::trace!("query_wyrm polygons: {bbox:?}");
-        let transform = tile_cfg.transform();
         let mut found = false;
         for polygons in self.tree.query(bbox) {
             let polygons = polygons?;
-            let mut enc = PolygonEncoder::new(bbox, transform);
+            let mut enc = PolygonEncoder::new(tile_cfg);
             if enc.contains(&polygons) {
                 found = true;
                 for (_tag, _value, _sint) in
@@ -346,12 +326,11 @@ impl From<PolygonEncoder> for String {
 
 impl PolygonEncoder {
     /// Create a new polygon layer encoder
-    pub fn new(bbox: BBox<f64>, transform: Transform<f64>) -> Self {
+    pub fn new(tile_cfg: &TileCfg) -> Self {
         let mut builder = svg::Path::def_builder();
         builder.precision(0);
         PolygonEncoder {
-            bbox,
-            transform,
+            tile_cfg: tile_cfg.clone(),
             builder,
             start: true,
         }
@@ -359,13 +338,15 @@ impl PolygonEncoder {
 
     /// Check if bounding box contains polygons
     fn contains(&self, polygons: &gis::Polygons<f64, Values>) -> bool {
-        polygons.iter().any(|pg| pg.bounded_by(self.bbox))
+        let bbox = self.tile_cfg.bbox();
+        polygons.iter().any(|pg| pg.bounded_by(bbox))
     }
 
     /// Encode polygons
     fn encode_polygons(&mut self, polygons: &gis::Polygons<f64, Values>) {
+        let bbox = self.tile_cfg.bbox();
         for ring in polygons.iter() {
-            if ring.bounded_by(self.bbox) {
+            if ring.bounded_by(bbox) {
                 self.encode_ring(ring);
             }
         }
@@ -374,7 +355,7 @@ impl PolygonEncoder {
     /// Encode one ring (polygon)
     fn encode_ring(&mut self, ring: &gis::Polygon<f64>) {
         self.start = true;
-        let mut chain = PointChain::new(&self.bbox, &self.transform);
+        let mut chain = PointChain::new(&self.tile_cfg);
         for pt in ring.iter() {
             chain.push_back(pt);
             while chain.len() > 2 {
@@ -393,7 +374,7 @@ impl PolygonEncoder {
 
     /// Add a point
     fn add_point(&mut self, pt: Pt<f64>) {
-        let (x, y) = self.xform(pt);
+        let (x, y) = self.tile_cfg.xform(pt);
         if self.start {
             self.builder.move_to((x, y));
             self.start = false;
@@ -401,30 +382,20 @@ impl PolygonEncoder {
             self.builder.line((x, y));
         }
     }
-
-    /// Transform point to tile coörindates
-    fn xform(&self, pt: Pt<f64>) -> (i32, i32) {
-        let p = self.bbox.clamp(pt) * self.transform;
-        let x = p.x.round() as i32;
-        let y = p.y.round() as i32;
-        (x, y)
-    }
 }
 
 /// Point chain for checking bounds and simplification
 struct PointChain {
+    tile_cfg: TileCfg,
     pts: Vec<Pt<f64>>,
-    bbox: BBox<f64>,
-    transform: Transform<f64>,
 }
 
 impl PointChain {
     /// Create a new point chain
-    fn new(bbox: &BBox<f64>, transform: &Transform<f64>) -> Self {
+    fn new(tile_cfg: &TileCfg) -> Self {
         PointChain {
+            tile_cfg: tile_cfg.clone(),
             pts: Vec::with_capacity(3),
-            bbox: *bbox,
-            transform: *transform,
         }
     }
 
@@ -436,10 +407,10 @@ impl PointChain {
     /// Push a point to the end of the chain
     fn push_back(&mut self, pt: &Pt<f64>) {
         if let Some(ppt) = self.pts.last()
-            && let Some(seg) = Seg::new(ppt, pt).clip(self.bbox)
+            && let Some(seg) = Seg::new(ppt, pt).clip(self.tile_cfg.bbox())
         {
             // Add point on edge of bounding box
-            self.pts.push(if pt.bounded_by(self.bbox) {
+            self.pts.push(if pt.bounded_by(self.tile_cfg.bbox()) {
                 seg.p0
             } else {
                 seg.p1
@@ -463,18 +434,10 @@ impl PointChain {
         }
     }
 
-    /// Transform point to tile coörindates
-    fn xform(&self, pt: Pt<f64>) -> (i32, i32) {
-        let p = self.bbox.clamp((pt.x, pt.y)) * self.transform;
-        let x = p.x.round() as i32;
-        let y = p.y.round() as i32;
-        (x, y)
-    }
-
     /// Simplify coincident points (in tile coordinates)
     fn simplify_coincident(&mut self) {
-        let (p0x, p0y) = self.xform(self.pts[0]);
-        let (p1x, p1y) = self.xform(self.pts[1]);
+        let (p0x, p0y) = self.tile_cfg.xform(self.pts[0]);
+        let (p1x, p1y) = self.tile_cfg.xform(self.pts[1]);
         if (p0x == p1x) && (p0y == p1y) {
             self.pts.remove(0);
         }
@@ -490,9 +453,9 @@ impl PointChain {
 
     /// Check if second point should be simplified (linear)
     fn should_simplify_linear(&self) -> bool {
-        let (p0x, p0y) = self.xform(self.pts[0]);
-        let (p1x, p1y) = self.xform(self.pts[1]);
-        let (p2x, p2y) = self.xform(self.pts[2]);
+        let (p0x, p0y) = self.tile_cfg.xform(self.pts[0]);
+        let (p1x, p1y) = self.tile_cfg.xform(self.pts[1]);
+        let (p2x, p2y) = self.tile_cfg.xform(self.pts[2]);
         if p0x == p1x && p1x == p2x {
             return (p0y <= p1y && p1y <= p2y) || (p0y >= p1y && p1y >= p2y);
         }

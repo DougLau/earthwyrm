@@ -2,10 +2,11 @@
 //
 // Copyright (c) 2019-2026  Minnesota Department of Transportation
 //
-use pointy::{BBox, Transform};
+use pointy::{BBox, Pt, Transform};
 use squarepeg::{MapGrid, Peg};
 
 /// Tile configuration
+#[derive(Clone)]
 pub struct TileCfg {
     /// Tile extent; width and height in pixels
     tile_extent: u32,
@@ -60,6 +61,14 @@ impl TileCfg {
     /// Get the tile transform
     pub fn transform(&self) -> Transform<f64> {
         self.transform
+    }
+
+    /// Transform point to tile coörindates
+    pub fn xform(&self, pt: Pt<f64>) -> (i32, i32) {
+        let p = self.bbox.clamp(pt) * self.transform;
+        let x = p.x.round() as i32;
+        let y = p.y.round() as i32;
+        (x, y)
     }
 }
 

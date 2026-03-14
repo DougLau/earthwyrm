@@ -9,7 +9,7 @@ use crate::layer::{LayerDef, LayerTree};
 use crate::tile::TileCfg;
 use anyhow::{Result, anyhow};
 use hatmil::{Page, PathDefBuilder, svg};
-use pointy::{Bounded, Pt, Seg};
+use pointy::{Bounded, Pt};
 use rosewood::{gis, gis::Gis};
 use squarepeg::Peg;
 use std::time::Instant;
@@ -263,7 +263,7 @@ impl LinestringEncoder {
     /// Encode one linestring
     fn encode_linestring(&mut self, line: &gis::Linestring<f64>) {
         self.start = true;
-        let mut chain = PointChain::new(&self.tile_cfg);
+        let mut chain = self.tile_cfg.point_chain();
         for pt in line.iter() {
             chain.push_back(pt);
             while chain.len() > 2 {
@@ -355,7 +355,7 @@ impl PolygonEncoder {
     /// Encode one ring (polygon)
     fn encode_ring(&mut self, ring: &gis::Polygon<f64>) {
         self.start = true;
-        let mut chain = PointChain::new(&self.tile_cfg);
+        let mut chain = self.tile_cfg.point_chain();
         for pt in ring.iter() {
             chain.push_back(pt);
             while chain.len() > 2 {
@@ -381,87 +381,5 @@ impl PolygonEncoder {
         } else {
             self.builder.line((x, y));
         }
-    }
-}
-
-/// Point chain for checking bounds and simplification
-struct PointChain {
-    tile_cfg: TileCfg,
-    pts: Vec<Pt<f64>>,
-}
-
-impl PointChain {
-    /// Create a new point chain
-    fn new(tile_cfg: &TileCfg) -> Self {
-        PointChain {
-            tile_cfg: tile_cfg.clone(),
-            pts: Vec::with_capacity(4),
-        }
-    }
-
-    /// Get chain length
-    fn len(&self) -> usize {
-        self.pts.len()
-    }
-
-    /// Push a point to the end of the chain
-    fn push_back(&mut self, pt: &Pt<f64>) {
-        if let Some(ppt) = self.pts.last()
-            && let Some(seg) = Seg::new(ppt, pt).clip(self.tile_cfg.bbox())
-        {
-            // Add point on edge of bounding box
-            self.pts.push(if pt.bounded_by(self.tile_cfg.bbox()) {
-                seg.p0
-            } else {
-                seg.p1
-            });
-        }
-        self.pts.push(*pt);
-    }
-
-    /// Pop the front point in the chain
-    fn pop_front(&mut self) -> Option<Pt<f64>> {
-        while self.pts.len() >= 2 {
-            self.simplify_coincident();
-        }
-        while self.pts.len() >= 3 {
-            self.simplify_linear();
-        }
-        if !self.pts.is_empty() {
-            Some(self.pts.remove(0))
-        } else {
-            None
-        }
-    }
-
-    /// Simplify coincident points (in tile coordinates)
-    fn simplify_coincident(&mut self) {
-        let (p0x, p0y) = self.tile_cfg.xform(self.pts[0]);
-        let (p1x, p1y) = self.tile_cfg.xform(self.pts[1]);
-        if (p0x == p1x) && (p0y == p1y) {
-            self.pts.remove(0);
-        }
-    }
-
-    /// Simplify linear points
-    fn simplify_linear(&mut self) {
-        if self.should_simplify_linear() {
-            // remove second point
-            self.pts.remove(1);
-        }
-    }
-
-    /// Check if second point should be simplified (linear)
-    fn should_simplify_linear(&self) -> bool {
-        let (p0x, p0y) = self.tile_cfg.xform(self.pts[0]);
-        let (p1x, p1y) = self.tile_cfg.xform(self.pts[1]);
-        let (p2x, p2y) = self.tile_cfg.xform(self.pts[2]);
-        if p0x == p1x && p1x == p2x {
-            return (p0y <= p1y && p1y <= p2y) || (p0y >= p1y && p1y >= p2y);
-        }
-        if p0y == p1y && p1y == p2y {
-            return (p0x <= p1x && p1x <= p2x) || (p0x >= p1x && p1x >= p2x);
-        }
-        false
     }
 }

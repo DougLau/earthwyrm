@@ -189,7 +189,7 @@ impl PointEncoder {
     ) {
         for pt in points.iter() {
             if pt.bounded_by(self.bbox) {
-                let (x, y) = self.make_point(pt.x, pt.y);
+                let (x, y) = self.xform(*pt);
                 // FIXME: add href attribute and rotate transform
                 g.r#use().x(x).y(y).close();
             }
@@ -197,9 +197,9 @@ impl PointEncoder {
         g.close();
     }
 
-    /// Make point with tile coörindates
-    fn make_point(&self, x: f64, y: f64) -> (i32, i32) {
-        let p = self.transform * self.bbox.clamp((x, y));
+    /// Transform point to tile coörindates
+    fn xform(&self, pt: Pt<f64>) -> (i32, i32) {
+        let p = self.bbox.clamp(pt) * self.transform;
         let x = p.x.round() as i32;
         let y = p.y.round() as i32;
         (x, y)
@@ -274,73 +274,37 @@ impl LinestringEncoder {
     /// Encode one linestring
     fn encode_linestring(&mut self, line: &gis::Linestring<f64>) {
         self.start = true;
-        let mut prev = Vec::with_capacity(2);
+        let mut chain = PointChain::new(&self.bbox, &self.transform);
         for pt in line.iter() {
-            if let Some(ppt) = prev.last()
-                && let Some(seg) = Seg::new(ppt, pt).clip(self.bbox)
-            {
-                // Point on edge of bounding box
-                prev.push(if seg.p0.bounded_by(self.bbox) {
-                    seg.p1
-                } else {
-                    seg.p0
-                });
-                self.check_simplify(&mut prev);
-            }
-            prev.push(*pt);
-            self.check_simplify(&mut prev);
-            while prev.len() > 2 {
-                self.add_point(prev.remove(0));
+            chain.push_back(pt);
+            while chain.len() > 2 {
+                if let Some(pt) = chain.pop_front() {
+                    self.add_point(pt);
+                }
             }
         }
-        while !prev.is_empty() {
-            self.add_point(prev.remove(0));
+        while let Some(pt) = chain.pop_front() {
+            self.add_point(pt);
         }
-    }
-
-    /// Check if points can be simplified
-    fn check_simplify(&self, prev: &mut Vec<Pt<f64>>) {
-        let len = prev.len();
-        if len >= 3 && self.should_simplify(&prev[len - 3..]) {
-            // remove second-to-last point
-            if let Some(pt) = prev.pop() {
-                prev.pop();
-                prev.push(pt);
-            }
-        }
-    }
-
-    /// Check if point `p1` should be simplified
-    fn should_simplify(&self, prev: &[Pt<f64>]) -> bool {
-        let (p0x, p0y) = self.make_point(&prev[0]);
-        let (p1x, p1y) = self.make_point(&prev[1]);
-        let (p2x, p2y) = self.make_point(&prev[2]);
-        if p0x == p1x && p1x == p2x {
-            return (p0y <= p1y && p1y <= p2y) || (p0y >= p1y && p1y >= p2y);
-        }
-        if p0y == p1y && p1y == p2y {
-            return (p0x <= p1x && p1x <= p2x) || (p0x >= p1x && p1x >= p2x);
-        }
-        false
-    }
-
-    /// Make point with tile coörindates
-    fn make_point(&self, pt: &Pt<f64>) -> (i32, i32) {
-        let p = self.transform * self.bbox.clamp(pt);
-        let x = p.x.round() as i32;
-        let y = p.y.round() as i32;
-        (x, y)
     }
 
     /// Add a point
     fn add_point(&mut self, pt: Pt<f64>) {
-        let (x, y) = self.make_point(&pt);
+        let (x, y) = self.xform(pt);
         if self.start {
             self.builder.move_to((x, y));
             self.start = false;
         } else {
             self.builder.line((x, y));
         }
+    }
+
+    /// Transform point to tile coörindates
+    fn xform(&self, pt: Pt<f64>) -> (i32, i32) {
+        let p = self.bbox.clamp(pt) * self.transform;
+        let x = p.x.round() as i32;
+        let y = p.y.round() as i32;
+        (x, y)
     }
 }
 
@@ -410,50 +374,125 @@ impl PolygonEncoder {
     /// Encode one ring (polygon)
     fn encode_ring(&mut self, ring: &gis::Polygon<f64>) {
         self.start = true;
-        let mut prev = Vec::with_capacity(2);
+        let mut chain = PointChain::new(&self.bbox, &self.transform);
         for pt in ring.iter() {
-            if let Some(ppt) = prev.last()
-                && let Some(seg) = Seg::new(ppt, pt).clip(self.bbox)
-            {
-                // Point on edge of bounding box
-                prev.push(if seg.p0.bounded_by(self.bbox) {
-                    seg.p1
-                } else {
-                    seg.p0
-                });
-                self.check_simplify(&mut prev);
-            }
-            prev.push(*pt);
-            self.check_simplify(&mut prev);
-            while prev.len() > 2 {
-                self.add_point(prev.remove(0));
+            chain.push_back(pt);
+            while chain.len() > 2 {
+                if let Some(pt) = chain.pop_front() {
+                    self.add_point(pt);
+                }
             }
         }
-        while !prev.is_empty() {
-            self.add_point(prev.remove(0));
+        while let Some(pt) = chain.pop_front() {
+            self.add_point(pt);
         }
         if !self.start {
             self.builder.close();
         }
     }
 
-    /// Check if points can be simplified
-    fn check_simplify(&self, prev: &mut Vec<Pt<f64>>) {
-        let len = prev.len();
-        if len >= 3 && self.should_simplify(&prev[len - 3..]) {
-            // remove second-to-last point
-            if let Some(pt) = prev.pop() {
-                prev.pop();
-                prev.push(pt);
-            }
+    /// Add a point
+    fn add_point(&mut self, pt: Pt<f64>) {
+        let (x, y) = self.xform(pt);
+        if self.start {
+            self.builder.move_to((x, y));
+            self.start = false;
+        } else {
+            self.builder.line((x, y));
         }
     }
 
-    /// Check if point `p1` should be simplified
-    fn should_simplify(&self, prev: &[Pt<f64>]) -> bool {
-        let (p0x, p0y) = self.make_point(&prev[0]);
-        let (p1x, p1y) = self.make_point(&prev[1]);
-        let (p2x, p2y) = self.make_point(&prev[2]);
+    /// Transform point to tile coörindates
+    fn xform(&self, pt: Pt<f64>) -> (i32, i32) {
+        let p = self.bbox.clamp(pt) * self.transform;
+        let x = p.x.round() as i32;
+        let y = p.y.round() as i32;
+        (x, y)
+    }
+}
+
+/// Point chain for checking bounds and simplification
+struct PointChain {
+    pts: Vec<Pt<f64>>,
+    bbox: BBox<f64>,
+    transform: Transform<f64>,
+}
+
+impl PointChain {
+    /// Create a new point chain
+    fn new(bbox: &BBox<f64>, transform: &Transform<f64>) -> Self {
+        PointChain {
+            pts: Vec::with_capacity(3),
+            bbox: *bbox,
+            transform: *transform,
+        }
+    }
+
+    /// Get chain length
+    fn len(&self) -> usize {
+        self.pts.len()
+    }
+
+    /// Push a point to the end of the chain
+    fn push_back(&mut self, pt: &Pt<f64>) {
+        if let Some(ppt) = self.pts.last()
+            && let Some(seg) = Seg::new(ppt, pt).clip(self.bbox)
+        {
+            // Add point on edge of bounding box
+            self.pts.push(if pt.bounded_by(self.bbox) {
+                seg.p0
+            } else {
+                seg.p1
+            });
+        }
+        self.pts.push(*pt);
+    }
+
+    /// Pop the front point in the chain
+    fn pop_front(&mut self) -> Option<Pt<f64>> {
+        while self.pts.len() >= 2 {
+            self.simplify_coincident();
+        }
+        while self.pts.len() >= 3 {
+            self.simplify_linear();
+        }
+        if !self.pts.is_empty() {
+            Some(self.pts.remove(0))
+        } else {
+            None
+        }
+    }
+
+    /// Transform point to tile coörindates
+    fn xform(&self, pt: Pt<f64>) -> (i32, i32) {
+        let p = self.bbox.clamp((pt.x, pt.y)) * self.transform;
+        let x = p.x.round() as i32;
+        let y = p.y.round() as i32;
+        (x, y)
+    }
+
+    /// Simplify coincident points (in tile coordinates)
+    fn simplify_coincident(&mut self) {
+        let (p0x, p0y) = self.xform(self.pts[0]);
+        let (p1x, p1y) = self.xform(self.pts[1]);
+        if (p0x == p1x) && (p0y == p1y) {
+            self.pts.remove(0);
+        }
+    }
+
+    /// Simplify linear points
+    fn simplify_linear(&mut self) {
+        if self.should_simplify_linear() {
+            // remove second point
+            self.pts.remove(1);
+        }
+    }
+
+    /// Check if second point should be simplified (linear)
+    fn should_simplify_linear(&self) -> bool {
+        let (p0x, p0y) = self.xform(self.pts[0]);
+        let (p1x, p1y) = self.xform(self.pts[1]);
+        let (p2x, p2y) = self.xform(self.pts[2]);
         if p0x == p1x && p1x == p2x {
             return (p0y <= p1y && p1y <= p2y) || (p0y >= p1y && p1y >= p2y);
         }
@@ -461,24 +500,5 @@ impl PolygonEncoder {
             return (p0x <= p1x && p1x <= p2x) || (p0x >= p1x && p1x >= p2x);
         }
         false
-    }
-
-    /// Make point with tile coörindates
-    fn make_point(&self, pt: &Pt<f64>) -> (i32, i32) {
-        let p = self.transform * self.bbox.clamp(pt);
-        let x = p.x.round() as i32;
-        let y = p.y.round() as i32;
-        (x, y)
-    }
-
-    /// Add a point
-    fn add_point(&mut self, pt: Pt<f64>) {
-        let (x, y) = self.make_point(&pt);
-        if self.start {
-            self.builder.move_to((x, y));
-            self.start = false;
-        } else {
-            self.builder.line((x, y));
-        }
     }
 }

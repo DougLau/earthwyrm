@@ -316,10 +316,10 @@ impl LinestringEncoder {
         let (p1x, p1y) = self.make_point(&prev[1]);
         let (p2x, p2y) = self.make_point(&prev[2]);
         if p0x == p1x && p1x == p2x {
-            return (p0y < p1y && p1y < p2y) || (p0y > p1y && p1y > p2y);
+            return (p0y <= p1y && p1y <= p2y) || (p0y >= p1y && p1y >= p2y);
         }
         if p0y == p1y && p1y == p2y {
-            return (p0x < p1x && p1x < p2x) || (p0x > p1x && p1x > p2x);
+            return (p0x <= p1x && p1x <= p2x) || (p0x >= p1x && p1x >= p2x);
         }
         false
     }
@@ -455,10 +455,10 @@ impl PolygonEncoder {
         let (p1x, p1y) = self.make_point(&prev[1]);
         let (p2x, p2y) = self.make_point(&prev[2]);
         if p0x == p1x && p1x == p2x {
-            return (p0y < p1y && p1y < p2y) || (p0y > p1y && p1y > p2y);
+            return (p0y <= p1y && p1y <= p2y) || (p0y >= p1y && p1y >= p2y);
         }
         if p0y == p1y && p1y == p2y {
-            return (p0x < p1x && p1x < p2x) || (p0x > p1x && p1x > p2x);
+            return (p0x <= p1x && p1x <= p2x) || (p0x >= p1x && p1x >= p2x);
         }
         false
     }

@@ -395,7 +395,7 @@ impl PointChain {
     fn new(tile_cfg: &TileCfg) -> Self {
         PointChain {
             tile_cfg: tile_cfg.clone(),
-            pts: Vec::with_capacity(3),
+            pts: Vec::with_capacity(4),
         }
     }
 

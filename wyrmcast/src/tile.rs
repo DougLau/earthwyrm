@@ -115,12 +115,13 @@ impl PointChain {
         if let Some(ppt) = self.pts.last()
             && let Some(seg) = Seg::new(ppt, pt).clip(self.tile_cfg.bbox())
         {
-            // Add point on edge of bounding box
-            self.pts.push(if pt.bounded_by(self.tile_cfg.bbox()) {
-                seg.p0
-            } else {
-                seg.p1
-            });
+            // Add points at edge of bounding box
+            if !ppt.bounded_by(self.tile_cfg.bbox()) {
+                self.pts.push(seg.p0);
+            }
+            if !pt.bounded_by(self.tile_cfg.bbox()) {
+                self.pts.push(seg.p1);
+            }
         }
         self.pts.push(*pt);
     }

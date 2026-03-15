@@ -2,7 +2,7 @@
 //
 // Copyright (c) 2019-2026  Minnesota Department of Transportation
 //
-use pointy::{BBox, Bounded, Pt, Seg, Transform};
+use pointy::{BBox, Bounded, Line, Pt, Transform};
 use squarepeg::{MapGrid, Peg};
 
 /// Tile configuration
@@ -24,6 +24,8 @@ pub struct PointChain {
     tile_cfg: TileCfg,
     /// Chain of points
     pts: Vec<Pt<f64>>,
+    /// Pen position
+    pen: Option<Pt<f64>>,
 }
 
 impl TileCfg {
@@ -102,6 +104,7 @@ impl PointChain {
         PointChain {
             tile_cfg: tile_cfg.clone(),
             pts: Vec::with_capacity(4),
+            pen: None,
         }
     }
 
@@ -112,18 +115,72 @@ impl PointChain {
 
     /// Push a point to the end of the chain
     pub fn push_back(&mut self, pt: &Pt<f64>) {
-        if let Some(ppt) = self.pts.last()
-            && let Some(seg) = Seg::new(ppt, pt).clip(self.tile_cfg.bbox())
-        {
-            // Add points at edge of bounding box
-            if !ppt.bounded_by(self.tile_cfg.bbox()) {
-                self.pts.push(seg.p0);
+        if let Some(mut pen) = self.pen.take() {
+            // check if pen crosses any bbox edges
+            let x0 = self.tile_cfg.bbox.x_min();
+            if let Some(p) = self.edge_point_x(x0, &pen, pt) {
+                // crossed left edge, update pen
+                pen = p;
             }
-            if !pt.bounded_by(self.tile_cfg.bbox()) {
-                self.pts.push(seg.p1);
+            let x1 = self.tile_cfg.bbox.x_max();
+            if let Some(p) = self.edge_point_x(x1, pt, &pen) {
+                // crossed right edge, update pen
+                pen = p;
+            }
+            let y0 = self.tile_cfg.bbox.y_min();
+            if let Some(p) = self.edge_point_y(y0, &pen, pt) {
+                // crossed top edge, update pen
+                pen = p;
+            }
+            let y1 = self.tile_cfg.bbox.y_max();
+            self.edge_point_x(y1, pt, &pen);
+        }
+        if pt.bounded_by(self.tile_cfg.bbox) {
+            self.pts.push(*pt);
+        }
+        self.pen = Some(*pt);
+    }
+
+    /// Check if pen crosses a point on left/right edge
+    fn edge_point_x(
+        &mut self,
+        x: f64,
+        p0: &Pt<f64>,
+        p1: &Pt<f64>,
+    ) -> Option<Pt<f64>> {
+        if (x < p0.x) != (x < p1.x) {
+            let edge = Line::new((x, 0.0), (x, 1.0));
+            let line = Line::new(p0, p1);
+            if let Some(pen) = edge.intersection(line) {
+                let y0 = self.tile_cfg.bbox.y_min();
+                let y1 = self.tile_cfg.bbox.y_max();
+                let y = pen.y.max(y0).min(y1);
+                self.pts.push(Pt::new(x, y));
+                return Some(pen);
             }
         }
-        self.pts.push(*pt);
+        None
+    }
+
+    /// Check if pen crosses a point on top/bottom edge
+    fn edge_point_y(
+        &mut self,
+        y: f64,
+        p0: &Pt<f64>,
+        p1: &Pt<f64>,
+    ) -> Option<Pt<f64>> {
+        if (y < p0.y) != (y < p1.y) {
+            let edge = Line::new((0.0, y), (1.0, y));
+            let line = Line::new(p0, p1);
+            if let Some(pen) = edge.intersection(line) {
+                let x0 = self.tile_cfg.bbox.x_min();
+                let x1 = self.tile_cfg.bbox.x_max();
+                let x = pen.x.max(x0).min(x1);
+                self.pts.push(Pt::new(x, y));
+                return Some(pen);
+            }
+        }
+        None
     }
 
     /// Pop the front point in the chain
@@ -143,11 +200,7 @@ impl PointChain {
             let (p0x, p0y) = self.tile_cfg.xform(self.pts[0]);
             let (p1x, p1y) = self.tile_cfg.xform(self.pts[1]);
             if (p0x == p1x) && (p0y == p1y) {
-                if self.pts[0].bounded_by(self.tile_cfg.bbox) {
-                    self.pts.remove(1);
-                } else {
-                    self.pts.remove(0);
-                }
+                self.pts.remove(0);
                 return true;
             }
         }

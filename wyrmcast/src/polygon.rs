@@ -95,6 +95,7 @@ impl PolygonEncoder {
                 }
             }
         }
+        chain.connect();
         while let Some(pt) = chain.pop_front() {
             self.add_point(pt);
         }

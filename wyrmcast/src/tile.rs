@@ -183,6 +183,13 @@ impl PointChain {
         None
     }
 
+    /// Connect back to front (close loop)
+    pub fn connect(&mut self) {
+        if let Some(pt) = self.pts.first() {
+            self.pts.push(*pt);
+        }
+    }
+
     /// Pop the front point in the chain
     pub fn pop_front(&mut self) -> Option<Pt<f64>> {
         while self.simplify_coincident() {}

@@ -210,12 +210,7 @@ impl PointChain {
     /// Simplify linear points (in tile coörindates)
     fn simplify_linear(&mut self) -> bool {
         if self.pts.len() >= 3 && self.should_simplify_linear() {
-            // remove point outside of bounding box
-            if self.pts[2].bounded_by(self.tile_cfg.bbox) {
-                self.pts.remove(1);
-            } else {
-                self.pts.remove(2);
-            }
+            self.pts.remove(1);
             return true;
         }
         false

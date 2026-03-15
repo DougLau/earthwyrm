@@ -234,4 +234,28 @@ mod test {
             assert_eq!(p, pc.pop_front().unwrap());
         }
     }
+
+    #[test]
+    fn corner() {
+        let mut pc = make_chain();
+        let points = make_points(&[
+            (50.0, 50.0),
+            (-60.0, 50.0),
+            (50.0, -60.0),
+            (50.0, 50.0),
+        ]);
+        for p in &points {
+            pc.push_back(&p);
+        }
+        let points = make_points(&[
+            (50.0, 50.0),
+            (0.0, 50.0),
+            (0.0, 0.0),
+            (50.0, 0.0),
+            (50.0, 50.0),
+        ]);
+        for p in points {
+            assert_eq!(p, pc.pop_front().unwrap());
+        }
+    }
 }

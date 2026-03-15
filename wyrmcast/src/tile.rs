@@ -143,7 +143,11 @@ impl PointChain {
             let (p0x, p0y) = self.tile_cfg.xform(self.pts[0]);
             let (p1x, p1y) = self.tile_cfg.xform(self.pts[1]);
             if (p0x == p1x) && (p0y == p1y) {
-                self.pts.remove(0);
+                if self.pts[0].bounded_by(self.tile_cfg.bbox) {
+                    self.pts.remove(1);
+                } else {
+                    self.pts.remove(0);
+                }
                 return true;
             }
         }
@@ -153,8 +157,12 @@ impl PointChain {
     /// Simplify linear points (in tile coörindates)
     fn simplify_linear(&mut self) -> bool {
         if self.pts.len() >= 3 && self.should_simplify_linear() {
-            // remove second point
-            self.pts.remove(1);
+            // remove point outside of bounding box
+            if self.pts[2].bounded_by(self.tile_cfg.bbox) {
+                self.pts.remove(1);
+            } else {
+                self.pts.remove(2);
+            }
             return true;
         }
         false
@@ -166,5 +174,64 @@ impl PointChain {
         let (p1x, p1y) = self.tile_cfg.xform(self.pts[1]);
         let (p2x, p2y) = self.tile_cfg.xform(self.pts[2]);
         (p0x == p1x && p1x == p2x) || (p0y == p1y && p1y == p2y)
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    fn make_chain() -> PointChain {
+        let tile_cfg = TileCfg {
+            tile_extent: 256,
+            peg: Peg::new(0, 0, 0).unwrap(),
+            bbox: BBox::from([(0.0, 0.0), (100.0, 100.0)]),
+            transform: Transform::default(),
+        };
+        tile_cfg.point_chain()
+    }
+
+    fn make_points(pts: &[(f64, f64)]) -> Vec<Pt<f64>> {
+        pts.iter().map(|p| Pt::new(p.0, p.1)).collect()
+    }
+
+    #[test]
+    fn inside() {
+        let mut pc = make_chain();
+        let points = make_points(&[
+            (25.0, 25.0),
+            (75.0, 25.0),
+            (75.0, 75.0),
+            (25.0, 75.0),
+        ]);
+        for p in &points {
+            pc.push_back(&p);
+        }
+        for p in points {
+            assert_eq!(p, pc.pop_front().unwrap());
+        }
+    }
+
+    #[test]
+    fn outside() {
+        let mut pc = make_chain();
+        let points = make_points(&[
+            (50.0, 50.0),
+            (-50.0, 50.0),
+            (-50.0, 25.0),
+            (50.0, 25.0),
+        ]);
+        for p in &points {
+            pc.push_back(&p);
+        }
+        let points = make_points(&[
+            (50.0, 50.0),
+            (0.0, 50.0),
+            (0.0, 25.0),
+            (50.0, 25.0),
+        ]);
+        for p in points {
+            assert_eq!(p, pc.pop_front().unwrap());
+        }
     }
 }

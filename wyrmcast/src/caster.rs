@@ -4,7 +4,7 @@
 //
 use crate::group::{LayerGroupCfg, LayerGroupDef};
 use crate::tile::TileCfg;
-use anyhow::Result;
+use anyhow::{Context, Result};
 use pointy::BBox;
 use serde::Deserialize;
 use squarepeg::{MapGrid, Peg};
@@ -48,7 +48,8 @@ impl CasterCfg {
     where
         P: AsRef<Path>,
     {
-        let cfg = read_to_string(path.as_ref())?;
+        let cfg = read_to_string(path.as_ref())
+            .with_context(|| format!("reading: {:?}", path.as_ref()))?;
         let cfg: Self = muon_rs::from_str(&cfg)?;
         Ok(cfg)
     }

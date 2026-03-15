@@ -4,7 +4,7 @@
 //
 use crate::caster::CasterCfg;
 use crate::layer::{LayerCfg, LayerDef, LayerTree};
-use anyhow::Result;
+use anyhow::{Context, Result};
 use serde::Deserialize;
 use std::fmt;
 
@@ -48,7 +48,9 @@ impl LayerGroupDef {
         for layer_cfg in &group.layer {
             let layer_def = LayerDef::try_from(layer_cfg)?;
             let path = cfg.loam_path(layer_def.name());
-            layers.push(LayerTree::new(layer_def, path)?);
+            let tree = LayerTree::new(layer_def, &path)
+                .with_context(|| format!("path: {:?}", path))?;
+            layers.push(tree);
         }
         log::info!("{} layers in {group}", layers.len());
         Ok(LayerGroupDef { name, layers })

@@ -36,13 +36,14 @@ impl PolygonTree {
             let mut enc = PolygonEncoder::new(tile_cfg);
             if enc.contains(&polygons) {
                 found = true;
+                let mut g2 = g.g();
                 for (_tag, _value, _sint) in
                     layer_def.tag_values(polygons.data())
                 {
-                    // FIXME: add classes
+                    // FIXME: add classes to g2
                 }
                 enc.encode_polygons(&polygons);
-                g.path().d(String::from(enc)).close();
+                g2.path().d(String::from(enc)).close();
             }
         }
         Ok(found)

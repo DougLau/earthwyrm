@@ -32,11 +32,12 @@ impl PointTree {
             let points = points?;
             if enc.contains(&points) {
                 found = true;
+                let mut g2 = g.g();
                 for (_tag, _value, _sint) in layer_def.tag_values(points.data())
                 {
-                    // FIXME: add classes
+                    // FIXME: add classes to g2
                 }
-                enc.encode_points(&points, &mut g.g());
+                enc.encode_points(&points, &mut g2);
             }
         }
         Ok(found)

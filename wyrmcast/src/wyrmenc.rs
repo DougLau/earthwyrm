@@ -82,7 +82,6 @@ impl LayerTree {
         g: &'p mut svg::G<'p>,
     ) -> Result<bool> {
         if self.layer_def().check_zoom(tile_cfg.peg().z()) {
-            // FIXME: add layer tags as classes
             g.data_("name", self.layer_def().name());
             self.tree().query_wyrm(self.layer_def(), tile_cfg, g)
         } else {

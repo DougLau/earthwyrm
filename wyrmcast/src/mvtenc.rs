@@ -207,6 +207,20 @@ impl GeomTree {
     }
 }
 
+/// Calculate margin based on tile zoom
+///
+/// Margin must be larger for higher zoom levels to prevent corrupt polygons.
+fn zoom_margin(peg: Peg) -> u32 {
+    match peg.z() {
+        0..=12 => 8,
+        13 => 16,
+        14 => 32,
+        15 => 64,
+        16 => 128,
+        _ => 256,
+    }
+}
+
 impl CasterDef {
     /// Fetch one MVT tile.
     ///
@@ -221,7 +235,7 @@ impl CasterDef {
     ) -> Result<bool> {
         for group in self.groups() {
             if group_name == group.name() {
-                let tile_cfg = self.tile_cfg(peg);
+                let tile_cfg = self.tile_cfg(peg, zoom_margin(peg));
                 return group.write_mvt(out, tile_cfg);
             }
         }

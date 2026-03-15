@@ -98,7 +98,7 @@ impl CasterDef {
     }
 
     /// Create tile config for a `Peg` (tile ID)
-    pub fn tile_cfg(&self, peg: Peg) -> TileCfg {
-        TileCfg::new(&self.grid, peg, self.tile_extent)
+    pub fn tile_cfg(&self, peg: Peg, margin: u32) -> TileCfg {
+        TileCfg::new(&self.grid, peg, self.tile_extent, margin)
     }
 }

@@ -30,15 +30,19 @@ pub struct PointChain {
 
 impl TileCfg {
     /// Create a new tile config
-    pub fn new(grid: &MapGrid, peg: Peg, tile_extent: u32) -> Self {
+    pub fn new(
+        grid: &MapGrid,
+        peg: Peg,
+        tile_extent: u32,
+        margin: u32,
+    ) -> Self {
         let mut bbox = grid.bbox_peg(peg);
-        // increase bounding box by edge extent
-        let edge = zoom_edge(peg);
-        let edge_x = edge * (bbox.x_max() - bbox.x_min());
-        let edge_y = edge * (bbox.y_max() - bbox.y_min());
+        let margin = f64::from(margin) / f64::from(tile_extent);
+        let margin_x = margin * (bbox.x_max() - bbox.x_min());
+        let margin_y = margin * (bbox.y_max() - bbox.y_min());
         bbox.extend([
-            (bbox.x_min() - edge_x, bbox.y_min() - edge_y),
-            (bbox.x_max() + edge_x, bbox.y_max() + edge_y),
+            (bbox.x_min() - margin_x, bbox.y_min() - margin_y),
+            (bbox.x_max() + margin_x, bbox.y_max() + margin_y),
         ]);
         let ts = f64::from(tile_extent);
         let transform = grid.transform_peg(peg).scale(ts, ts);
@@ -81,20 +85,6 @@ impl TileCfg {
     /// Create a point chain for the tile
     pub fn point_chain(&self) -> PointChain {
         PointChain::new(self)
-    }
-}
-
-/// Calculate edge ratio based on tile zoom
-///
-/// Edge must be larger for higher zoom levels to prevent corrupt polygons.
-fn zoom_edge(peg: Peg) -> f64 {
-    match peg.z() {
-        0..=12 => 1.0 / 32.0,
-        13 => 1.0 / 16.0,
-        14 => 1.0 / 8.0,
-        15 => 1.0 / 4.0,
-        16 => 1.0 / 2.0,
-        _ => 1.0,
     }
 }
 

@@ -24,8 +24,7 @@ impl CasterDef {
     ) -> Result<Option<String>> {
         for group in self.groups() {
             if group_name == group.name() {
-                // FIXME: don't extend bbox for point layers
-                return group.write_wyrm(self.tile_cfg(peg));
+                return group.write_wyrm(self.tile_cfg(peg, 8));
             }
         }
         Err(anyhow!("Unknown group name: {group_name}"))

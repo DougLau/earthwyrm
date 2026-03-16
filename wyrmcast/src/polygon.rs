@@ -36,14 +36,17 @@ impl PolygonTree {
             let mut enc = PolygonEncoder::new(tile_cfg);
             if enc.contains(&polygons) {
                 found = true;
-                let mut g2 = g.g();
-                for (tag, value, _sint) in layer_def.tag_values(polygons.data())
-                {
-                    g2.data_(tag, value);
-                }
                 enc.encode_polygons(&polygons);
-                g2.path().d(String::from(enc)).close();
-                g2.close();
+                let mut path = g.path();
+                for (tag, value, sint) in layer_def.tag_values(polygons.data())
+                {
+                    if tag == "osm_id" && sint {
+                        path.class(format!("osm-{value}"));
+                    } else {
+                        path.data_(tag, value);
+                    }
+                }
+                path.d(String::from(enc)).close();
             }
         }
         Ok(found)

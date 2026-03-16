@@ -5,7 +5,7 @@
 use crate::geom::{LinestringTree, Values};
 use crate::layer::LayerDef;
 use crate::tile::TileCfg;
-use anyhow::Result;
+use anyhow::{Context, Result};
 use hatmil::{PathDefBuilder, svg};
 use pointy::{Bounded, Pt};
 use rosewood::{gis, gis::Gis};
@@ -32,7 +32,8 @@ impl LinestringTree {
         log::trace!("query_wyrm linestrings: {bbox:?}");
         let mut found = false;
         for lines in self.tree.query(bbox) {
-            let lines = lines?;
+            let lines = lines
+                .with_context(|| format!("loading {}", layer_def.name()))?;
             let mut enc = LinestringEncoder::new(tile_cfg);
             if enc.contains(&lines) {
                 found = true;

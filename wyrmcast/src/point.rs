@@ -5,7 +5,7 @@
 use crate::geom::{PointTree, Values};
 use crate::layer::LayerDef;
 use crate::tile::TileCfg;
-use anyhow::Result;
+use anyhow::{Context, Result};
 use hatmil::svg;
 use pointy::Bounded;
 use rosewood::{gis, gis::Gis};
@@ -29,7 +29,8 @@ impl PointTree {
         let enc = PointEncoder::new(tile_cfg);
         let mut found = false;
         for points in self.tree.query(bbox) {
-            let points = points?;
+            let points = points
+                .with_context(|| format!("loading {}", layer_def.name()))?;
             if enc.contains(&points) {
                 found = true;
                 let mut name = None;

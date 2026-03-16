@@ -5,7 +5,7 @@
 use crate::geom::{PolygonTree, Values};
 use crate::layer::LayerDef;
 use crate::tile::TileCfg;
-use anyhow::Result;
+use anyhow::{Context, Result};
 use hatmil::{PathDefBuilder, svg};
 use pointy::{Bounded, Pt};
 use rosewood::{gis, gis::Gis};
@@ -32,7 +32,8 @@ impl PolygonTree {
         log::trace!("query_wyrm polygons: {bbox:?}");
         let mut found = false;
         for polygons in self.tree.query(bbox) {
-            let polygons = polygons?;
+            let polygons = polygons
+                .with_context(|| format!("loading {}", layer_def.name()))?;
             let mut enc = PolygonEncoder::new(tile_cfg);
             if enc.contains(&polygons) {
                 found = true;

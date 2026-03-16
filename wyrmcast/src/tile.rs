@@ -26,6 +26,8 @@ pub struct PointChain {
     pts: Vec<Pt<f64>>,
     /// Pen position
     pen: Option<Pt<f64>>,
+    /// First point
+    first: Option<Pt<f64>>,
 }
 
 impl TileCfg {
@@ -95,6 +97,7 @@ impl PointChain {
             tile_cfg: tile_cfg.clone(),
             pts: Vec::with_capacity(4),
             pen: None,
+            first: None,
         }
     }
 
@@ -105,6 +108,9 @@ impl PointChain {
 
     /// Push a point to the end of the chain
     pub fn push_back(&mut self, pt: &Pt<f64>) {
+        if self.pen.is_none() {
+            self.first = Some(*pt);
+        }
         if let Some(mut pen) = self.pen.take() {
             // check if pen crosses any bbox edges
             let x0 = self.tile_cfg.bbox.x_min();
@@ -129,6 +135,8 @@ impl PointChain {
             self.pts.push(*pt);
         }
         self.pen = Some(*pt);
+        while self.simplify_coincident() {}
+        while self.simplify_linear() {}
     }
 
     /// Check if pen crosses a point on left/right edge
@@ -175,15 +183,19 @@ impl PointChain {
 
     /// Connect back to front (close loop)
     pub fn connect(&mut self) {
-        if let Some(pt) = self.pts.first() {
-            self.pts.push(*pt);
+        if let Some(first) = self.first
+            && let Some(last) = self.pts.last()
+        {
+            let (p0x, p0y) = self.tile_cfg.xform(first);
+            let (p1x, p1y) = self.tile_cfg.xform(*last);
+            if (p0x != p1x) || (p0y != p1y) {
+                self.pts.push(first);
+            }
         }
     }
 
     /// Pop the front point in the chain
     pub fn pop_front(&mut self) -> Option<Pt<f64>> {
-        while self.simplify_coincident() {}
-        while self.simplify_linear() {}
         if !self.pts.is_empty() {
             Some(self.pts.remove(0))
         } else {

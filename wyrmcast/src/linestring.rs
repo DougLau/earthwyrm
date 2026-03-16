@@ -43,6 +43,7 @@ impl LinestringTree {
                 }
                 enc.encode_linestrings(&lines);
                 g2.path().d(String::from(enc)).close();
+                g2.close();
             }
         }
         Ok(found)

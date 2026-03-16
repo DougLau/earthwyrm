@@ -12,9 +12,13 @@ bind_address:
 tile_extent: 256
 layer_group: tile
   osm: true
+  layer: county
+    geom_type: polygon
+    zoom: 4-14
+    tags: $osm_id ?name ?population boundary=administrative admin_level=6
   layer: city
     geom_type: polygon
-    zoom: 1+
+    zoom: 10+
     tags: $osm_id ?name ?population boundary=administrative admin_level=8
 "#;
 

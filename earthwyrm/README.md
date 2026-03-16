@@ -13,14 +13,28 @@ Tiles are named using a [ZXY] naming scheme, with a `wyrm` file extension
 Tiles are square and scaled to 256x256 pixels.  Path element coordinates are
 rounded to the nearest integer.
 
-_Example Wyrm tile_
+_Example tile_: `14/3944/5895.wyrm`
 
 ```html
-<g class="wyrm-123" data-name="Landmark X">
-  <path d="M-8 108L-8 -8L264 -8L264 264L-8 264L-8 108L-8 108z" />
+<g class="wyrm-county">
+  <path class="osm-1795848"
+        data-name="Hennepin County"
+        data-population="1223149"
+        d="m-8 -8h272v272h-272v-272z" />
 </g>
-<g class="wyrm-321 wyrm-city" data-name="Place Name">
-  <path d="M88 180L88 179L87 179L87 177L86 177L88 177L88 180L88 180z" />
+<g class="wyrm-city">
+  <path class="osm-136712"
+        data-name="Minneapolis"
+        data-population="429954"
+        d="m129 264v-109l1 -102l118 -1v-59l16 -1v272h-136z" />
+  <path class="osm-136699"
+        data-name="Golden Valley"
+        data-population="19921"
+        d="m-8 -8l256 1v59l-118 1l-1 102v73h-34l-39 -1h-64v-235z" />
+  <path class="osm-136701"
+        data-name="Saint Louis Park"
+        data-population="50010"
+        d="m-8 227h64l39 1h34v36h-137v-155z" />
 </g>
 ```
 

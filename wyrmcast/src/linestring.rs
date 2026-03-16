@@ -48,6 +48,7 @@ impl LinestringTree {
                 path.d(String::from(enc)).close();
             }
         }
+        g.close();
         Ok(found)
     }
 }

@@ -52,6 +52,7 @@ impl PointTree {
                 enc.encode_points(&points, &marker, rotate, &mut g2);
             }
         }
+        g.close();
         Ok(found)
     }
 }

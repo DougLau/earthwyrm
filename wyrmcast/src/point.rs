@@ -32,12 +32,24 @@ impl PointTree {
             let points = points?;
             if enc.contains(&points) {
                 found = true;
-                let mut g2 = g.g();
-                for (_tag, _value, _sint) in layer_def.tag_values(points.data())
-                {
-                    // FIXME: add classes to g2
+                let mut name = None;
+                let mut rotate = 0;
+                for (tag, value, _sint) in layer_def.tag_values(points.data()) {
+                    if tag == "name" {
+                        name = Some(String::from(value));
+                    }
+                    if tag == "rotate"
+                        && let Ok(r) = value.parse::<i16>()
+                    {
+                        rotate = r;
+                    }
                 }
-                enc.encode_points(&points, &mut g2);
+                let mut g2 = g.g();
+                let marker = format!("marker-{}", layer_def.name());
+                if let Some(name) = name {
+                    g2.class(format!("{}-{name}", layer_def.name()));
+                }
+                enc.encode_points(&points, &marker, rotate, &mut g2);
             }
         }
         Ok(found)
@@ -62,14 +74,20 @@ impl PointEncoder {
     fn encode_points<'p>(
         &self,
         points: &gis::Points<f64, Values>,
+        marker: &str,
+        rotate: i16,
         g: &'p mut svg::G<'p>,
     ) {
         let bbox = self.tile_cfg.bbox();
         for pt in points.iter() {
             if pt.bounded_by(bbox) {
                 let (x, y) = self.tile_cfg.xform(*pt);
-                // FIXME: add href attribute and rotate transform
-                g.r#use().x(x).y(y).close();
+                let mut u = g.r#use();
+                u.href(marker);
+                if rotate != 0 {
+                    u.transform(format!("rotate({rotate})"));
+                }
+                u.x(x).y(y).close();
             }
         }
         g.close();

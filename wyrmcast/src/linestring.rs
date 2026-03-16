@@ -36,14 +36,16 @@ impl LinestringTree {
             let mut enc = LinestringEncoder::new(tile_cfg);
             if enc.contains(&lines) {
                 found = true;
-                let mut g2 = g.g();
-                for (_tag, _value, _sint) in layer_def.tag_values(lines.data())
-                {
-                    // FIXME: add classes to g2
-                }
                 enc.encode_linestrings(&lines);
-                g2.path().d(String::from(enc)).close();
-                g2.close();
+                let mut path = g.path();
+                for (tag, value, sint) in layer_def.tag_values(lines.data()) {
+                    if tag == "osm_id" && sint {
+                        path.class(format!("osm-{value}"));
+                    } else {
+                        path.data_(tag, value);
+                    }
+                }
+                path.d(String::from(enc)).close();
             }
         }
         Ok(found)

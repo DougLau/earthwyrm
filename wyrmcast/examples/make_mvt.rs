@@ -8,19 +8,11 @@ use std::env;
 use std::fs::File;
 use wyrmcast::{CasterCfg, CasterDef};
 
-const MUON: &str = &r#"
-bind_address:
-tile_extent: 256
-layer_group: tile
-  osm: true
-  layer: city
-    geom_type: polygon
-    zoom: 1+
-    tags: $osm_id ?name ?population boundary=administrative admin_level=8
-"#;
+/// Path to configuration file
+const CFG_PATH: &str = "wyrmcast.muon";
 
 fn write_tile(x: u32, y: u32, z: u32) -> Result<()> {
-    let cfg: CasterCfg = muon_rs::from_str(MUON)?;
+    let cfg = CasterCfg::load(CFG_PATH)?;
     let caster = CasterDef::try_from(&cfg)?;
     let mut file = File::create("./tile.mvt").context("creating ./tile.mvt")?;
     let peg = Peg::new(x, y, z).ok_or(anyhow!("Invalid zoom level {z}"))?;

@@ -10,8 +10,8 @@ Geographic coordinates for all map features are converted to [Web Mercator].
 Tiles are named using a [ZXY] naming scheme, with a `wyrm` file extension
 (e.g. `https://example.com/wyrm/12/990/1450.wyrm`).
 
-Tiles are square and scaled to 256x256 pixels.  Path element coordinates are
-rounded to the nearest integer.
+Tiles are square, scaled to 256x256 units, cropped at a margin of 8 around
+each edge.  Path coordinates are rounded to the nearest integer.
 
 _Example tile_: `14/3944/5895.wyrm`
 

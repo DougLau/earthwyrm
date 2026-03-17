@@ -19,32 +19,28 @@ pub enum Error {
     WebSys(&'static str),
 
     /// Fetch request error
-    #[error("Fetch request error")]
-    FetchRequest(String),
+    #[error("Fetch req: {0}")]
+    FetchReq(String),
 
-    /// Fetch response "Unauthorized 401"
-    #[error("Unauthorized")]
-    FetchResponseUnauthorized(),
+    /// HTTP "Unauthorized 401"
+    #[error("Unauthorized 401")]
+    HttpUnauthorized(),
 
-    /// Fetch response "Forbidden 403"
-    #[error("Forbidden")]
-    FetchResponseForbidden(),
+    /// HTTP "Forbidden 403"
+    #[error("Forbidden 403")]
+    HttpForbidden(),
 
-    /// Fetch response "Not Found 404"
-    #[error("Not Found")]
-    FetchResponseNotFound(),
+    /// HTTP "Not Found 404"
+    #[error("Not Found 404")]
+    HttpNotFound(),
 
-    /// Fetch response "Conflict 409"
-    #[error("Conflict")]
-    FetchResponseConflict(),
+    /// HTTP "Conflict 409"
+    #[error("Conflict 409")]
+    HttpConflict(),
 
-    /// Fetch response "Unprocessable Entity 422"
-    #[error("Unprocessable")]
-    FetchResponseUnprocessable(),
-
-    /// Fetch response other error
+    /// HTTP other error
     #[error("Status code {0}")]
-    FetchResponseOther(u16),
+    HttpOther(u16),
 }
 
 /// Bulb result

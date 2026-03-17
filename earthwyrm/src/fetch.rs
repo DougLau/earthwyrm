@@ -74,28 +74,28 @@ impl Uri {
 
     /// Fetch using "GET" method
     pub async fn get(&self) -> Result<String> {
-        let resp = fetch_get(self).await?;
+        let resp = perform_get(self).await?;
         let text = resp
             .text()
-            .map_err(|e| Error::FetchRequest(format!("{e:?}")))?;
+            .map_err(|e| Error::FetchReq(format!("text: {e:?}")))?;
         let value = JsFuture::from(text)
             .await
-            .map_err(|e| Error::FetchRequest(format!("{e:?}")))?;
+            .map_err(|e| Error::FetchReq(format!("promise: {e:?}")))?;
         value.as_string().ok_or(Error::WebSys("not String"))
     }
 }
 
-/// Fetch a GET response
-async fn fetch_get(uri: &Uri) -> Result<Response> {
+/// Perform a GET request
+async fn perform_get(uri: &Uri) -> Result<Response> {
     let window = web_sys::window().ok_or(Error::WebSys("no window"))?;
     let req = Request::new_with_str(uri.as_str())
-        .map_err(|e| Error::FetchRequest(format!("{e:?}")))?;
+        .map_err(|e| Error::FetchReq(format!("request: {e:?}")))?;
     req.headers()
         .set("Accept", "text/plain")
-        .map_err(|e| Error::FetchRequest(format!("{e:?}")))?;
+        .map_err(|e| Error::FetchReq(format!("headers: {e:?}")))?;
     let resp = JsFuture::from(window.fetch_with_request(&req))
         .await
-        .map_err(|e| Error::FetchRequest(format!("{e:?}")))?;
+        .map_err(|e| Error::FetchReq(format!("fetch: {e:?}")))?;
     let resp = resp
         .dyn_into::<Response>()
         .or(Err(Error::WebSys("dyn_into response")))?;
@@ -107,10 +107,10 @@ async fn fetch_get(uri: &Uri) -> Result<Response> {
 fn resp_status(sc: u16) -> Result<()> {
     match sc {
         200 | 201 | 202 | 204 => Ok(()),
-        401 => Err(Error::FetchResponseUnauthorized()),
-        403 => Err(Error::FetchResponseForbidden()),
-        404 => Err(Error::FetchResponseNotFound()),
-        409 => Err(Error::FetchResponseConflict()),
-        _ => Err(Error::FetchResponseOther(sc)),
+        401 => Err(Error::HttpUnauthorized()),
+        403 => Err(Error::HttpForbidden()),
+        404 => Err(Error::HttpNotFound()),
+        409 => Err(Error::HttpConflict()),
+        _ => Err(Error::HttpOther(sc)),
     }
 }

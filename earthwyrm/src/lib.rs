@@ -4,7 +4,7 @@
 //
 #![forbid(unsafe_code)]
 
-mod error;
+pub mod error;
 mod fetch;
 
 pub use fetch::Uri;

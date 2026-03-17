@@ -14,7 +14,6 @@ use crate::error::{Error, Result};
 use percent_encoding::{NON_ALPHANUMERIC, utf8_percent_encode};
 use std::borrow::{Borrow, Cow};
 use wasm_bindgen::JsCast;
-use wasm_bindgen::prelude::*;
 use wasm_bindgen_futures::JsFuture;
 use web_sys::{Headers, Request, RequestInit, Response};
 
@@ -74,61 +73,54 @@ impl Uri {
     }
 
     /// Fetch using "GET" method
-    pub async fn get(&self) -> Result<JsValue> {
-        let resp = get_response(self).await.map_err(|e| {
-            log::error!("{e:?}");
-            Error::FetchRequest()
-        })?;
+    pub async fn get(&self) -> Result<String> {
+        let resp = get_response(self)
+            .await
+            .map_err(|e| Error::FetchRequest(format!("{e:?}")))?;
         resp_status(resp.status())?;
-        wait_promise(resp.text()).await
+        let text = resp
+            .text()
+            .map_err(|e| Error::FetchRequest(format!("{e:?}")))?;
+        let value = JsFuture::from(text)
+            .await
+            .map_err(|e| Error::FetchRequest(format!("{e:?}")))?;
+        value.as_string().ok_or(Error::WebSys("not String"))
     }
 }
 
 /// Fetch a GET response
-async fn get_response(uri: &Uri) -> std::result::Result<Response, JsValue> {
-    let window = web_sys::window().unwrap_throw();
-    let req = Request::new_with_str(uri.as_str())?;
-    req.headers().set("Accept", "text/plain")?;
-    let resp = JsFuture::from(window.fetch_with_request(&req)).await?;
-    Ok(resp.dyn_into::<Response>().unwrap_throw())
-}
-
-/// Wait for a JS promise
-async fn wait_promise(
-    data: std::result::Result<js_sys::Promise, JsValue>,
-) -> Result<JsValue> {
-    let data = data.map_err(|e| {
-        log::error!("{e:?}");
-        Error::FetchRequest()
-    })?;
-    JsFuture::from(data).await.map_err(|e| {
-        log::error!("{e:?}");
-        Error::FetchRequest()
-    })
+async fn get_response(uri: &Uri) -> Result<Response> {
+    let window = web_sys::window().ok_or(Error::WebSys("no window"))?;
+    let req = Request::new_with_str(uri.as_str())
+        .map_err(|e| Error::FetchRequest(format!("{e:?}")))?;
+    req.headers()
+        .set("Accept", "text/plain")
+        .map_err(|e| Error::FetchRequest(format!("{e:?}")))?;
+    let resp = JsFuture::from(window.fetch_with_request(&req))
+        .await
+        .map_err(|e| Error::FetchRequest(format!("{e:?}")))?;
+    resp.dyn_into::<Response>()
+        .or(Err(Error::WebSys("dyn_into response")))
 }
 
 /// Perform a fetch request
-async fn perform_fetch(
-    method: &str,
-    uri: &str,
-) -> Result<Response> {
-    let window = web_sys::window().unwrap_throw();
+async fn perform_fetch(method: &str, uri: &str) -> Result<Response> {
+    let window = web_sys::window().ok_or(Error::WebSys("no window"))?;
     let ri = RequestInit::new();
     ri.set_method(method);
-    let headers = Headers::new().unwrap_throw();
-    headers.set("Content-Type", "text/plain").unwrap_throw();
+    let headers =
+        Headers::new().map_err(|e| Error::FetchRequest(format!("{e:?}")))?;
+    headers
+        .set("Content-Type", "text/plain")
+        .map_err(|e| Error::FetchRequest(format!("{e:?}")))?;
     ri.set_headers(&headers);
-    let req = Request::new_with_str_and_init(uri, &ri).map_err(|e| {
-        log::error!("{e:?}");
-        Error::FetchRequest()
-    })?;
+    let req = Request::new_with_str_and_init(uri, &ri)
+        .map_err(|e| Error::FetchRequest(format!("{e:?}")))?;
     let resp = JsFuture::from(window.fetch_with_request(&req))
         .await
-        .map_err(|e| {
-            log::error!("{e:?}");
-            Error::FetchRequest()
-        })?;
-    Ok(resp.dyn_into().unwrap_throw())
+        .map_err(|e| Error::FetchRequest(format!("{e:?}")))?;
+    resp.dyn_into::<Response>()
+        .or(Err(Error::WebSys("dyn_into response")))
 }
 
 /// Check for errors in response status code

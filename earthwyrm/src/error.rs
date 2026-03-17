@@ -14,9 +14,13 @@
 /// EarthWyrm errors
 #[derive(Debug, thiserror::Error)]
 pub enum Error {
+    /// Web-sys error
+    #[error("web-sys: {0}")]
+    WebSys(&'static str),
+
     /// Fetch request error
     #[error("Fetch request error")]
-    FetchRequest(),
+    FetchRequest(String),
 
     /// Fetch response "Unauthorized 401"
     #[error("Unauthorized")]

@@ -6,3 +6,5 @@
 
 mod error;
 mod fetch;
+
+pub use fetch::Uri;

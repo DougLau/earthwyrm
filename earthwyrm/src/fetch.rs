@@ -15,7 +15,7 @@ use percent_encoding::{NON_ALPHANUMERIC, utf8_percent_encode};
 use std::borrow::{Borrow, Cow};
 use wasm_bindgen::JsCast;
 use wasm_bindgen_futures::JsFuture;
-use web_sys::{Headers, Request, RequestInit, Response};
+use web_sys::{Request, Response};
 
 /// Uniform resource identifier
 #[derive(Clone, Debug)]
@@ -74,10 +74,7 @@ impl Uri {
 
     /// Fetch using "GET" method
     pub async fn get(&self) -> Result<String> {
-        let resp = get_response(self)
-            .await
-            .map_err(|e| Error::FetchRequest(format!("{e:?}")))?;
-        resp_status(resp.status())?;
+        let resp = fetch_get(self).await?;
         let text = resp
             .text()
             .map_err(|e| Error::FetchRequest(format!("{e:?}")))?;
@@ -89,7 +86,7 @@ impl Uri {
 }
 
 /// Fetch a GET response
-async fn get_response(uri: &Uri) -> Result<Response> {
+async fn fetch_get(uri: &Uri) -> Result<Response> {
     let window = web_sys::window().ok_or(Error::WebSys("no window"))?;
     let req = Request::new_with_str(uri.as_str())
         .map_err(|e| Error::FetchRequest(format!("{e:?}")))?;
@@ -99,28 +96,11 @@ async fn get_response(uri: &Uri) -> Result<Response> {
     let resp = JsFuture::from(window.fetch_with_request(&req))
         .await
         .map_err(|e| Error::FetchRequest(format!("{e:?}")))?;
-    resp.dyn_into::<Response>()
-        .or(Err(Error::WebSys("dyn_into response")))
-}
-
-/// Perform a fetch request
-async fn perform_fetch(method: &str, uri: &str) -> Result<Response> {
-    let window = web_sys::window().ok_or(Error::WebSys("no window"))?;
-    let ri = RequestInit::new();
-    ri.set_method(method);
-    let headers =
-        Headers::new().map_err(|e| Error::FetchRequest(format!("{e:?}")))?;
-    headers
-        .set("Content-Type", "text/plain")
-        .map_err(|e| Error::FetchRequest(format!("{e:?}")))?;
-    ri.set_headers(&headers);
-    let req = Request::new_with_str_and_init(uri, &ri)
-        .map_err(|e| Error::FetchRequest(format!("{e:?}")))?;
-    let resp = JsFuture::from(window.fetch_with_request(&req))
-        .await
-        .map_err(|e| Error::FetchRequest(format!("{e:?}")))?;
-    resp.dyn_into::<Response>()
-        .or(Err(Error::WebSys("dyn_into response")))
+    let resp = resp
+        .dyn_into::<Response>()
+        .or(Err(Error::WebSys("dyn_into response")))?;
+    resp_status(resp.status())?;
+    Ok(resp)
 }
 
 /// Check for errors in response status code

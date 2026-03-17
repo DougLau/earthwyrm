@@ -86,27 +86,27 @@
 .wyrm-motorway {
   /* #ffd9a9, 60% opacity over #667777 => #d3ba98 */
   stroke: #d3ba98;
-  stroke-width: 2;
+  stroke-width: 3;
 }
 .wyrm-trunk {
   /* #ffe0a9, 60% opacity over #667777 => #d3bf98 */
   stroke: #d3bf98;
-  stroke-width: 1.5;
+  stroke-width: 2.75;
 }
 .wyrm-primary {
   /* #ffeaa9, 60% opacity over #667777 => #d3c698 */
   stroke: #d3c698;
-  stroke-width: 1.5;
+  stroke-width: 2.5;
 }
 .wyrm-secondary {
   /* #fff4a9, 60% opacity over #667777 => #d3ce98 */
   stroke: #d3ce98;
-  stroke-width: 1.5;
+  stroke-width: 2.25;
 }
 .wyrm-tertiary {
   /* #ffffa9, 60% opacity over #667777 => #ded698 */
   stroke: #ded698;
-  stroke-width: 1.2;
+  stroke-width: 2.0;
 }
 .wyrm-road {
   /* #cccccc, 60% opacity over #667777 => #adb0b0 */

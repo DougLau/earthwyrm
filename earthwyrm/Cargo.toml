@@ -24,7 +24,6 @@ features = [
   'Document',
   'Headers',
   'Request',
-  'RequestInit',
   'Response',
   'Window'
 ]

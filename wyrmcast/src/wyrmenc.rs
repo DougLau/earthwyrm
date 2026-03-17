@@ -85,6 +85,7 @@ impl LayerTree {
             g.class(format!("wyrm-{}", self.layer_def().name()));
             self.tree().query_wyrm(self.layer_def(), tile_cfg, g)
         } else {
+            g.close();
             Ok(false)
         }
     }

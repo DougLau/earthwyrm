@@ -7,5 +7,7 @@ version = "0.11.2"
 edition = "2024"
 
 [workspace.dependencies]
+hatmil = "1.2"
+squarepeg = "0.2"
 
 [patch.crates-io]

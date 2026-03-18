@@ -226,9 +226,11 @@ dependencies = [
 name = "earthwyrm"
 version = "0.11.2"
 dependencies = [
+ "hatmil",
  "js-sys",
  "log",
  "percent-encoding",
+ "squarepeg",
  "thiserror 2.0.18",
  "wasm-bindgen",
  "wasm-bindgen-futures",

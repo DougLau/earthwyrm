@@ -6,5 +6,7 @@
 
 pub mod error;
 mod fetch;
+mod map;
 
 pub use fetch::Uri;
+pub use map::Map;

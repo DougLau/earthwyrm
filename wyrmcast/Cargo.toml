@@ -12,7 +12,7 @@ anyhow = "1.0"
 argh = "0.1"
 axum = "0.8"
 env_logger = "0.11"
-hatmil = "1.2"
+hatmil.workspace = true
 loam = "0.6"
 log = "0.4"
 muon-rs = "0.2"
@@ -20,7 +20,7 @@ mvt = "0.12"
 pointy = "0.8"
 rosewood = "0.6"
 serde = "1.0"
-squarepeg = "0.2"
+squarepeg.workspace = true
 osmpbfreader = "0.19"
 tokio = { version = "1", features = ["rt-multi-thread"] }
 

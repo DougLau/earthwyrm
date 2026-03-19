@@ -153,7 +153,7 @@ impl QueryCommand {
     /// Query a lat/lon position
     fn query(&self, cfg: CasterCfg) -> Result<()> {
         let caster = CasterDef::try_from(&cfg)?;
-        let pos = Wgs84Pos::new(self.lat, self.lon);
+        let pos = Wgs84Pos::new(self.lon, self.lat);
         let pos = WebMercatorPos::from(pos);
         let bbox = BBox::new([pos]);
         caster.query_features(bbox)?;

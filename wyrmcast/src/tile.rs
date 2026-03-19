@@ -38,7 +38,7 @@ impl TileCfg {
         tile_extent: u32,
         margin: u32,
     ) -> Self {
-        let mut bbox = grid.bbox_peg(peg);
+        let mut bbox = grid.peg_bbox(peg);
         let margin = f64::from(margin) / f64::from(tile_extent);
         let margin_x = margin * (bbox.x_max() - bbox.x_min());
         let margin_y = margin * (bbox.y_max() - bbox.y_min());
@@ -47,7 +47,7 @@ impl TileCfg {
             (bbox.x_max() + margin_x, bbox.y_max() + margin_y),
         ]);
         let ts = f64::from(tile_extent);
-        let transform = grid.transform_peg(peg).scale(ts, ts);
+        let transform = grid.peg_transform(peg).scale(ts, ts);
         TileCfg {
             tile_extent,
             peg,

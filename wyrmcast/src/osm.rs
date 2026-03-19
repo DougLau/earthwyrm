@@ -193,7 +193,7 @@ impl GeometryMaker {
         for node in nodes {
             let nid = OsmId::Node(*node);
             if let Some(OsmObj::Node(node)) = self.objs.get(&nid) {
-                let pos = Wgs84Pos::new(node.lat(), node.lon());
+                let pos = Wgs84Pos::new(node.lon(), node.lat());
                 let pos = WebMercatorPos::from(pos);
                 pts.push((pos.x, pos.y));
             } else {

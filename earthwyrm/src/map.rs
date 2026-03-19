@@ -13,7 +13,7 @@
 use crate::error::{Error, Result};
 use hatmil::{Page, html};
 use squarepeg::Peg;
-use web_sys::Element;
+use web_sys::{Document, Element};
 
 /// Map widget
 pub struct Map {
@@ -61,11 +61,16 @@ impl Map {
     }
 }
 
-/// Lookup the document head element
-fn lookup_head() -> Result<Element> {
+/// Get document
+fn doc() -> Result<Document> {
     let window = web_sys::window().ok_or(Error::WebSys("no window"))?;
     let doc = window.document().ok_or(Error::WebSys("no document"))?;
-    let heads = doc.get_elements_by_tag_name("head");
+    Ok(doc)
+}
+
+/// Lookup the document head element
+fn lookup_head() -> Result<Element> {
+    let heads = doc()?.get_elements_by_tag_name("head");
     if heads.length() > 0 {
         heads.item(0).ok_or(Error::WebSys("no head 0"))
     } else {
@@ -75,9 +80,7 @@ fn lookup_head() -> Result<Element> {
 
 /// Lookup an element by ID
 fn lookup_id(id: &str) -> Result<Element> {
-    let window = web_sys::window().ok_or(Error::WebSys("no window"))?;
-    let doc = window.document().ok_or(Error::WebSys("no document"))?;
-    let elem = doc
+    let elem = doc()?
         .get_element_by_id(id)
         .ok_or(Error::WebSys("elem not found"))?;
     Ok(elem)

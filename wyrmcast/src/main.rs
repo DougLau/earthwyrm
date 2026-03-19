@@ -293,7 +293,7 @@ impl TileParams {
 
     /// Get `Peg` (tile ID)
     fn peg(&self) -> Option<Peg> {
-        self.y().and_then(|y| Peg::new(self.x, y, self.z))
+        self.y().and_then(|y| Peg::new(self.z, self.x, y))
     }
 
     /// Get file extension

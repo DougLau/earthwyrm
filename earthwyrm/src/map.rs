@@ -12,7 +12,7 @@
 //
 use crate::error::{Error, Result};
 use hatmil::{Page, html};
-use squarepeg::Peg;
+use squarepeg::{MapGrid, Peg, WebMercatorPos, Wgs84Pos};
 use web_sys::{Document, Element};
 
 /// Map widget
@@ -21,17 +21,20 @@ pub struct Map {
     id: String,
     /// Style element ID
     style_id: String,
+    /// Map grid
+    grid: MapGrid,
     /// Origin peg tile
     origin: Option<Peg>,
 }
 
 impl Map {
     /// Create new map on `id` element
-    pub fn new(id: &str) -> Result<Self> {
+    pub fn new(id: &str, grid: MapGrid) -> Result<Self> {
         let style_id = format!("{id}-style");
         let map = Map {
             id: id.to_string(),
             style_id,
+            grid,
             origin: None,
         };
         let _elem = lookup_id(&map.id)?;
@@ -53,11 +56,19 @@ impl Map {
     }
 
     /// Set map view
-    pub fn set_view(&mut self, _zoom: u16, _lat: f64, _lon: f64) {
-        // FIXME: set origin peg
+    pub async fn set_view(
+        &mut self,
+        zoom: u32,
+        lon: f64,
+        lat: f64,
+    ) -> Result<()> {
+        let pos: WebMercatorPos = Wgs84Pos::new(lon, lat).into();
+        self.origin = self.grid.zxy_peg(zoom, pos.x, pos.y);
+        // FIXME: use elem.get_bounding_client_rect()
         //        fetch tiles (asynchronously)
-        //        start fade animation to new tiles
-        //        remove unused tiles (garbage collect)
+        // FIXME: start fade animation to new tiles
+        // FIXME: remove unused tiles (garbage collect)
+        Ok(())
     }
 }
 

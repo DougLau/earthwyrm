@@ -8,6 +8,6 @@ edition = "2024"
 
 [workspace.dependencies]
 hatmil = "1.2"
-squarepeg = "0.3"
+squarepeg = "0.4"
 
 [patch.crates-io]

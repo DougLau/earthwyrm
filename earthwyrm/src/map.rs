@@ -20,73 +20,80 @@ use web_sys::{Document, Element};
 pub struct Map {
     /// Map element ID
     id: String,
-    /// Style element ID
-    style_id: String,
     /// Map grid
     grid: MapGrid,
-    /// Origin peg tile
-    origin: Option<Peg>,
 }
 
 impl Map {
     /// Create new map on `id` element
     pub fn new(id: &str) -> Result<Self> {
-        let style_id = format!("{id}-style");
+        let _elem = lookup_id(id)?;
         let grid = MapGrid::default();
-        let map = Map {
+        Ok(Map {
             id: id.to_string(),
-            style_id,
             grid,
-            origin: None,
-        };
-        let _elem = lookup_id(&map.id)?;
+        })
+    }
+
+    /// Get ID of map style element
+    fn style_id(&self) -> String {
+        format!("{}-style", self.id)
+    }
+
+    /// Add map style to document head
+    pub fn add_style(&self) -> Result<()> {
         let mut page = Page::new();
         let mut style = page.frag::<html::Style>();
-        style.id(&map.style_id);
+        style.id(self.style_id());
         let style = String::from(page);
         let head = lookup_head()?;
         head.append_with_str_1(&style)
             .map_err(|_e| Error::WebSys("append_with_str_1"))?;
-        Ok(map)
+        Ok(())
     }
 
     /// Set map CSS rules
     pub fn set_style(&self, css: &str) -> Result<()> {
-        let style = lookup_id(&self.style_id)?;
+        let style = lookup_id(&self.style_id())?;
         style.set_inner_html(css);
         Ok(())
     }
 
     /// Set map view
-    pub async fn set_view(
-        &mut self,
-        zoom: u32,
-        lon: f64,
-        lat: f64,
-    ) -> Result<()> {
+    pub async fn set_view(&self, zoom: u32, lon: f64, lat: f64) -> Result<()> {
         let pos: WebMercatorPos = Wgs84Pos::new(lon, lat).into();
-        self.origin = self.grid.zxy_peg(zoom, pos.x, pos.y);
+        match self.grid.zxy_peg(zoom, pos.x, pos.y) {
+            Some(peg) => self.do_set_view(peg, pos).await,
+            None => {
+                log::warn!("invalid Peg: {zoom} {lon} {lat}");
+                Ok(())
+            }
+        }
+    }
+
+    /// Set view
+    async fn do_set_view(&self, peg: Peg, _pos: WebMercatorPos) -> Result<()> {
         let elem = lookup_id(&self.id)?;
         let rect = elem.get_bounding_client_rect();
         let width = ((rect.width() / 256.0).floor() as u32) + 1;
         let height = ((rect.height() / 256.0).floor() as u32) + 1;
-        // FIXME: center lon/lat
-        let origin = self.origin.ok_or(Error::Other("origin Peg"))?;
+        // FIXME: center lon/lat (pos)
+        let zoom = peg.z();
         let mut inner = String::new();
         for y in 0..=height {
-            let py = origin.y() + y;
+            let py = peg.y() + y;
             for x in 0..=width {
-                let px = origin.x() + x;
-                if let Some(peg) = Peg::new(origin.z(), px, py) {
+                let px = peg.x() + x;
+                if let Some(peg) = Peg::new(zoom, px, py) {
                     match fetch_tile(peg, x as i32, y as i32).await {
                         Ok(svg) => inner.push_str(&svg),
+                        Err(Error::HttpNotFound()) => (),
                         Err(e) => log::warn!("fetch {peg:?} {e:?}"),
                     }
                 }
             }
         }
         elem.set_inner_html(&inner);
-        // FIXME: fetch multiple tiles
         // FIXME: start fade animation to new tiles
         // FIXME: remove unused tiles (garbage collect)
         Ok(())

@@ -13,16 +13,19 @@
   fill: none;
   stroke: black;
   stroke-width: 0.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
 }
 .wyrm-county {
   fill: #677;
   fill-opacity: 1.0;
+  stroke-width: 0.2;
   stroke-dasharray: 1 2;
 }
 .wyrm-city {
   fill: #677;
   fill-opacity: 1;
-  stroke-width: 1;
+  stroke-width: 0.2;
 }
 .wyrm-water {
   fill: #b5c0d0;
@@ -85,6 +88,7 @@
   stroke-width: 2.5;
   stroke-dasharray: 1 1.5;
   stroke-linecap: butt;
+  stroke-linejoin: butt;
 }
 .wyrm-motorway {
   /* #ffd9a9, 60% opacity over #667777 => #d3ba98 */

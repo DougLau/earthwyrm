@@ -41,6 +41,10 @@ pub enum Error {
     /// HTTP other error
     #[error("Status code {0}")]
     HttpOther(u16),
+
+    /// Other error
+    #[error("err: {0}")]
+    Other(&'static str),
 }
 
 /// Bulb result

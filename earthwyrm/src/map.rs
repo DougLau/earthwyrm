@@ -22,17 +22,18 @@ pub struct Map {
     id: String,
     /// Map grid
     grid: MapGrid,
+    /// Layer groups
+    groups: &'static [&'static str],
 }
 
 impl Map {
     /// Create new map on `id` element
-    pub fn new(id: &str) -> Result<Self> {
-        let _elem = lookup_id(id)?;
-        let grid = MapGrid::default();
-        Ok(Map {
+    pub fn new(id: &str, groups: &'static [&'static str]) -> Self {
+        Map {
             id: id.to_string(),
-            grid,
-        })
+            grid: MapGrid::default(),
+            groups,
+        }
     }
 
     /// Get ID of map style element
@@ -85,10 +86,12 @@ impl Map {
             for x in 0..=width {
                 let px = peg.x() + x;
                 if let Some(peg) = Peg::new(zoom, px, py) {
-                    match fetch_tile(peg, x as i32, y as i32).await {
-                        Ok(svg) => inner.push_str(&svg),
-                        Err(Error::HttpNotFound()) => (),
-                        Err(e) => log::warn!("fetch {peg:?} {e:?}"),
+                    for group in self.groups {
+                        match fetch_tile(group, peg, x as i32, y as i32).await {
+                            Ok(svg) => inner.push_str(&svg),
+                            Err(Error::HttpNotFound()) => (),
+                            Err(e) => log::warn!("fetch {peg:?} {e:?}"),
+                        }
                     }
                 }
             }
@@ -126,8 +129,9 @@ fn lookup_id(id: &str) -> Result<Element> {
 }
 
 /// Fetch one wyrm tile
-async fn fetch_tile(peg: Peg, xt: i32, yt: i32) -> Result<String> {
-    let mut uri = Uri::from("/tile/");
+async fn fetch_tile(group: &str, peg: Peg, xt: i32, yt: i32) -> Result<String> {
+    let mut uri = Uri::from("/");
+    uri.push(group);
     uri.push(&peg.z().to_string());
     uri.push(&peg.x().to_string());
     uri.push(&peg.y().to_string());
@@ -139,6 +143,6 @@ async fn fetch_tile(peg: Peg, xt: i32, yt: i32) -> Result<String> {
         String::new()
     };
     Ok(format!(
-        "<svg id=\"{peg:?}\" class=\"wyrm-tile\"{transform}>{wyrm}</svg>"
+        "<svg id=\"{group}-{peg}\" class=\"wyrm-tile\"{transform}>{wyrm}</svg>"
     ))
 }

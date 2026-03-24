@@ -5,7 +5,7 @@
 use crate::geom::{PointTree, Values};
 use crate::layer::LayerDef;
 use crate::tile::TileCfg;
-use anyhow::{Context, Result};
+use anyhow::Result;
 use hatmil::svg;
 use pointy::Bounded;
 use rosewood::{gis, gis::Gis};
@@ -29,8 +29,10 @@ impl PointTree {
         log::trace!("query_wyrm points: {bbox:?}");
         let mut found = false;
         for points in self.tree.query(bbox) {
-            let points = points
-                .with_context(|| format!("loading {}", layer_def.name()))?;
+            let Ok(points) = points else {
+                log::warn!("IO error: {}.loam points", layer_def.name());
+                break;
+            };
             let enc = PointEncoder::new(tile_cfg);
             found = true;
             let mut name = None;

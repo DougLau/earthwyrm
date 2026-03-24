@@ -26,32 +26,30 @@ impl PointTree {
     ) -> Result<bool> {
         let bbox = tile_cfg.bbox();
         log::trace!("query_wyrm points: {bbox:?}");
-        let enc = PointEncoder::new(tile_cfg);
         let mut found = false;
         for points in self.tree.query(bbox) {
             let points = points
                 .with_context(|| format!("loading {}", layer_def.name()))?;
-            if enc.contains(&points) {
-                found = true;
-                let mut name = None;
-                let mut rotate = 0;
-                for (tag, value, _sint) in layer_def.tag_values(points.data()) {
-                    if tag == "name" {
-                        name = Some(String::from(value));
-                    }
-                    if tag == "rotate"
-                        && let Ok(r) = value.parse::<i16>()
-                    {
-                        rotate = r;
-                    }
+            let enc = PointEncoder::new(tile_cfg);
+            found = true;
+            let mut name = None;
+            let mut rotate = 0;
+            for (tag, value, _sint) in layer_def.tag_values(points.data()) {
+                if tag == "name" {
+                    name = Some(String::from(value));
                 }
-                let mut g2 = g.g();
-                let marker = format!("marker-{}", layer_def.name());
-                if let Some(name) = name {
-                    g2.class(format!("{}-{name}", layer_def.name()));
+                if tag == "rotate"
+                    && let Ok(r) = value.parse::<i16>()
+                {
+                    rotate = r;
                 }
-                enc.encode_points(&points, &marker, rotate, &mut g2);
             }
+            let mut g2 = g.g();
+            let marker = format!("#{}-marker", layer_def.name());
+            if let Some(name) = name {
+                g2.class(format!("{}-{name}", layer_def.name()));
+            }
+            enc.encode_points(&points, &marker, rotate, &mut g2);
         }
         g.close();
         Ok(found)
@@ -64,12 +62,6 @@ impl PointEncoder {
         PointEncoder {
             tile_cfg: tile_cfg.clone(),
         }
-    }
-
-    /// Check if bounding box contains points
-    fn contains(&self, points: &gis::Points<f64, Values>) -> bool {
-        let bbox = self.tile_cfg.bbox();
-        points.iter().any(|pt| pt.bounded_by(bbox))
     }
 
     /// Encode points
@@ -87,9 +79,11 @@ impl PointEncoder {
                 let mut u = g.r#use();
                 u.href(marker);
                 if rotate != 0 {
-                    u.transform(format!("rotate({rotate})"));
+                    u.style(format!(
+                        "rotate: {rotate}deg; translate: {x}px {y}px"
+                    ));
                 }
-                u.x(x).y(y).close();
+                u.close();
             }
         }
         g.close();

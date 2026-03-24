@@ -9,6 +9,7 @@ use anyhow::{Context, Result};
 use hatmil::svg;
 use pointy::Bounded;
 use rosewood::{gis, gis::Gis};
+use std::fmt::Write;
 
 /// Wyrm point layer encoder
 struct PointEncoder {
@@ -78,11 +79,12 @@ impl PointEncoder {
                 let (x, y) = self.tile_cfg.xform(*pt);
                 let mut u = g.r#use();
                 u.href(marker);
+                let mut style = String::new();
                 if rotate != 0 {
-                    u.style(format!(
-                        "rotate: {rotate}deg; translate: {x}px {y}px"
-                    ));
+                    let _ = write!(style, "rotate: {rotate}deg; ");
                 }
+                let _ = write!(style, "translate: {x}px {y}px");
+                u.style(style);
                 u.close();
             }
         }

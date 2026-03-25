@@ -359,6 +359,27 @@ impl LayerDef {
                 val.as_ref().map(|val| (tag, &val[..], sint))
             })
     }
+
+    /// Get class name for an item
+    pub fn class_name(&self, name: &str) -> String {
+        let mut cname = String::new();
+        for nm in self.name().split('_') {
+            // skip numeric parts of layer name (`segment_10` => `segment`)
+            if !nm.chars().all(char::is_numeric) {
+                if !cname.is_empty() {
+                    cname.push('_');
+                }
+                cname.push_str(nm);
+            }
+        }
+        cname.push('-');
+        for ch in name.chars() {
+            if !ch.is_whitespace() && !ch.is_control() {
+                cname.push(ch);
+            }
+        }
+        cname
+    }
 }
 
 impl LayerTree {

@@ -67,7 +67,12 @@ impl LayerGroupDef {
             if layer.check_zoom(zoom) {
                 let mut g = tree.root::<svg::G>();
                 g.class(format!("wyrm-{}", layer.name()));
-                if layer_tree.tree().query_wyrm(layer, tile_cfg, &mut g)? {
+                if layer_tree.tree().query_wyrm(
+                    layer,
+                    self.osm(),
+                    tile_cfg,
+                    &mut g,
+                )? {
                     found = true;
                 }
             }
@@ -85,13 +90,16 @@ impl GeomTree {
     fn query_wyrm<'p>(
         &self,
         layer_def: &LayerDef,
+        osm: bool,
         tile_cfg: &TileCfg,
         g: &'p mut svg::G<'p>,
     ) -> Result<bool> {
         match self {
-            Self::Point(tree) => tree.query_wyrm(layer_def, tile_cfg, g),
-            Self::Linestring(tree) => tree.query_wyrm(layer_def, tile_cfg, g),
-            Self::Polygon(tree) => tree.query_wyrm(layer_def, tile_cfg, g),
+            Self::Point(tree) => tree.query_wyrm(layer_def, osm, tile_cfg, g),
+            Self::Linestring(tree) => {
+                tree.query_wyrm(layer_def, osm, tile_cfg, g)
+            }
+            Self::Polygon(tree) => tree.query_wyrm(layer_def, osm, tile_cfg, g),
         }
     }
 }

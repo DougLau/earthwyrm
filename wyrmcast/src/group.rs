@@ -26,6 +26,9 @@ pub struct LayerGroupDef {
     /// Name of group
     name: String,
 
+    /// OpenStreetMap data source
+    osm: bool,
+
     /// Layer definitions / trees
     layers: Vec<LayerTree>,
 }
@@ -53,12 +56,18 @@ impl LayerGroupDef {
             layers.push(tree);
         }
         log::info!("{} layers in {group}", layers.len());
-        Ok(LayerGroupDef { name, layers })
+        let osm = group.osm;
+        Ok(LayerGroupDef { name, osm, layers })
     }
 
     /// Get the group name
     pub fn name(&self) -> &str {
         &self.name
+    }
+
+    /// Get OSM flag
+    pub fn osm(&self) -> bool {
+        self.osm
     }
 
     /// Get layers in the group

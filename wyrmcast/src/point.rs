@@ -22,6 +22,7 @@ impl PointTree {
     pub fn query_wyrm<'p>(
         &self,
         layer_def: &LayerDef,
+        _osm: bool,
         tile_cfg: &TileCfg,
         g: &'p mut svg::G<'p>,
     ) -> Result<bool> {
@@ -50,7 +51,7 @@ impl PointTree {
             let mut g2 = g.g();
             let marker = format!("#{}-marker", layer_def.name());
             if let Some(name) = name {
-                g2.class(format!("{}-{name}", layer_def.name()));
+                g2.class(layer_def.class_name(&name));
             }
             enc.encode_points(&points, &marker, rotate, &mut g2);
         }

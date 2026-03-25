@@ -25,6 +25,7 @@ impl LinestringTree {
     pub fn query_wyrm<'p>(
         &self,
         layer_def: &LayerDef,
+        osm: bool,
         tile_cfg: &TileCfg,
         g: &'p mut svg::G<'p>,
     ) -> Result<bool> {
@@ -44,8 +45,10 @@ impl LinestringTree {
                 for (tag, value, sint) in layer_def.tag_values(lines.data()) {
                     if tag == "osm_id" && sint {
                         path.class(format!("osm-{value}"));
-                    } else {
+                    } else if osm {
                         path.data_(tag, value);
+                    } else {
+                        path.class(layer_def.class_name(value));
                     }
                 }
                 path.d(String::from(enc)).close();

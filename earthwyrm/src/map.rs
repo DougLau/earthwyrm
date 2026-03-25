@@ -12,7 +12,6 @@
 //
 use crate::error::{Error, Result};
 use crate::fetch::Uri;
-use hatmil::{Tree, html};
 use squarepeg::{MapGrid, Peg, WebMercatorPos, Wgs84Pos};
 use web_sys::{Document, Element};
 
@@ -39,18 +38,6 @@ impl Map {
     /// Get ID of map style element
     fn style_id(&self) -> String {
         format!("{}-style", self.id)
-    }
-
-    /// Add map style to document head
-    pub fn add_style(&self) -> Result<()> {
-        let mut tree = Tree::new();
-        let mut style = tree.root::<html::Style>();
-        style.id(self.style_id());
-        let style = String::from(tree);
-        let head = lookup_head()?;
-        head.append_with_str_1(&style)
-            .map_err(|_e| Error::WebSys("append_with_str_1"))?;
-        Ok(())
     }
 
     /// Set map CSS rules
@@ -108,16 +95,6 @@ fn doc() -> Result<Document> {
     let window = web_sys::window().ok_or(Error::WebSys("no window"))?;
     let doc = window.document().ok_or(Error::WebSys("no document"))?;
     Ok(doc)
-}
-
-/// Lookup the document head element
-fn lookup_head() -> Result<Element> {
-    let heads = doc()?.get_elements_by_tag_name("head");
-    if heads.length() > 0 {
-        heads.item(0).ok_or(Error::WebSys("no head 0"))
-    } else {
-        Err(Error::WebSys("no head"))
-    }
 }
 
 /// Lookup an element by ID

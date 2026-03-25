@@ -5,7 +5,7 @@
 use crate::caster::CasterDef;
 use crate::geom::GeomTree;
 use crate::group::LayerGroupDef;
-use crate::layer::{LayerDef, LayerTree};
+use crate::layer::LayerDef;
 use crate::tile::TileCfg;
 use anyhow::{Result, anyhow};
 use hatmil::{Page, svg};
@@ -61,32 +61,21 @@ impl LayerGroupDef {
     fn query_wyrm(&self, tile_cfg: &TileCfg) -> Result<String> {
         let mut found = false;
         let mut page = Page::new();
+        let zoom = tile_cfg.peg().z();
         for layer_tree in self.layers() {
-            if layer_tree.query_wyrm(tile_cfg, &mut page.frag::<svg::G>())? {
-                found = true;
+            let layer = layer_tree.layer_def();
+            if layer.check_zoom(zoom) {
+                let mut g = page.frag::<svg::G>();
+                g.class(format!("wyrm-{}", layer.name()));
+                if layer_tree.tree().query_wyrm(layer, tile_cfg, &mut g)? {
+                    found = true;
+                }
             }
         }
         if found {
             Ok(String::from(page))
         } else {
             Ok(String::new())
-        }
-    }
-}
-
-impl LayerTree {
-    /// Query wyrm features
-    fn query_wyrm<'p>(
-        &self,
-        tile_cfg: &TileCfg,
-        g: &'p mut svg::G<'p>,
-    ) -> Result<bool> {
-        if self.layer_def().check_zoom(tile_cfg.peg().z()) {
-            g.class(format!("wyrm-{}", self.layer_def().name()));
-            self.tree().query_wyrm(self.layer_def(), tile_cfg, g)
-        } else {
-            g.close();
-            Ok(false)
         }
     }
 }

@@ -12,7 +12,7 @@
 //
 use crate::error::{Error, Result};
 use crate::fetch::Uri;
-use hatmil::{Page, html};
+use hatmil::{Tree, html};
 use squarepeg::{MapGrid, Peg, WebMercatorPos, Wgs84Pos};
 use web_sys::{Document, Element};
 
@@ -43,10 +43,10 @@ impl Map {
 
     /// Add map style to document head
     pub fn add_style(&self) -> Result<()> {
-        let mut page = Page::new();
-        let mut style = page.frag::<html::Style>();
+        let mut tree = Tree::new();
+        let mut style = tree.root::<html::Style>();
         style.id(self.style_id());
-        let style = String::from(page);
+        let style = String::from(tree);
         let head = lookup_head()?;
         head.append_with_str_1(&style)
             .map_err(|_e| Error::WebSys("append_with_str_1"))?;

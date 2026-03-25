@@ -8,7 +8,7 @@ use crate::group::LayerGroupDef;
 use crate::layer::LayerDef;
 use crate::tile::TileCfg;
 use anyhow::{Result, anyhow};
-use hatmil::{Page, svg};
+use hatmil::{Tree, svg};
 use squarepeg::Peg;
 use std::time::Instant;
 
@@ -60,12 +60,12 @@ impl LayerGroupDef {
     /// Query one wyrm from trees
     fn query_wyrm(&self, tile_cfg: &TileCfg) -> Result<String> {
         let mut found = false;
-        let mut page = Page::new();
+        let mut tree = Tree::new();
         let zoom = tile_cfg.peg().z();
         for layer_tree in self.layers() {
             let layer = layer_tree.layer_def();
             if layer.check_zoom(zoom) {
-                let mut g = page.frag::<svg::G>();
+                let mut g = tree.root::<svg::G>();
                 g.class(format!("wyrm-{}", layer.name()));
                 if layer_tree.tree().query_wyrm(layer, tile_cfg, &mut g)? {
                     found = true;
@@ -73,7 +73,7 @@ impl LayerGroupDef {
             }
         }
         if found {
-            Ok(String::from(page))
+            Ok(String::from(tree))
         } else {
             Ok(String::new())
         }

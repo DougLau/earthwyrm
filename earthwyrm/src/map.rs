@@ -35,18 +35,6 @@ impl Map {
         }
     }
 
-    /// Get ID of map style element
-    fn style_id(&self) -> String {
-        format!("{}-style", self.id)
-    }
-
-    /// Set map CSS rules
-    pub fn set_style(&self, css: &str) -> Result<()> {
-        let style = lookup_id(&self.style_id())?;
-        style.set_inner_html(css);
-        Ok(())
-    }
-
     /// Set map view
     pub async fn set_view(&self, zoom: u32, lon: f64, lat: f64) -> Result<()> {
         let pos: WebMercatorPos = Wgs84Pos::new(lon, lat).into();

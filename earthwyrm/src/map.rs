@@ -16,6 +16,7 @@ use squarepeg::{MapGrid, Peg, WebMercatorPos, Wgs84Pos};
 use web_sys::{Document, Element};
 
 /// Map widget
+#[derive(Clone)]
 pub struct Map {
     /// Map element ID
     id: String,
@@ -53,6 +54,8 @@ impl Map {
         let rect = elem.get_bounding_client_rect();
         let width = ((rect.width() / 256.0).floor() as u32) + 1;
         let height = ((rect.height() / 256.0).floor() as u32) + 1;
+        elem.set_attribute("style", "")
+            .map_err(|_e| Error::WebSys("set_style view"))?;
         // FIXME: center lon/lat (pos)
         let zoom = peg.z();
         let mut inner = String::new();
@@ -74,6 +77,14 @@ impl Map {
         elem.set_inner_html(&inner);
         // FIXME: start fade animation to new tiles
         // FIXME: remove unused tiles (garbage collect)
+        Ok(())
+    }
+
+    /// Set style
+    pub fn set_style(&self, value: &str) -> Result<()> {
+        let elem = lookup_id(&self.id)?;
+        elem.set_attribute("style", value)
+            .map_err(|_e| Error::WebSys("set_style"))?;
         Ok(())
     }
 }

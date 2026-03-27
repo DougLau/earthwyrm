@@ -24,6 +24,8 @@ pub struct Map {
     grid: MapGrid,
     /// Layer groups
     groups: &'static [&'static str],
+    /// Cycle number
+    cycle: u32,
 }
 
 impl Map {
@@ -33,7 +35,13 @@ impl Map {
             id: id.to_string(),
             grid: MapGrid::default(),
             groups,
+            cycle: 0,
         }
+    }
+
+    /// Advance to next cycle
+    pub fn next_cycle(&mut self) {
+        self.cycle += 1;
     }
 
     /// Set map view
@@ -65,7 +73,11 @@ impl Map {
                 let px = peg.x() + x;
                 if let Some(peg) = Peg::new(zoom, px, py) {
                     for group in self.groups {
-                        match fetch_tile(group, peg, x as i32, y as i32).await {
+                        match fetch_tile(
+                            group, peg, self.cycle, x as i32, y as i32,
+                        )
+                        .await
+                        {
                             Ok(svg) => inner.push_str(&svg),
                             Err(Error::HttpNotFound()) => (),
                             Err(e) => log::warn!("fetch {peg:?} {e:?}"),
@@ -105,7 +117,13 @@ fn lookup_id(id: &str) -> Result<Element> {
 }
 
 /// Fetch one wyrm tile
-async fn fetch_tile(group: &str, peg: Peg, xt: i32, yt: i32) -> Result<String> {
+async fn fetch_tile(
+    group: &str,
+    peg: Peg,
+    cycle: u32,
+    xt: i32,
+    yt: i32,
+) -> Result<String> {
     let mut uri = Uri::from("/");
     uri.push(group);
     uri.push(&peg.z().to_string());
@@ -113,12 +131,23 @@ async fn fetch_tile(group: &str, peg: Peg, xt: i32, yt: i32) -> Result<String> {
     uri.push(&peg.y().to_string());
     uri.add_extension(".wyrm");
     let wyrm = uri.get().await?;
-    let transform = if xt != 0 || yt != 0 {
-        format!(" transform=\"translate({} {})\"", xt * 256, yt * 256)
-    } else {
-        String::new()
-    };
-    Ok(format!(
-        "<svg id=\"{group}-{peg}\" class=\"wyrm-tile\"{transform}>{wyrm}</svg>"
-    ))
+    let mut svg = String::with_capacity(wyrm.len() + 100);
+    svg.push_str("<svg class=\"wyrm-tile ");
+    svg.push_str(group);
+    svg.push('-');
+    svg.push_str(&peg.to_string());
+    svg.push_str(" cycle-");
+    svg.push_str(&cycle.to_string());
+    svg.push('"');
+    if xt != 0 || yt != 0 {
+        svg.push_str(" transform=\"translate(");
+        svg.push_str(&(xt * 256).to_string());
+        svg.push(' ');
+        svg.push_str(&(yt * 256).to_string());
+        svg.push_str(")\"");
+    }
+    svg.push('>');
+    svg.push_str(&wyrm);
+    svg.push_str("</svg>");
+    Ok(svg)
 }

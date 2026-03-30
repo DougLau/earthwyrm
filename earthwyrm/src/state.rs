@@ -118,6 +118,7 @@ pub fn init(id: &str, groups: &'static [&'static str]) -> Result<()> {
     MAP_STATE.with(|rc| {
         let mut state = rc.borrow_mut();
         if state.is_some() {
+            // FIXME: allow multiple map panes?
             return Err(Error::Other("init: state exists!"));
         }
         let ms = MapState::new(map_pane);

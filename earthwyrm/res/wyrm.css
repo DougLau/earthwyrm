@@ -5,6 +5,7 @@
   margin: 0;
   padding: 0;
   background-color: #677;
+  touch-action: none;
 }
 .wyrm-tile {
   position: absolute;
@@ -15,16 +16,18 @@
   stroke-width: 0.5;
   stroke-linecap: round;
   stroke-linejoin: round;
+  pointer-events: none;
+}
+.wyrm-tile * {
+  pointer-events: painted;
 }
 .wyrm-county {
   fill: #677;
-  fill-opacity: 1.0;
   stroke-width: 0.2;
   stroke-dasharray: 1 2;
 }
 .wyrm-city {
   fill: #677;
-  fill-opacity: 1;
   stroke-width: 0.2;
 }
 .wyrm-water {

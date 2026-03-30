@@ -5,8 +5,8 @@ use web_sys::{Document, Element};
 
 /// Get document
 pub fn doc() -> Result<Document> {
-    let window = web_sys::window().ok_or(Error::WebSys("no window"))?;
-    let doc = window.document().ok_or(Error::WebSys("no document"))?;
+    let window = web_sys::window().ok_or(Error::Other("no window"))?;
+    let doc = window.document().ok_or(Error::Other("no document"))?;
     Ok(doc)
 }
 
@@ -14,6 +14,6 @@ pub fn doc() -> Result<Document> {
 pub fn lookup_id(id: &str) -> Result<Element> {
     let elem = doc()?
         .get_element_by_id(id)
-        .ok_or(Error::WebSys("elem not found"))?;
+        .ok_or(Error::Other("elem not found"))?;
     Ok(elem)
 }

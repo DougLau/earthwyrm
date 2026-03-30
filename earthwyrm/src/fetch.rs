@@ -59,13 +59,13 @@ impl Uri {
         let value = JsFuture::from(text)
             .await
             .map_err(|e| Error::FetchReq(format!("promise: {e:?}")))?;
-        value.as_string().ok_or(Error::WebSys("not String"))
+        value.as_string().ok_or(Error::Other("not String"))
     }
 }
 
 /// Perform a GET request
 async fn perform_get(uri: &Uri) -> Result<Response> {
-    let window = web_sys::window().ok_or(Error::WebSys("no window"))?;
+    let window = web_sys::window().ok_or(Error::Other("no window"))?;
     let req = Request::new_with_str(uri.as_str())
         .map_err(|e| Error::FetchReq(format!("request: {e:?}")))?;
     req.headers()
@@ -76,7 +76,7 @@ async fn perform_get(uri: &Uri) -> Result<Response> {
         .map_err(|e| Error::FetchReq(format!("fetch: {e:?}")))?;
     let resp = resp
         .dyn_into::<Response>()
-        .or(Err(Error::WebSys("dyn_into response")))?;
+        .or(Err(Error::Other("dyn_into response")))?;
     resp_status(resp.status())?;
     Ok(resp)
 }

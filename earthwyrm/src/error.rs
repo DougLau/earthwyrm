@@ -5,9 +5,9 @@
 /// EarthWyrm errors
 #[derive(Debug, thiserror::Error)]
 pub enum Error {
-    /// Web-sys error
-    #[error("web-sys: {0}")]
-    WebSys(&'static str),
+    /// Other error
+    #[error("err: {0}")]
+    Other(&'static str),
 
     /// Fetch request error
     #[error("Fetch req: {0}")]
@@ -32,10 +32,6 @@ pub enum Error {
     /// HTTP other error
     #[error("Status code {0}")]
     HttpOther(u16),
-
-    /// Other error
-    #[error("err: {0}")]
-    Other(&'static str),
 }
 
 /// EarthWyrm result

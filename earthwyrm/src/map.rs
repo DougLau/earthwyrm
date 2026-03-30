@@ -24,8 +24,14 @@ impl MapPane {
     ///
     /// - `id`: HTML `id` attribute of map element
     /// - `groups`: Layer group tile names
-    pub fn init(id: &str, groups: &'static [&'static str]) -> Result<()> {
-        crate::state::init(id, groups)
+    pub fn init(id: &str, groups: &'static [&'static str]) -> Option<Self> {
+        match crate::state::init(id, groups) {
+            Ok(_) => Some(MapPane::new(id, groups)),
+            Err(e) => {
+                log::warn!("MapPane::init: {e:?}");
+                None
+            }
+        }
     }
 
     /// Create new map on `id` element
@@ -100,10 +106,10 @@ impl MapPane {
     }
 
     /// Set style
-    pub fn set_style(&self, value: &str) -> Result<()> {
+    pub(crate) fn set_style(&self, value: &str) -> Result<()> {
         let elem = lookup_id(&self.id)?;
         elem.set_attribute("style", value)
-            .map_err(|_e| Error::WebSys("set_style"))?;
+            .map_err(|_e| Error::Other("set_style"))?;
         Ok(())
     }
 }

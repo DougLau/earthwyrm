@@ -4,7 +4,7 @@
 //
 #![forbid(unsafe_code)]
 
-pub mod error;
+mod error;
 mod fetch;
 mod map;
 mod state;

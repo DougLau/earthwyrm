@@ -1,6 +1,6 @@
 // Copyright (C) 2026  Minnesota Department of Transportation
 //
-use crate::error::Result;
+use crate::error::{Error, Result};
 use crate::map::MapPane;
 use crate::util::lookup_id;
 use std::cell::RefCell;
@@ -101,8 +101,10 @@ fn handle_map_pointerup(pe: PointerEvent) {
 fn handle_map_pointermove(pe: PointerEvent) {
     if let Some(map_pane) = panning_pane() {
         let (x, y) = translate(pe.client_x(), pe.client_y());
-        let _ =
-            map_pane.set_style(&format!("transform: translate({x}px, {y}px);"));
+        let transform = format!("transform: translate({x}px, {y}px);");
+        if let Err(e) = map_pane.set_style(&transform) {
+            log::warn!("set_style: {e:?}");
+        }
     }
 }
 
@@ -115,6 +117,9 @@ pub fn init(id: &str, groups: &'static [&'static str]) -> Result<()> {
     let map_pane = MapPane::new(id, groups);
     MAP_STATE.with(|rc| {
         let mut state = rc.borrow_mut();
+        if state.is_some() {
+            return Err(Error::Other("init: state exists!"));
+        }
         let ms = MapState::new(map_pane);
         mp.add_event_listener_with_callback(
             "pointerdown",
@@ -137,8 +142,8 @@ pub fn init(id: &str, groups: &'static [&'static str]) -> Result<()> {
         )
         .unwrap_throw();
         *state = Some(ms);
-    });
-    Ok(())
+        Ok(())
+    })
 }
 
 /// Set map pan point

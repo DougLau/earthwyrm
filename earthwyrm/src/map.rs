@@ -58,9 +58,7 @@ impl MapPane {
     pub fn center(self, zoom: u32, lon: f64, lat: f64) {
         let pos: WebMercatorPos = Wgs84Pos::new(lon, lat).into();
         match self.grid.zxy_peg(zoom, pos.x, pos.y) {
-            Some(peg) => {
-                spawn_local(self.do_center(peg, pos));
-            }
+            Some(peg) => spawn_local(self.do_center(peg, pos)),
             None => log::warn!("invalid Peg: {zoom} {lon} {lat}"),
         }
     }
@@ -70,7 +68,12 @@ impl MapPane {
         let Ok(elem) = lookup_id(&self.id) else {
             return;
         };
-        // FIXME: add fly animation?
+        // start fading out current tiles
+        if let Ok(style) = lookup_id("wyrm-anim-style") {
+            style.set_inner_html(
+                ".wyrm-tile { animation: wyrm-fade-out 0.5s forwards; }",
+            );
+        }
         let rect = elem.get_bounding_client_rect();
         let width = ((rect.width() / 256.0).floor() as u32) + 1;
         let height = ((rect.height() / 256.0).floor() as u32) + 1;
@@ -101,7 +104,12 @@ impl MapPane {
             }
         }
         elem.set_inner_html(&inner);
-        // FIXME: start fade animation to new tiles
+        // start fading in new tiles
+        if let Ok(style) = lookup_id("wyrm-anim-style") {
+            style.set_inner_html(
+                ".wyrm-tile { animation: wyrm-fade-in 0.25s forwards; }",
+            );
+        }
         // FIXME: remove unused tiles (garbage collect)
     }
 

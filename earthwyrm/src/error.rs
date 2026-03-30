@@ -1,4 +1,6 @@
 // Copyright (C) 2026  Douglas Lau
+//
+//! Error module
 
 /// EarthWyrm errors
 #[derive(Debug, thiserror::Error)]
@@ -36,5 +38,5 @@ pub enum Error {
     Other(&'static str),
 }
 
-/// Bulb result
+/// EarthWyrm result
 pub type Result<T> = std::result::Result<T, Error>;

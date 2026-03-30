@@ -2,10 +2,10 @@
 //
 use crate::error::{Error, Result};
 use crate::fetch::Uri;
+use crate::util::lookup_id;
 use squarepeg::{MapGrid, Peg, WebMercatorPos, Wgs84Pos};
-use web_sys::{Document, Element};
 
-/// Map widget
+/// Map pane
 #[derive(Clone)]
 pub struct Map {
     /// Map element ID
@@ -20,7 +20,7 @@ pub struct Map {
 
 impl Map {
     /// Create new map on `id` element
-    pub fn new(id: &str, groups: &'static [&'static str]) -> Self {
+    pub(crate) fn new(id: &str, groups: &'static [&'static str]) -> Self {
         Map {
             id: id.to_string(),
             grid: MapGrid::default(),
@@ -30,7 +30,7 @@ impl Map {
     }
 
     /// Advance to next cycle
-    pub fn next_cycle(&mut self) {
+    pub(crate) fn next_cycle(&mut self) {
         self.cycle += 1;
     }
 
@@ -89,21 +89,6 @@ impl Map {
             .map_err(|_e| Error::WebSys("set_style"))?;
         Ok(())
     }
-}
-
-/// Get document
-fn doc() -> Result<Document> {
-    let window = web_sys::window().ok_or(Error::WebSys("no window"))?;
-    let doc = window.document().ok_or(Error::WebSys("no document"))?;
-    Ok(doc)
-}
-
-/// Lookup an element by ID
-fn lookup_id(id: &str) -> Result<Element> {
-    let elem = doc()?
-        .get_element_by_id(id)
-        .ok_or(Error::WebSys("elem not found"))?;
-    Ok(elem)
 }
 
 /// Fetch one wyrm tile

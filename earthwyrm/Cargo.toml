@@ -28,6 +28,7 @@ features = [
   'Element',
   'Headers',
   'HtmlCollection',
+  'PointerEvent',
   'Request',
   'Response',
   'Window'

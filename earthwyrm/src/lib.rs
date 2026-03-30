@@ -10,5 +10,4 @@ mod map;
 mod state;
 mod util;
 
-pub use map::Map;
-pub use state::{init, map_pane};
+pub use map::MapPane;

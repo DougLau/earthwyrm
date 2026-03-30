@@ -8,7 +8,7 @@ use wasm_bindgen_futures::spawn_local;
 
 /// Map pane
 #[derive(Clone)]
-pub struct Map {
+pub struct MapPane {
     /// Map element ID
     id: String,
     /// Map grid
@@ -19,15 +19,28 @@ pub struct Map {
     cycle: u32,
 }
 
-impl Map {
+impl MapPane {
+    /// Initialize the map pane
+    ///
+    /// - `id`: HTML `id` attribute of map element
+    /// - `groups`: Layer group tile names
+    pub fn init(id: &str, groups: &'static [&'static str]) -> Result<()> {
+        crate::state::init(id, groups)
+    }
+
     /// Create new map on `id` element
     pub(crate) fn new(id: &str, groups: &'static [&'static str]) -> Self {
-        Map {
+        MapPane {
             id: id.to_string(),
             grid: MapGrid::default(),
             groups,
             cycle: 0,
         }
+    }
+
+    /// Get map pane
+    pub fn get() -> Option<MapPane> {
+        crate::state::map_pane()
     }
 
     /// Advance to next cycle
@@ -36,22 +49,54 @@ impl Map {
     }
 
     /// Center map at a given position
-    pub fn center(&self, zoom: u32, lon: f64, lat: f64) {
+    pub fn center(self, zoom: u32, lon: f64, lat: f64) {
         let pos: WebMercatorPos = Wgs84Pos::new(lon, lat).into();
         match self.grid.zxy_peg(zoom, pos.x, pos.y) {
             Some(peg) => {
-                spawn_local(do_center(
-                    self.id.to_string(),
-                    self.groups,
-                    self.cycle,
-                    peg,
-                    pos,
-                ));
+                spawn_local(self.do_center(peg, pos));
             }
-            None => {
-                log::warn!("invalid Peg: {zoom} {lon} {lat}");
+            None => log::warn!("invalid Peg: {zoom} {lon} {lat}"),
+        }
+    }
+
+    /// Center map at a given position
+    async fn do_center(self, peg: Peg, _pos: WebMercatorPos) {
+        let Ok(elem) = lookup_id(&self.id) else {
+            return;
+        };
+        // FIXME: add fly animation?
+        let rect = elem.get_bounding_client_rect();
+        let width = ((rect.width() / 256.0).floor() as u32) + 1;
+        let height = ((rect.height() / 256.0).floor() as u32) + 1;
+        if let Err(e) = elem.set_attribute("style", "") {
+            log::warn!("do_center: {e:?}");
+            return;
+        }
+        // FIXME: center lon/lat (pos)
+        let zoom = peg.z();
+        let mut inner = String::new();
+        for y in 0..=height {
+            let py = peg.y() + y;
+            for x in 0..=width {
+                let px = peg.x() + x;
+                if let Some(peg) = Peg::new(zoom, px, py) {
+                    for group in self.groups {
+                        match fetch_tile(
+                            group, peg, self.cycle, x as i32, y as i32,
+                        )
+                        .await
+                        {
+                            Ok(svg) => inner.push_str(&svg),
+                            Err(Error::HttpNotFound()) => (),
+                            Err(e) => log::warn!("fetch {peg:?} {e:?}"),
+                        }
+                    }
+                }
             }
         }
+        elem.set_inner_html(&inner);
+        // FIXME: start fade animation to new tiles
+        // FIXME: remove unused tiles (garbage collect)
     }
 
     /// Set style
@@ -61,50 +106,6 @@ impl Map {
             .map_err(|_e| Error::WebSys("set_style"))?;
         Ok(())
     }
-}
-
-/// Center map at a given position
-async fn do_center(
-    id: String,
-    groups: &'static [&'static str],
-    cycle: u32,
-    peg: Peg,
-    _pos: WebMercatorPos,
-) {
-    let Ok(elem) = lookup_id(&id) else {
-        return;
-    };
-    // FIXME: add fly animation?
-    let rect = elem.get_bounding_client_rect();
-    let width = ((rect.width() / 256.0).floor() as u32) + 1;
-    let height = ((rect.height() / 256.0).floor() as u32) + 1;
-    if let Err(e) = elem.set_attribute("style", "") {
-        log::warn!("do_center: {e:?}");
-        return;
-    }
-    // FIXME: center lon/lat (pos)
-    let zoom = peg.z();
-    let mut inner = String::new();
-    for y in 0..=height {
-        let py = peg.y() + y;
-        for x in 0..=width {
-            let px = peg.x() + x;
-            if let Some(peg) = Peg::new(zoom, px, py) {
-                for group in groups {
-                    match fetch_tile(group, peg, cycle, x as i32, y as i32)
-                        .await
-                    {
-                        Ok(svg) => inner.push_str(&svg),
-                        Err(Error::HttpNotFound()) => (),
-                        Err(e) => log::warn!("fetch {peg:?} {e:?}"),
-                    }
-                }
-            }
-        }
-    }
-    elem.set_inner_html(&inner);
-    // FIXME: start fade animation to new tiles
-    // FIXME: remove unused tiles (garbage collect)
 }
 
 /// Fetch one wyrm tile

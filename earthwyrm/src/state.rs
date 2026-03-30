@@ -1,7 +1,7 @@
 // Copyright (C) 2026  Minnesota Department of Transportation
 //
 use crate::error::Result;
-use crate::map::Map;
+use crate::map::MapPane;
 use crate::util::lookup_id;
 use std::cell::RefCell;
 use wasm_bindgen::JsCast;
@@ -12,7 +12,7 @@ use web_sys::{Element, PointerEvent};
 /// Global map state
 struct MapState {
     /// Map pane
-    map: Map,
+    map_pane: MapPane,
     /// Pointerdown callback
     pointerdown: Closure<dyn Fn(PointerEvent)>,
     /// Pointerup (and pointercancel) callback
@@ -33,9 +33,9 @@ thread_local! {
 
 impl MapState {
     /// Make a new map state
-    fn new(map: Map) -> Self {
+    fn new(map_pane: MapPane) -> Self {
         MapState {
-            map,
+            map_pane,
             pointerdown: Closure::new(handle_map_pointerdown),
             pointerup: Closure::new(handle_map_pointerup),
             pointermove: Closure::new(handle_map_pointermove),
@@ -70,7 +70,7 @@ impl MapState {
 
     /// Reset the map state
     fn reset(&mut self) {
-        self.map.next_cycle();
+        self.map_pane.next_cycle();
         self.pan_point = (0, 0);
         self.is_panning = false;
         self.point = (0, 0);
@@ -112,10 +112,10 @@ fn handle_map_pointermove(pe: PointerEvent) {
 /// - `groups`: Layer group tile names
 pub fn init(id: &str, groups: &'static [&'static str]) -> Result<()> {
     let mp = lookup_id(id)?;
-    let map = Map::new(id, groups);
+    let map_pane = MapPane::new(id, groups);
     MAP_STATE.with(|rc| {
         let mut state = rc.borrow_mut();
-        let ms = MapState::new(map);
+        let ms = MapState::new(map_pane);
         mp.add_event_listener_with_callback(
             "pointerdown",
             ms.pointerdown.as_ref().unchecked_ref(),
@@ -154,11 +154,11 @@ fn set_pan_point(start: bool, x: i32, y: i32) {
 }
 
 /// Get map pane if it's being panned
-fn panning_pane() -> Option<Map> {
+fn panning_pane() -> Option<MapPane> {
     MAP_STATE.with(|rc| {
         if let Some(ref state) = *rc.borrow() {
             if state.is_panning {
-                Some(state.map.clone())
+                Some(state.map_pane.clone())
             } else {
                 None
             }
@@ -181,11 +181,11 @@ fn translate(x: i32, y: i32) -> (i32, i32) {
 }
 
 /// Get map pane
-pub fn map_pane() -> Option<Map> {
+pub fn map_pane() -> Option<MapPane> {
     MAP_STATE.with(|rc| {
         if let Some(ref mut state) = *rc.borrow_mut() {
             state.reset();
-            Some(state.map.clone())
+            Some(state.map_pane.clone())
         } else {
             None
         }

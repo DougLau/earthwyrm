@@ -4,6 +4,7 @@ use crate::error::{Error, Result};
 use crate::fetch::Uri;
 use crate::util::lookup_id;
 use squarepeg::{MapGrid, Peg, WebMercatorPos, Wgs84Pos};
+use wasm_bindgen_futures::spawn_local;
 
 /// Map pane
 #[derive(Clone)]
@@ -34,52 +35,23 @@ impl Map {
         self.cycle += 1;
     }
 
-    /// Set map view
-    pub async fn set_view(&self, zoom: u32, lon: f64, lat: f64) -> Result<()> {
+    /// Center map at a given position
+    pub fn center(&self, zoom: u32, lon: f64, lat: f64) {
         let pos: WebMercatorPos = Wgs84Pos::new(lon, lat).into();
         match self.grid.zxy_peg(zoom, pos.x, pos.y) {
-            Some(peg) => self.do_set_view(peg, pos).await,
+            Some(peg) => {
+                spawn_local(do_center(
+                    self.id.to_string(),
+                    self.groups,
+                    self.cycle,
+                    peg,
+                    pos,
+                ));
+            }
             None => {
                 log::warn!("invalid Peg: {zoom} {lon} {lat}");
-                Ok(())
             }
         }
-    }
-
-    /// Set view
-    async fn do_set_view(&self, peg: Peg, _pos: WebMercatorPos) -> Result<()> {
-        let elem = lookup_id(&self.id)?;
-        let rect = elem.get_bounding_client_rect();
-        let width = ((rect.width() / 256.0).floor() as u32) + 1;
-        let height = ((rect.height() / 256.0).floor() as u32) + 1;
-        elem.set_attribute("style", "")
-            .map_err(|_e| Error::WebSys("set_style view"))?;
-        // FIXME: center lon/lat (pos)
-        let zoom = peg.z();
-        let mut inner = String::new();
-        for y in 0..=height {
-            let py = peg.y() + y;
-            for x in 0..=width {
-                let px = peg.x() + x;
-                if let Some(peg) = Peg::new(zoom, px, py) {
-                    for group in self.groups {
-                        match fetch_tile(
-                            group, peg, self.cycle, x as i32, y as i32,
-                        )
-                        .await
-                        {
-                            Ok(svg) => inner.push_str(&svg),
-                            Err(Error::HttpNotFound()) => (),
-                            Err(e) => log::warn!("fetch {peg:?} {e:?}"),
-                        }
-                    }
-                }
-            }
-        }
-        elem.set_inner_html(&inner);
-        // FIXME: start fade animation to new tiles
-        // FIXME: remove unused tiles (garbage collect)
-        Ok(())
     }
 
     /// Set style
@@ -89,6 +61,50 @@ impl Map {
             .map_err(|_e| Error::WebSys("set_style"))?;
         Ok(())
     }
+}
+
+/// Center map at a given position
+async fn do_center(
+    id: String,
+    groups: &'static [&'static str],
+    cycle: u32,
+    peg: Peg,
+    _pos: WebMercatorPos,
+) {
+    let Ok(elem) = lookup_id(&id) else {
+        return;
+    };
+    // FIXME: add fly animation?
+    let rect = elem.get_bounding_client_rect();
+    let width = ((rect.width() / 256.0).floor() as u32) + 1;
+    let height = ((rect.height() / 256.0).floor() as u32) + 1;
+    if let Err(e) = elem.set_attribute("style", "") {
+        log::warn!("do_center: {e:?}");
+        return;
+    }
+    // FIXME: center lon/lat (pos)
+    let zoom = peg.z();
+    let mut inner = String::new();
+    for y in 0..=height {
+        let py = peg.y() + y;
+        for x in 0..=width {
+            let px = peg.x() + x;
+            if let Some(peg) = Peg::new(zoom, px, py) {
+                for group in groups {
+                    match fetch_tile(group, peg, cycle, x as i32, y as i32)
+                        .await
+                    {
+                        Ok(svg) => inner.push_str(&svg),
+                        Err(Error::HttpNotFound()) => (),
+                        Err(e) => log::warn!("fetch {peg:?} {e:?}"),
+                    }
+                }
+            }
+        }
+    }
+    elem.set_inner_html(&inner);
+    // FIXME: start fade animation to new tiles
+    // FIXME: remove unused tiles (garbage collect)
 }
 
 /// Fetch one wyrm tile

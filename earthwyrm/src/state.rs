@@ -19,11 +19,11 @@ struct MapState {
     pointerup: Closure<dyn Fn(PointerEvent)>,
     /// Pointermove callback
     pointermove: Closure<dyn Fn(PointerEvent)>,
-    /// Pan point
-    pan_point: (i32, i32),
-    /// Is panning flag
-    is_panning: bool,
-    /// Most recent point
+    /// Origin point
+    origin: (i32, i32),
+    /// Pan "grab" point
+    pan_point: Option<(i32, i32)>,
+    /// Current pointer position (client units)
     point: (i32, i32),
 }
 
@@ -39,22 +39,9 @@ impl MapState {
             pointerdown: Closure::new(handle_map_pointerdown),
             pointerup: Closure::new(handle_map_pointerup),
             pointermove: Closure::new(handle_map_pointermove),
-            pan_point: (0, 0),
-            is_panning: false,
+            origin: (0, 0),
+            pan_point: None,
             point: (0, 0),
-        }
-    }
-
-    /// Start or stop panning
-    fn set_panning(&mut self, panning: bool) {
-        if panning != self.is_panning {
-            let (x, y) = self.point;
-            self.pan_point = if panning {
-                (self.pan_point.0 + x, self.pan_point.1 + y)
-            } else {
-                (self.pan_point.0 - x, self.pan_point.1 - y)
-            };
-            self.is_panning = panning;
         }
     }
 
@@ -63,17 +50,69 @@ impl MapState {
         self.point = (x, y);
     }
 
+    /// Start panning
+    fn start_panning(&mut self) {
+        if self.pan_point.is_none() {
+            self.pan_point = Some(self.point);
+        }
+    }
+
+    /// Stop panning
+    fn stop_panning(&mut self) {
+        if let Some(pan) = self.pan_point {
+            self.origin = (
+                self.origin.0 + self.point.0 - pan.0,
+                self.origin.1 + self.point.1 - pan.1,
+            );
+            self.pan_point = None;
+            self.set_style("");
+        }
+    }
+
     /// Get translated pointer position
-    fn point(&self) -> (i32, i32) {
-        (self.point.0 - self.pan_point.0, self.point.1 - self.pan_point.1)
+    fn translated_point(&self) -> (i32, i32) {
+        match self.pan_point {
+            Some(pan) => (
+                self.origin.0 + self.point.0 - pan.0,
+                self.origin.1 + self.point.1 - pan.1,
+            ),
+            None => self.origin,
+        }
     }
 
     /// Reset the map state
     fn reset(&mut self) {
         self.map_pane.next_cycle();
-        self.pan_point = (0, 0);
-        self.is_panning = false;
+        self.origin = (0, 0);
+        self.pan_point = None;
         self.point = (0, 0);
+    }
+
+    /// Drag (pan) map to a position
+    fn drag_map(&mut self, x: i32, y: i32) {
+        if self.pan_point.is_some() {
+            self.set_point(x, y);
+            self.set_style("grabbing");
+        }
+    }
+
+    /// Set map pane style
+    fn set_style(&self, cursor: &str) {
+        let (x, y) = self.translated_point();
+        let mut css = String::with_capacity(80);
+        css.push_str("transform: translate(");
+        css.push_str(&x.to_string());
+        css.push_str("px, ");
+        css.push_str(&y.to_string());
+        css.push_str("px);");
+        if !cursor.is_empty() {
+            css.push_str(" cursor: ");
+            css.push_str(cursor);
+            css.push(';');
+        }
+        if let Err(e) = self.map_pane.set_style(&css) {
+            log::warn!("set_style: {e:?}");
+        }
     }
 }
 
@@ -99,13 +138,12 @@ fn handle_map_pointerup(pe: PointerEvent) {
 
 /// Handle a `pointermove` event
 fn handle_map_pointermove(pe: PointerEvent) {
-    if let Some(map_pane) = panning_pane() {
-        let (x, y) = translate(pe.client_x(), pe.client_y());
-        let transform = format!("transform: translate({x}px, {y}px);");
-        if let Err(e) = map_pane.set_style(&transform) {
-            log::warn!("set_style: {e:?}");
+    MAP_STATE.with(|rc| {
+        if let Some(ref mut state) = *rc.borrow_mut() {
+            let (x, y) = (pe.client_x(), pe.client_y());
+            state.drag_map(x, y);
         }
-    }
+    });
 }
 
 /// Initialize map state
@@ -153,35 +191,19 @@ fn set_pan_point(start: bool, x: i32, y: i32) {
         if let Some(ref mut state) = *rc.borrow_mut() {
             if start {
                 state.set_point(x, y);
+                state.start_panning();
+            } else {
+                state.stop_panning();
             }
-            state.set_panning(start);
         }
     });
 }
 
-/// Get map pane if it's being panned
-fn panning_pane() -> Option<MapPane> {
-    MAP_STATE.with(|rc| {
-        if let Some(ref state) = *rc.borrow() {
-            if state.is_panning {
-                Some(state.map_pane.clone())
-            } else {
-                None
-            }
-        } else {
-            None
-        }
-    })
-}
-
-/// Translate map position
-fn translate(x: i32, y: i32) -> (i32, i32) {
+/// Reset map pane state
+pub fn reset() {
     MAP_STATE.with(|rc| {
         if let Some(ref mut state) = *rc.borrow_mut() {
-            state.set_point(x, y);
-            state.point()
-        } else {
-            (0, 0)
+            state.reset();
         }
     })
 }
@@ -190,7 +212,6 @@ fn translate(x: i32, y: i32) -> (i32, i32) {
 pub fn map_pane() -> Option<MapPane> {
     MAP_STATE.with(|rc| {
         if let Some(ref mut state) = *rc.borrow_mut() {
-            state.reset();
             Some(state.map_pane.clone())
         } else {
             None

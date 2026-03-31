@@ -44,8 +44,9 @@ impl MapPane {
         }
     }
 
-    /// Get map pane
+    /// Get map pane (and reset state)
     pub fn get() -> Option<MapPane> {
+        crate::state::reset();
         crate::state::map_pane()
     }
 
@@ -71,7 +72,7 @@ impl MapPane {
         // start fading out current tiles
         if let Ok(style) = lookup_id("wyrm-anim-style") {
             style.set_inner_html(
-                ".wyrm-tile { animation: wyrm-fade-out 0.5s forwards; }",
+                ".wyrm-tile { animation: wyrm-fade-out 0.25s forwards; }",
             );
         }
         let rect = elem.get_bounding_client_rect();

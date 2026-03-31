@@ -44,9 +44,8 @@ impl MapPane {
         }
     }
 
-    /// Get map pane (and reset state)
+    /// Get map pane
     pub fn get() -> Option<MapPane> {
-        crate::state::reset();
         crate::state::map_pane()
     }
 
@@ -65,7 +64,7 @@ impl MapPane {
     }
 
     /// Center map at a given position
-    async fn do_center(self, peg: Peg, _pos: WebMercatorPos) {
+    async fn do_center(self, peg: Peg, pos: WebMercatorPos) {
         let Ok(elem) = lookup_id(&self.id) else {
             return;
         };
@@ -74,22 +73,33 @@ impl MapPane {
             ".wyrm-tile { animation: wyrm-fade-out 0.25s forwards; }",
         );
         let rect = elem.get_bounding_client_rect();
-        let width = ((rect.width() / 256.0).floor() as u32) + 1;
-        let height = ((rect.height() / 256.0).floor() as u32) + 1;
-        // FIXME: center lon/lat (pos)
+        // "Center" position at (0.32, 0.5) of client bounds
+        let cx = (rect.width() * 0.32) as u32;
+        let cy = (rect.height() * 0.5) as u32;
+        // Offset from north-west corner of peg (0-255)
+        let off = (pos.x, pos.y) * self.grid.peg_transform(peg);
+        let ox = (off.x * 256.0) as u32;
+        let oy = (off.y * 256.0) as u32;
+        let px = peg.x().saturating_sub((128 + cx + ox) / 256);
+        let py = peg.y().saturating_sub((128 + cy + oy) / 256);
+        let p0 = Peg::new(peg.z(), px, py).unwrap_or(peg);
+        let width = 1 + rect.width() as u32 / 256;
+        let height = 1 + rect.height() as u32 / 256;
+        let px = p0.x().saturating_add(width);
+        let py = p0.y().saturating_add(height);
+        let p1 = Peg::new(peg.z(), px, py).unwrap_or(peg);
         let zoom = peg.z();
+        let ocx = ((peg.x() - p0.x()) * 256 + ox).saturating_sub(cx);
+        let ocy = ((peg.y() - p0.y()) * 256 + oy).saturating_sub(cy);
+        let origin = (-(ocx as i32), -(ocy as i32));
         let mut inner = String::new();
-        for y in 0..=height {
-            let py = peg.y() + y;
-            for x in 0..=width {
-                let px = peg.x() + x;
+        for py in p0.y()..=p1.y() {
+            let ty = (py - p0.y()) as i32;
+            for px in p0.x()..=p1.x() {
                 if let Some(peg) = Peg::new(zoom, px, py) {
+                    let tx = (px - p0.x()) as i32;
                     for group in self.groups {
-                        match fetch_tile(
-                            group, peg, self.cycle, x as i32, y as i32,
-                        )
-                        .await
-                        {
+                        match fetch_tile(group, peg, self.cycle, tx, ty).await {
                             Ok(svg) => inner.push_str(&svg),
                             Err(Error::HttpNotFound()) => (),
                             Err(e) => log::warn!("fetch {peg:?} {e:?}"),
@@ -98,8 +108,7 @@ impl MapPane {
                 }
             }
         }
-        // FIXME: use lon/lat
-        self.set_style("");
+        crate::state::reset(origin.0, origin.1);
         elem.set_inner_html(&inner);
         // start fading in new tiles
         self.set_anim(".wyrm-tile { animation: wyrm-fade-in 0.25s forwards; }");

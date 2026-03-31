@@ -81,11 +81,12 @@ impl MapState {
     }
 
     /// Reset the map state
-    fn reset(&mut self) {
+    fn reset(&mut self, x: i32, y: i32) {
         self.map_pane.next_cycle();
-        self.origin = (0, 0);
+        self.origin = (x, y);
         self.pan_point = None;
         self.point = (0, 0);
+        self.set_style("");
     }
 
     /// Drag (pan) map to a position
@@ -200,10 +201,10 @@ fn set_pan_point(start: bool, x: i32, y: i32) {
 }
 
 /// Reset map pane state
-pub fn reset() {
+pub fn reset(x: i32, y: i32) {
     MAP_STATE.with(|rc| {
         if let Some(ref mut state) = *rc.borrow_mut() {
-            state.reset();
+            state.reset(x, y);
         }
     })
 }

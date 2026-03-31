@@ -70,18 +70,12 @@ impl MapPane {
             return;
         };
         // start fading out current tiles
-        if let Ok(style) = lookup_id("wyrm-anim-style") {
-            style.set_inner_html(
-                ".wyrm-tile { animation: wyrm-fade-out 0.25s forwards; }",
-            );
-        }
+        self.set_anim(
+            ".wyrm-tile { animation: wyrm-fade-out 0.25s forwards; }",
+        );
         let rect = elem.get_bounding_client_rect();
         let width = ((rect.width() / 256.0).floor() as u32) + 1;
         let height = ((rect.height() / 256.0).floor() as u32) + 1;
-        if let Err(e) = elem.set_attribute("style", "") {
-            log::warn!("do_center: {e:?}");
-            return;
-        }
         // FIXME: center lon/lat (pos)
         let zoom = peg.z();
         let mut inner = String::new();
@@ -104,22 +98,31 @@ impl MapPane {
                 }
             }
         }
+        // FIXME: use lon/lat
+        self.set_style("");
         elem.set_inner_html(&inner);
         // start fading in new tiles
-        if let Ok(style) = lookup_id("wyrm-anim-style") {
-            style.set_inner_html(
-                ".wyrm-tile { animation: wyrm-fade-in 0.25s forwards; }",
-            );
-        }
-        // FIXME: remove unused tiles (garbage collect)
+        self.set_anim(".wyrm-tile { animation: wyrm-fade-in 0.25s forwards; }");
     }
 
     /// Set style
-    pub(crate) fn set_style(&self, value: &str) -> Result<()> {
-        let elem = lookup_id(&self.id)?;
-        elem.set_attribute("style", value)
-            .map_err(|_e| Error::Other("set_style"))?;
-        Ok(())
+    pub(crate) fn set_style(&self, value: &str) {
+        match lookup_id(&self.id) {
+            Ok(elem) => {
+                if let Err(e) = elem.set_attribute("style", value) {
+                    log::warn!("set_style: {e:?}");
+                }
+            }
+            Err(e) => log::warn!("set_style: {e:?}"),
+        }
+    }
+
+    /// Set wyrm animation style
+    fn set_anim(&self, css: &str) {
+        match lookup_id("wyrm-anim-style") {
+            Ok(style) => style.set_inner_html(css),
+            Err(e) => log::warn!("set_anim: {e:?}"),
+        }
     }
 }
 

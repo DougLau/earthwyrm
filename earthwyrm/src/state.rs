@@ -93,6 +93,8 @@ impl MapState {
         if self.pan_point.is_some() {
             self.set_point(x, y);
             self.set_style("grabbing");
+            // FIXME: load edge tiles if necessary
+            // FIXME: remove unused tiles (garbage collect)
         }
     }
 
@@ -110,9 +112,7 @@ impl MapState {
             css.push_str(cursor);
             css.push(';');
         }
-        if let Err(e) = self.map_pane.set_style(&css) {
-            log::warn!("set_style: {e:?}");
-        }
+        self.map_pane.set_style(&css);
     }
 }
 

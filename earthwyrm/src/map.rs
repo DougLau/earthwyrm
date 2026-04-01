@@ -80,11 +80,11 @@ impl MapPane {
         let off = (pos.x, pos.y) * self.grid.peg_transform(peg);
         let ox = (off.x * 256.0) as u32;
         let oy = (off.y * 256.0) as u32;
-        let px = peg.x().saturating_sub((128 + cx) / 256);
-        let py = peg.y().saturating_sub((128 + cy) / 256);
+        let px = peg.x().saturating_sub((256 + cx - ox) / 256);
+        let py = peg.y().saturating_sub((256 + cy - oy) / 256);
         let peg_nw = Peg::new(peg.z(), px, py).unwrap_or(peg);
-        let width = 1 + rect.width() as u32 / 256;
-        let height = 1 + rect.height() as u32 / 256;
+        let width = (256 + rect.width() as u32) / 256;
+        let height = (256 + rect.height() as u32) / 256;
         let px = peg_nw.x().saturating_add(width);
         let py = peg_nw.y().saturating_add(height);
         let peg_se = Peg::new(peg.z(), px, py).unwrap_or(peg);

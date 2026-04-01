@@ -51,7 +51,7 @@ impl PointTree {
             let mut g2 = g.g();
             let marker = format!("#{}-marker", layer_def.name());
             if let Some(name) = name {
-                g2.class(layer_def.class_name(&name));
+                g2.class(layer_def.class_name(Some(&name)));
             }
             enc.encode_points(&points, &marker, rotate, &mut g2);
         }

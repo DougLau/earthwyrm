@@ -49,7 +49,7 @@ impl PolygonTree {
                     } else if osm {
                         path.data_(tag, value);
                     } else {
-                        path.class(layer_def.class_name(value));
+                        path.class(layer_def.class_name(Some(value)));
                     }
                 }
                 path.d(String::from(enc)).close();

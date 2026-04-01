@@ -361,21 +361,26 @@ impl LayerDef {
     }
 
     /// Get class name for an item
-    pub fn class_name(&self, name: &str) -> String {
-        let mut cname = String::new();
+    pub fn class_name(&self, name: Option<&str>) -> String {
+        let mut cname = String::with_capacity(24);
+        if name.is_none() {
+            cname.push_str("wyrm-");
+        }
         for nm in self.name().split('_') {
             // skip numeric parts of layer name (`segment_10` => `segment`)
             if !nm.chars().all(char::is_numeric) {
-                if !cname.is_empty() {
+                if !cname.is_empty() && !cname.ends_with('-') {
                     cname.push('_');
                 }
                 cname.push_str(nm);
             }
         }
-        cname.push('-');
-        for ch in name.chars() {
-            if !ch.is_whitespace() && !ch.is_control() {
-                cname.push(ch);
+        if let Some(name) = name {
+            cname.push('-');
+            for ch in name.chars() {
+                if !ch.is_whitespace() && !ch.is_control() {
+                    cname.push(ch);
+                }
             }
         }
         cname

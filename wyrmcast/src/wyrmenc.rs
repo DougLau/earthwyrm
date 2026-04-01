@@ -66,7 +66,7 @@ impl LayerGroupDef {
             let layer = layer_tree.layer_def();
             if layer.check_zoom(zoom) {
                 let mut g = tree.root::<svg::G>();
-                g.class(layer.class_name("wyrm"));
+                g.class(layer.class_name(None));
                 if layer_tree.tree().query_wyrm(
                     layer,
                     self.osm(),

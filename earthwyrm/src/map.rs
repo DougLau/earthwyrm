@@ -5,7 +5,7 @@ use crate::fetch::Uri;
 use crate::util::lookup_id;
 use squarepeg::{MapGrid, Peg, WebMercatorPos, Wgs84Pos};
 use wasm_bindgen_futures::spawn_local;
-use web_sys::DomRect;
+use web_sys::{DomRect, Event};
 
 /// Map pane
 #[derive(Clone)]
@@ -25,8 +25,13 @@ impl MapPane {
     ///
     /// - `id`: HTML `id` attribute of map element
     /// - `groups`: Layer group tile names
-    pub fn init(id: &str, groups: &'static [&'static str]) -> Option<Self> {
-        match crate::state::init(id, groups) {
+    /// - `click_cb`: Click callback
+    pub fn init(
+        id: &str,
+        groups: &'static [&'static str],
+        click_cb: impl Fn(Event) + 'static,
+    ) -> Option<Self> {
+        match crate::state::init(id, groups, click_cb) {
             Ok(_) => Some(MapPane::new(id, groups)),
             Err(e) => {
                 log::warn!("MapPane::init: {e:?}");

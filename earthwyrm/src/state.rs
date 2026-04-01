@@ -7,18 +7,22 @@ use std::cell::RefCell;
 use wasm_bindgen::JsCast;
 use wasm_bindgen::closure::Closure;
 use wasm_bindgen::prelude::UnwrapThrowExt;
-use web_sys::{Element, PointerEvent};
+use web_sys::{Element, Event, PointerEvent};
 
 /// Global map state
 struct MapState {
     /// Map pane
     map_pane: MapPane,
-    /// Pointerdown callback
+    /// Pointerdown handler
     pointerdown: Closure<dyn Fn(PointerEvent)>,
-    /// Pointerup (and pointercancel) callback
+    /// Pointerup (and pointercancel) handler
     pointerup: Closure<dyn Fn(PointerEvent)>,
-    /// Pointermove callback
+    /// Pointermove handler
     pointermove: Closure<dyn Fn(PointerEvent)>,
+    /// Click handler
+    click: Closure<dyn Fn(Event)>,
+    /// Click callback
+    click_cb: Box<dyn Fn(Event)>,
     /// Origin point
     origin: (i32, i32),
     /// Pan "grab" point
@@ -33,12 +37,14 @@ thread_local! {
 
 impl MapState {
     /// Make a new map state
-    fn new(map_pane: MapPane) -> Self {
+    fn new(map_pane: MapPane, click_cb: impl Fn(Event) + 'static) -> Self {
         MapState {
             map_pane,
-            pointerdown: Closure::new(handle_map_pointerdown),
-            pointerup: Closure::new(handle_map_pointerup),
-            pointermove: Closure::new(handle_map_pointermove),
+            pointerdown: Closure::new(handle_pointerdown),
+            pointerup: Closure::new(handle_pointerup),
+            pointermove: Closure::new(handle_pointermove),
+            click: Closure::new(handle_click),
+            click_cb: Box::new(click_cb),
             origin: (0, 0),
             pan_point: None,
             point: (0, 0),
@@ -118,7 +124,7 @@ impl MapState {
 }
 
 /// Handle a `pointerdown` event
-fn handle_map_pointerdown(pe: PointerEvent) {
+fn handle_pointerdown(pe: PointerEvent) {
     if pe.button() == 0 {
         set_pan_point(true, pe.client_x(), pe.client_y());
         if let Some(target) = pe.target()
@@ -131,14 +137,14 @@ fn handle_map_pointerdown(pe: PointerEvent) {
 }
 
 /// Handle a `pointerup` or `pointercancel` event
-fn handle_map_pointerup(pe: PointerEvent) {
+fn handle_pointerup(pe: PointerEvent) {
     if pe.button() == 0 {
         set_pan_point(false, pe.client_x(), pe.client_y());
     }
 }
 
 /// Handle a `pointermove` event
-fn handle_map_pointermove(pe: PointerEvent) {
+fn handle_pointermove(pe: PointerEvent) {
     MAP_STATE.with(|rc| {
         if let Some(ref mut state) = *rc.borrow_mut() {
             let (x, y) = (pe.client_x(), pe.client_y());
@@ -147,11 +153,25 @@ fn handle_map_pointermove(pe: PointerEvent) {
     });
 }
 
+/// Handle a `click` event
+fn handle_click(e: Event) {
+    MAP_STATE.with(|rc| {
+        if let Some(ref state) = *rc.borrow() {
+            (state.click_cb)(e);
+        }
+    });
+}
+
 /// Initialize map state
 ///
 /// - `id`: HTML `id` attribute of map element
 /// - `groups`: Layer group tile names
-pub fn init(id: &str, groups: &'static [&'static str]) -> Result<()> {
+/// - `click_cb`: Click callback
+pub fn init(
+    id: &str,
+    groups: &'static [&'static str],
+    click_cb: impl Fn(Event) + 'static,
+) -> Result<()> {
     let mp = lookup_id(id)?;
     let map_pane = MapPane::new(id, groups);
     MAP_STATE.with(|rc| {
@@ -160,7 +180,7 @@ pub fn init(id: &str, groups: &'static [&'static str]) -> Result<()> {
             // FIXME: allow multiple map panes?
             return Err(Error::Other("init: state exists!"));
         }
-        let ms = MapState::new(map_pane);
+        let ms = MapState::new(map_pane, click_cb);
         mp.add_event_listener_with_callback(
             "pointerdown",
             ms.pointerdown.as_ref().unchecked_ref(),
@@ -179,6 +199,11 @@ pub fn init(id: &str, groups: &'static [&'static str]) -> Result<()> {
         mp.add_event_listener_with_callback(
             "pointermove",
             ms.pointermove.as_ref().unchecked_ref(),
+        )
+        .unwrap_throw();
+        mp.add_event_listener_with_callback(
+            "click",
+            ms.click.as_ref().unchecked_ref(),
         )
         .unwrap_throw();
         *state = Some(ms);

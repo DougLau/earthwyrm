@@ -80,24 +80,24 @@ impl MapPane {
         let off = (pos.x, pos.y) * self.grid.peg_transform(peg);
         let ox = (off.x * 256.0) as u32;
         let oy = (off.y * 256.0) as u32;
-        let px = peg.x().saturating_sub((128 + cx + ox) / 256);
-        let py = peg.y().saturating_sub((128 + cy + oy) / 256);
-        let p0 = Peg::new(peg.z(), px, py).unwrap_or(peg);
+        let px = peg.x().saturating_sub((128 + cx) / 256);
+        let py = peg.y().saturating_sub((128 + cy) / 256);
+        let peg_nw = Peg::new(peg.z(), px, py).unwrap_or(peg);
         let width = 1 + rect.width() as u32 / 256;
         let height = 1 + rect.height() as u32 / 256;
-        let px = p0.x().saturating_add(width);
-        let py = p0.y().saturating_add(height);
-        let p1 = Peg::new(peg.z(), px, py).unwrap_or(peg);
+        let px = peg_nw.x().saturating_add(width);
+        let py = peg_nw.y().saturating_add(height);
+        let peg_se = Peg::new(peg.z(), px, py).unwrap_or(peg);
         let zoom = peg.z();
-        let ocx = ((peg.x() - p0.x()) * 256 + ox).saturating_sub(cx);
-        let ocy = ((peg.y() - p0.y()) * 256 + oy).saturating_sub(cy);
+        let ocx = ((peg.x() - peg_nw.x()) * 256 + ox).saturating_sub(cx);
+        let ocy = ((peg.y() - peg_nw.y()) * 256 + oy).saturating_sub(cy);
         let origin = (-(ocx as i32), -(ocy as i32));
         let mut inner = String::new();
-        for py in p0.y()..=p1.y() {
-            let ty = (py - p0.y()) as i32;
-            for px in p0.x()..=p1.x() {
+        for py in peg_nw.y()..=peg_se.y() {
+            let ty = (py - peg_nw.y()) as i32;
+            for px in peg_nw.x()..=peg_se.x() {
                 if let Some(peg) = Peg::new(zoom, px, py) {
-                    let tx = (px - p0.x()) as i32;
+                    let tx = (px - peg_nw.x()) as i32;
                     for group in self.groups {
                         match fetch_tile(group, peg, self.cycle, tx, ty).await {
                             Ok(svg) => inner.push_str(&svg),

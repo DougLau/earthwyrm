@@ -23,6 +23,8 @@ struct MapState {
     click: Closure<dyn Fn(Event)>,
     /// Click callback
     click_cb: Box<dyn Fn(Event)>,
+    /// Flag to suppress click (while panning)
+    suppress_click: bool,
     /// Origin point
     origin: (i32, i32),
     /// Pan "grab" point
@@ -45,6 +47,7 @@ impl MapState {
             pointermove: Closure::new(handle_pointermove),
             click: Closure::new(handle_click),
             click_cb: Box::new(click_cb),
+            suppress_click: false,
             origin: (0, 0),
             pan_point: None,
             point: (0, 0),
@@ -149,6 +152,7 @@ fn handle_pointermove(pe: PointerEvent) {
         if let Some(ref mut state) = *rc.borrow_mut() {
             let (x, y) = (pe.client_x(), pe.client_y());
             state.drag_map(x, y);
+            state.suppress_click = true;
         }
     });
 }
@@ -156,7 +160,9 @@ fn handle_pointermove(pe: PointerEvent) {
 /// Handle a `click` event
 fn handle_click(e: Event) {
     MAP_STATE.with(|rc| {
-        if let Some(ref state) = *rc.borrow() {
+        if let Some(ref state) = *rc.borrow()
+            && !state.suppress_click
+        {
             (state.click_cb)(e);
         }
     });
@@ -216,6 +222,7 @@ fn set_pan_point(start: bool, x: i32, y: i32) {
     MAP_STATE.with(|rc| {
         if let Some(ref mut state) = *rc.borrow_mut() {
             if start {
+                state.suppress_click = false;
                 state.set_point(x, y);
                 state.start_panning();
             } else {

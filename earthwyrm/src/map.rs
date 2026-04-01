@@ -81,7 +81,7 @@ impl MapPane {
         let off = (pos.x, pos.y) * self.grid.peg_transform(peg);
         let ox = (off.x * 256.0) as u32;
         let oy = (off.y * 256.0) as u32;
-        let (peg_nw, peg_se) = peg_bounds(peg, &rect, cx - ox, cy - oy);
+        let (peg_nw, peg_se) = peg_bounds(&rect, peg, cx - ox, cy - oy);
         let zoom = peg.z();
         let ocx = ((peg.x() - peg_nw.x()) * 256 + ox).saturating_sub(cx);
         let ocy = ((peg.y() - peg_nw.y()) * 256 + oy).saturating_sub(cy);
@@ -130,7 +130,7 @@ impl MapPane {
 }
 
 /// Calculate bounds for a client rectangle
-fn peg_bounds(peg: Peg, rect: &DomRect, x: u32, y: u32) -> (Peg, Peg) {
+fn peg_bounds(rect: &DomRect, peg: Peg, x: u32, y: u32) -> (Peg, Peg) {
     let px = peg.x().saturating_sub((x + 256) / 256);
     let py = peg.y().saturating_sub((y + 256) / 256);
     let peg_nw = Peg::new(peg.z(), px, py).unwrap_or(peg);
@@ -147,8 +147,8 @@ async fn fetch_tile(
     group: &str,
     peg: Peg,
     cycle: u32,
-    xt: i32,
-    yt: i32,
+    tx: i32,
+    ty: i32,
 ) -> Result<String> {
     let mut uri = Uri::from("/");
     uri.push(group);
@@ -165,11 +165,11 @@ async fn fetch_tile(
     svg.push_str(" cycle-");
     svg.push_str(&cycle.to_string());
     svg.push('"');
-    if xt != 0 || yt != 0 {
+    if tx != 0 || ty != 0 {
         svg.push_str(" transform=\"translate(");
-        svg.push_str(&(xt * 256).to_string());
+        svg.push_str(&(tx * 256).to_string());
         svg.push(' ');
-        svg.push_str(&(yt * 256).to_string());
+        svg.push_str(&(ty * 256).to_string());
         svg.push_str(")\"");
     }
     svg.push('>');

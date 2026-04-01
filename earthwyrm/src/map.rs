@@ -5,6 +5,7 @@ use crate::fetch::Uri;
 use crate::util::lookup_id;
 use squarepeg::{MapGrid, Peg, WebMercatorPos, Wgs84Pos};
 use wasm_bindgen_futures::spawn_local;
+use web_sys::DomRect;
 
 /// Map pane
 #[derive(Clone)]
@@ -80,14 +81,7 @@ impl MapPane {
         let off = (pos.x, pos.y) * self.grid.peg_transform(peg);
         let ox = (off.x * 256.0) as u32;
         let oy = (off.y * 256.0) as u32;
-        let px = peg.x().saturating_sub((256 + cx - ox) / 256);
-        let py = peg.y().saturating_sub((256 + cy - oy) / 256);
-        let peg_nw = Peg::new(peg.z(), px, py).unwrap_or(peg);
-        let width = (256 + rect.width() as u32) / 256;
-        let height = (256 + rect.height() as u32) / 256;
-        let px = peg_nw.x().saturating_add(width);
-        let py = peg_nw.y().saturating_add(height);
-        let peg_se = Peg::new(peg.z(), px, py).unwrap_or(peg);
+        let (peg_nw, peg_se) = peg_bounds(peg, &rect, cx - ox, cy - oy);
         let zoom = peg.z();
         let ocx = ((peg.x() - peg_nw.x()) * 256 + ox).saturating_sub(cx);
         let ocy = ((peg.y() - peg_nw.y()) * 256 + oy).saturating_sub(cy);
@@ -133,6 +127,19 @@ impl MapPane {
             Err(e) => log::warn!("set_anim: {e:?}"),
         }
     }
+}
+
+/// Calculate bounds for a client rectangle
+fn peg_bounds(peg: Peg, rect: &DomRect, x: u32, y: u32) -> (Peg, Peg) {
+    let px = peg.x().saturating_sub((x + 256) / 256);
+    let py = peg.y().saturating_sub((y + 256) / 256);
+    let peg_nw = Peg::new(peg.z(), px, py).unwrap_or(peg);
+    let width = (rect.width() as u32 + 256) / 256;
+    let height = (rect.height() as u32 + 256) / 256;
+    let px = peg_nw.x().saturating_add(width);
+    let py = peg_nw.y().saturating_add(height);
+    let peg_se = Peg::new(peg.z(), px, py).unwrap_or(peg);
+    (peg_nw, peg_se)
 }
 
 /// Fetch one wyrm tile

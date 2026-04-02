@@ -55,6 +55,13 @@ impl MapPane {
         crate::state::map_pane()
     }
 
+    /// Lookup map pane element
+    fn elem(&self) -> Option<Element> {
+        lookup_id(&self.id)
+            .inspect_err(|e| log::warn!("{e:?}"))
+            .ok()
+    }
+
     /// Advance to next cycle
     pub(crate) fn next_cycle(&mut self) {
         self.cycle += 1;
@@ -62,15 +69,12 @@ impl MapPane {
 
     /// Center map at a given position
     pub fn center(self, zoom: u32, lon: f64, lat: f64) {
-        match lookup_id(&self.id) {
-            Ok(elem) => {
-                let pos: WebMercatorPos = Wgs84Pos::new(lon, lat).into();
-                match self.grid.zxy_peg(zoom, pos.x, pos.y) {
-                    Some(peg) => spawn_local(self.do_center(elem, peg, pos)),
-                    None => log::warn!("invalid Peg: {zoom} {lon} {lat}"),
-                }
+        if let Some(elem) = self.elem() {
+            let pos: WebMercatorPos = Wgs84Pos::new(lon, lat).into();
+            match self.grid.zxy_peg(zoom, pos.x, pos.y) {
+                Some(peg) => spawn_local(self.do_center(elem, peg, pos)),
+                None => log::warn!("invalid Peg: {zoom} {lon} {lat}"),
             }
-            Err(e) => log::warn!("center: {e:?}"),
         }
     }
 
@@ -109,7 +113,7 @@ impl MapPane {
                 }
             }
         }
-        crate::state::reset(origin.0, origin.1);
+        crate::state::reset(origin);
         elem.set_inner_html(&inner);
         // start fading in new tiles
         self.set_anim(".wyrm-tile { animation: wyrm-fade-in 0.25s forwards; }");
@@ -117,13 +121,10 @@ impl MapPane {
 
     /// Set style
     pub(crate) fn set_style(&self, value: &str) {
-        match lookup_id(&self.id) {
-            Ok(elem) => {
-                if let Err(e) = elem.set_attribute("style", value) {
-                    log::warn!("set_style: {e:?}");
-                }
-            }
-            Err(e) => log::warn!("set_style: {e:?}"),
+        if let Some(elem) = self.elem()
+            && let Err(e) = elem.set_attribute("style", value)
+        {
+            log::warn!("set_style: {e:?}");
         }
     }
 

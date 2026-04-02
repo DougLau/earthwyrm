@@ -5,7 +5,7 @@ use crate::fetch::Uri;
 use crate::util::lookup_id;
 use squarepeg::{MapGrid, Peg, WebMercatorPos, Wgs84Pos};
 use wasm_bindgen_futures::spawn_local;
-use web_sys::{DomRect, Event};
+use web_sys::{DomRect, Element, Event};
 
 /// Map pane
 #[derive(Clone)]
@@ -62,18 +62,20 @@ impl MapPane {
 
     /// Center map at a given position
     pub fn center(self, zoom: u32, lon: f64, lat: f64) {
-        let pos: WebMercatorPos = Wgs84Pos::new(lon, lat).into();
-        match self.grid.zxy_peg(zoom, pos.x, pos.y) {
-            Some(peg) => spawn_local(self.do_center(peg, pos)),
-            None => log::warn!("invalid Peg: {zoom} {lon} {lat}"),
+        match lookup_id(&self.id) {
+            Ok(elem) => {
+                let pos: WebMercatorPos = Wgs84Pos::new(lon, lat).into();
+                match self.grid.zxy_peg(zoom, pos.x, pos.y) {
+                    Some(peg) => spawn_local(self.do_center(elem, peg, pos)),
+                    None => log::warn!("invalid Peg: {zoom} {lon} {lat}"),
+                }
+            }
+            Err(e) => log::warn!("center: {e:?}"),
         }
     }
 
     /// Center map at a given position
-    async fn do_center(self, peg: Peg, pos: WebMercatorPos) {
-        let Ok(elem) = lookup_id(&self.id) else {
-            return;
-        };
+    async fn do_center(self, elem: Element, peg: Peg, pos: WebMercatorPos) {
         // start fading out current tiles
         self.set_anim(
             ".wyrm-tile { animation: wyrm-fade-out 0.25s forwards; }",
@@ -131,6 +133,24 @@ impl MapPane {
             Ok(style) => style.set_inner_html(css),
             Err(e) => log::warn!("set_anim: {e:?}"),
         }
+    }
+
+    /// Fetch tiles on an edge if necessary
+    pub(crate) fn fetch_edge_tiles(&self) {
+        if self.needs_more_tiles() {
+            spawn_local(self.clone().do_fetch_edge_tiles());
+        }
+    }
+
+    /// Check if more tiles need to be fetched
+    fn needs_more_tiles(&self) -> bool {
+        // FIXME
+        false
+    }
+
+    /// Fetch tiles on an edge if necessary
+    async fn do_fetch_edge_tiles(self) {
+        // FIXME: do the needful
     }
 }
 

@@ -55,8 +55,8 @@ impl MapState {
     }
 
     /// Set pointer position
-    fn set_point(&mut self, x: i32, y: i32) {
-        self.point = (x, y);
+    fn set_point(&mut self, point: (i32, i32)) {
+        self.point = point;
     }
 
     /// Start panning
@@ -99,12 +99,11 @@ impl MapState {
     }
 
     /// Drag (pan) map to a position
-    fn drag_map(&mut self, x: i32, y: i32) {
+    fn drag_map(&mut self, point: (i32, i32)) {
         if self.pan_point.is_some() {
-            self.set_point(x, y);
+            self.set_point(point);
             self.set_style("grabbing");
-            // FIXME: load edge tiles if necessary
-            // FIXME: remove unused tiles (garbage collect)
+            self.map_pane.fetch_edge_tiles();
         }
     }
 
@@ -129,7 +128,8 @@ impl MapState {
 /// Handle a `pointerdown` event
 fn handle_pointerdown(pe: PointerEvent) {
     if pe.button() == 0 {
-        set_pan_point(true, pe.client_x(), pe.client_y());
+        let point = (pe.client_x(), pe.client_y());
+        set_pan_point(true, point);
         if let Some(target) = pe.target()
             && let Ok(elem) = target.dyn_into::<Element>()
             && let Err(e) = elem.set_pointer_capture(0)
@@ -142,7 +142,8 @@ fn handle_pointerdown(pe: PointerEvent) {
 /// Handle a `pointerup` or `pointercancel` event
 fn handle_pointerup(pe: PointerEvent) {
     if pe.button() == 0 {
-        set_pan_point(false, pe.client_x(), pe.client_y());
+        let point = (pe.client_x(), pe.client_y());
+        set_pan_point(false, point);
     }
 }
 
@@ -150,8 +151,8 @@ fn handle_pointerup(pe: PointerEvent) {
 fn handle_pointermove(pe: PointerEvent) {
     MAP_STATE.with(|rc| {
         if let Some(ref mut state) = *rc.borrow_mut() {
-            let (x, y) = (pe.client_x(), pe.client_y());
-            state.drag_map(x, y);
+            let point = (pe.client_x(), pe.client_y());
+            state.drag_map(point);
             state.suppress_click = true;
         }
     });
@@ -218,15 +219,16 @@ pub fn init(
 }
 
 /// Set map pan point
-fn set_pan_point(start: bool, x: i32, y: i32) {
+fn set_pan_point(start: bool, point: (i32, i32)) {
     MAP_STATE.with(|rc| {
         if let Some(ref mut state) = *rc.borrow_mut() {
             if start {
                 state.suppress_click = false;
-                state.set_point(x, y);
+                state.set_point(point);
                 state.start_panning();
             } else {
                 state.stop_panning();
+                // FIXME: remove unused tiles (garbage collect)
             }
         }
     });

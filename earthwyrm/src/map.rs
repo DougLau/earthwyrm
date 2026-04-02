@@ -31,13 +31,9 @@ impl MapPane {
         groups: &'static [&'static str],
         click_cb: impl Fn(Event) + 'static,
     ) -> Option<Self> {
-        match crate::state::init(id, groups, click_cb) {
-            Ok(_) => Some(MapPane::new(id, groups)),
-            Err(e) => {
-                log::warn!("MapPane::init: {e:?}");
-                None
-            }
-        }
+        crate::state::init(id, groups, click_cb)
+            .inspect_err(|e| log::warn!("MapPane::init: {e:?}"))
+            .ok()
     }
 
     /// Create new map on `id` element

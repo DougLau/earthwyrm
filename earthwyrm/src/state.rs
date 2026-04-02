@@ -178,7 +178,7 @@ pub fn init(
     id: &str,
     groups: &'static [&'static str],
     click_cb: impl Fn(Event) + 'static,
-) -> Result<()> {
+) -> Result<MapPane> {
     let mp = lookup_id(id)?;
     let map_pane = MapPane::new(id, groups);
     MAP_STATE.with(|rc| {
@@ -187,7 +187,7 @@ pub fn init(
             // FIXME: allow multiple map panes?
             return Err(Error::Other("init: state exists!"));
         }
-        let ms = MapState::new(map_pane, click_cb);
+        let ms = MapState::new(map_pane.clone(), click_cb);
         mp.add_event_listener_with_callback(
             "pointerdown",
             ms.pointerdown.as_ref().unchecked_ref(),
@@ -214,7 +214,7 @@ pub fn init(
         )
         .unwrap_throw();
         *state = Some(ms);
-        Ok(())
+        Ok(map_pane)
     })
 }
 

@@ -3,6 +3,7 @@
 use crate::error::{Error, Result};
 use crate::map::MapPane;
 use crate::util::lookup_id;
+use squarepeg::Peg;
 use std::cell::RefCell;
 use wasm_bindgen::JsCast;
 use wasm_bindgen::closure::Closure;
@@ -31,6 +32,10 @@ struct MapState {
     pan_point: Option<(i32, i32)>,
     /// Current pointer position (client units)
     point: (i32, i32),
+    /// North-west peg
+    nw: Option<Peg>,
+    /// South-east peg
+    se: Option<Peg>,
 }
 
 thread_local! {
@@ -51,6 +56,8 @@ impl MapState {
             origin: (0, 0),
             pan_point: None,
             point: (0, 0),
+            nw: None,
+            se: None,
         }
     }
 
@@ -235,21 +242,29 @@ fn set_pan_point(start: bool, point: (i32, i32)) {
 }
 
 /// Reset map pane state
-pub fn reset(origin: (i32, i32)) {
+pub fn reset(origin: (i32, i32), nw: Peg, se: Peg) {
     MAP_STATE.with(|rc| {
         if let Some(ref mut state) = *rc.borrow_mut() {
             state.reset(origin);
+            state.nw = Some(nw);
+            state.se = Some(se);
         }
     })
 }
 
 /// Get map pane
 pub fn map_pane() -> Option<MapPane> {
+    MAP_STATE
+        .with(|rc| (*rc.borrow()).as_ref().map(|state| state.map_pane.clone()))
+}
+
+/// Get current zoom level
+pub fn zoom() -> u32 {
     MAP_STATE.with(|rc| {
-        if let Some(ref mut state) = *rc.borrow_mut() {
-            Some(state.map_pane.clone())
+        if let Some(ref state) = *rc.borrow() {
+            state.nw.map(|peg| peg.z()).unwrap_or(0)
         } else {
-            None
+            0
         }
     })
 }

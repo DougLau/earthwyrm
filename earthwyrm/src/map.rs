@@ -109,7 +109,7 @@ impl MapPane {
                 }
             }
         }
-        crate::state::reset(origin);
+        crate::state::reset(origin, peg_nw, peg_se);
         elem.set_inner_html(&inner);
         // start fading in new tiles
         self.set_anim(".wyrm-tile { animation: wyrm-fade-in 0.25s forwards; }");
@@ -148,6 +148,11 @@ impl MapPane {
     /// Fetch tiles on an edge if necessary
     async fn do_fetch_edge_tiles(self) {
         // FIXME: do the needful
+    }
+
+    /// Get zoom level
+    pub fn zoom(&self) -> u32 {
+        crate::state::zoom()
     }
 }
 

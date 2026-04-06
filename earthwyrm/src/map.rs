@@ -200,13 +200,12 @@ impl TileFetcher {
     /// Fetch the next tile
     async fn next_tile(&mut self) -> Option<String> {
         let zoom = self.peg_nw.z();
-        while let Some(peg) = Peg::new(zoom, self.px, self.py) {
+        while !self.done() {
+            let peg = Peg::new(zoom, self.px, self.py)?;
             let tx = (self.px - self.peg_nw.x()) as i32;
             let ty = (self.py - self.peg_nw.y()) as i32;
             let group = self.groups[self.gr];
-            if self.advance() {
-                break;
-            }
+            self.advance();
             match fetch_tile(group, peg, self.cycle, tx, ty).await {
                 Ok(svg) => return Some(svg),
                 Err(Error::HttpNotFound()) => (),
@@ -217,7 +216,7 @@ impl TileFetcher {
     }
 
     /// Advance to the next tile
-    fn advance(&mut self) -> bool {
+    fn advance(&mut self) {
         self.gr += 1;
         if self.gr >= self.groups.len() {
             self.gr = 0;
@@ -227,6 +226,10 @@ impl TileFetcher {
                 self.py += 1;
             }
         }
+    }
+
+    /// Check if done fetching
+    fn done(&self) -> bool {
         self.py > self.peg_se.y()
     }
 }

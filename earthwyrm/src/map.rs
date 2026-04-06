@@ -20,6 +20,24 @@ pub struct MapPane {
     cycle: u32,
 }
 
+/// Tile fetcher
+struct TileFetcher {
+    /// Peg at northwest corner
+    peg_nw: Peg,
+    /// Peg at southeast corner
+    peg_se: Peg,
+    /// Layer groups to fetch
+    groups: &'static [&'static str],
+    /// Cycle number
+    cycle: u32,
+    /// Current peg X
+    px: u32,
+    /// Current peg Y
+    py: u32,
+    /// Current group index
+    gr: usize,
+}
+
 impl MapPane {
     /// Initialize the map pane
     ///
@@ -89,25 +107,14 @@ impl MapPane {
         let ox = (off.x * 256.0) as u32;
         let oy = (off.y * 256.0) as u32;
         let (peg_nw, peg_se) = peg_bounds(&rect, peg, cx - ox, cy - oy);
-        let zoom = peg.z();
         let ocx = ((peg.x() - peg_nw.x()) * 256 + ox).saturating_sub(cx);
         let ocy = ((peg.y() - peg_nw.y()) * 256 + oy).saturating_sub(cy);
         let origin = (-(ocx as i32), -(ocy as i32));
-        let mut inner = String::new();
-        for py in peg_nw.y()..=peg_se.y() {
-            let ty = (py - peg_nw.y()) as i32;
-            for px in peg_nw.x()..=peg_se.x() {
-                if let Some(peg) = Peg::new(zoom, px, py) {
-                    let tx = (px - peg_nw.x()) as i32;
-                    for group in self.groups {
-                        match fetch_tile(group, peg, self.cycle, tx, ty).await {
-                            Ok(svg) => inner.push_str(&svg),
-                            Err(Error::HttpNotFound()) => (),
-                            Err(e) => log::warn!("fetch {peg:?} {e:?}"),
-                        }
-                    }
-                }
-            }
+        let mut fetcher =
+            TileFetcher::new(peg_nw, peg_se, self.groups, self.cycle);
+        let mut inner = String::with_capacity(1024);
+        while let Some(tile) = fetcher.next_tile().await {
+            inner.push_str(&tile);
         }
         crate::state::reset(origin, peg_nw, peg_se);
         elem.set_inner_html(&inner);
@@ -167,6 +174,61 @@ fn peg_bounds(rect: &DomRect, peg: Peg, x: u32, y: u32) -> (Peg, Peg) {
     let py = peg_nw.y().saturating_add(height);
     let peg_se = Peg::new(peg.z(), px, py).unwrap_or(peg);
     (peg_nw, peg_se)
+}
+
+impl TileFetcher {
+    /// Make tile fetcher
+    fn new(
+        peg_nw: Peg,
+        peg_se: Peg,
+        groups: &'static [&'static str],
+        cycle: u32,
+    ) -> Self {
+        let px = peg_nw.x();
+        let py = peg_nw.y();
+        TileFetcher {
+            peg_nw,
+            peg_se,
+            groups,
+            cycle,
+            px,
+            py,
+            gr: 0,
+        }
+    }
+
+    /// Fetch the next tile
+    async fn next_tile(&mut self) -> Option<String> {
+        let zoom = self.peg_nw.z();
+        while let Some(peg) = Peg::new(zoom, self.px, self.py) {
+            let tx = (self.px - self.peg_nw.x()) as i32;
+            let ty = (self.py - self.peg_nw.y()) as i32;
+            let group = self.groups[self.gr];
+            if self.advance() {
+                break;
+            }
+            match fetch_tile(group, peg, self.cycle, tx, ty).await {
+                Ok(svg) => return Some(svg),
+                Err(Error::HttpNotFound()) => (),
+                Err(e) => log::warn!("fetch {peg:?} {e:?}"),
+            }
+        }
+        None
+    }
+
+    /// Advance to the next tile
+    fn advance(&mut self) -> bool {
+        self.gr += 1;
+        if self.gr >= self.groups.len() {
+            self.gr = 0;
+            self.px += 1;
+            if self.px > self.peg_se.x() {
+                self.px = self.peg_nw.x();
+                self.py += 1;
+            }
+        }
+        self.py > self.peg_se.y()
+    }
 }
 
 /// Fetch one wyrm tile

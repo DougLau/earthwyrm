@@ -106,7 +106,8 @@ impl MapPane {
         let off = (pos.x, pos.y) * self.grid.peg_transform(peg);
         let ox = (off.x * 256.0) as u32;
         let oy = (off.y * 256.0) as u32;
-        let (peg_nw, peg_se) = peg_bounds(&rect, peg, cx - ox, cy - oy);
+        let peg_nw = peg_nw(peg, cx - ox, cy - oy);
+        let peg_se = peg_se(peg, &rect);
         let ocx = ((peg.x() - peg_nw.x()) * 256 + ox).saturating_sub(cx);
         let ocy = ((peg.y() - peg_nw.y()) * 256 + oy).saturating_sub(cy);
         let origin = (-(ocx as i32), -(ocy as i32));
@@ -163,17 +164,20 @@ impl MapPane {
     }
 }
 
-/// Calculate bounds for a client rectangle
-fn peg_bounds(rect: &DomRect, peg: Peg, x: u32, y: u32) -> (Peg, Peg) {
-    let px = peg.x().saturating_sub((x + 256) / 256);
-    let py = peg.y().saturating_sub((y + 256) / 256);
-    let peg_nw = Peg::new(peg.z(), px, py).unwrap_or(peg);
+/// Calculate Northwest peg
+fn peg_nw(peg: Peg, ox: u32, oy: u32) -> Peg {
+    let px = peg.x().saturating_sub((ox + 256) / 256);
+    let py = peg.y().saturating_sub((oy + 256) / 256);
+    Peg::new(peg.z(), px, py).unwrap_or(peg)
+}
+
+/// Calculate Southeast peg
+fn peg_se(peg: Peg, rect: &DomRect) -> Peg {
     let width = (rect.width() as u32 + 256) / 256;
     let height = (rect.height() as u32 + 256) / 256;
-    let px = peg_nw.x().saturating_add(width);
-    let py = peg_nw.y().saturating_add(height);
-    let peg_se = Peg::new(peg.z(), px, py).unwrap_or(peg);
-    (peg_nw, peg_se)
+    let px = peg.x().saturating_add(width);
+    let py = peg.y().saturating_add(height);
+    Peg::new(peg.z(), px, py).unwrap_or(peg)
 }
 
 impl TileFetcher {

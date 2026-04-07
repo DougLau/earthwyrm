@@ -34,8 +34,6 @@ struct MapState {
     point: (i32, i32),
     /// North-west peg
     nw: Option<Peg>,
-    /// South-east peg
-    se: Option<Peg>,
 }
 
 thread_local! {
@@ -57,7 +55,6 @@ impl MapState {
             pan_point: None,
             point: (0, 0),
             nw: None,
-            se: None,
         }
     }
 
@@ -242,12 +239,11 @@ fn set_pan_point(start: bool, point: (i32, i32)) {
 }
 
 /// Reset map pane state
-pub fn reset(origin: (i32, i32), nw: Peg, se: Peg) {
+pub fn reset(origin: (i32, i32), nw: Peg) {
     MAP_STATE.with(|rc| {
         if let Some(ref mut state) = *rc.borrow_mut() {
             state.reset(origin);
             state.nw = Some(nw);
-            state.se = Some(se);
         }
     })
 }

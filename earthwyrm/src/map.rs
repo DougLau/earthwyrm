@@ -116,7 +116,7 @@ impl MapPane {
         while let Some(tile) = fetcher.next_tile().await {
             inner.push_str(&tile);
         }
-        crate::state::reset(origin, peg_nw, peg_se);
+        crate::state::reset(origin, peg_nw);
         elem.set_inner_html(&inner);
         // start fading in new tiles
         self.set_anim(".wyrm-tile { animation: wyrm-fade-in 0.25s forwards; }");

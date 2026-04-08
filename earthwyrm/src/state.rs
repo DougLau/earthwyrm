@@ -150,12 +150,13 @@ impl MapState {
                 let my = bbox.y_max() - y * height;
                 let pos = WebMercatorPos::new(mx, my);
                 let loc = Wgs84Pos::from(pos);
+                let (rx, ry) = map_pane.client_pos(rx, ry);
                 map_pane.position(
                     zoom,
                     loc.lon_deg(),
                     loc.lat_deg(),
-                    0.0,
-                    0.0,
+                    rx,
+                    ry,
                 );
             }
         }

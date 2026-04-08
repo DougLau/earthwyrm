@@ -86,6 +86,18 @@ impl MapPane {
         self.cycle += 1;
     }
 
+    /// Get client position in rectangle
+    pub(crate) fn client_pos(&self, rx: i32, ry: i32) -> (f64, f64) {
+        if let Some(elem) = self.elem() {
+            let rect = elem.get_bounding_client_rect();
+            let cx = rx as f64 / rect.width();
+            let cy = ry as f64 / rect.height();
+            (cx, cy)
+        } else {
+            (0.0, 0.0)
+        }
+    }
+
     /// Position map with given zoom and lon/lat
     pub fn position(self, zoom: u32, lon: f64, lat: f64, rx: f64, ry: f64) {
         if let Some(elem) = self.elem() {

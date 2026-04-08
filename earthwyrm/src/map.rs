@@ -81,32 +81,41 @@ impl MapPane {
         self.cycle += 1;
     }
 
-    /// Center map at a given position
-    pub fn center(self, zoom: u32, lon: f64, lat: f64) {
+    /// Position map with given zoom and lon/lat
+    pub fn position(self, zoom: u32, lon: f64, lat: f64, rx: f64, ry: f64) {
         if let Some(elem) = self.elem() {
             let pos: WebMercatorPos = Wgs84Pos::new(lon, lat).into();
             match self.grid.zxy_peg(zoom, pos.x, pos.y) {
-                Some(peg) => spawn_local(self.do_center(elem, peg, pos)),
+                Some(peg) => {
+                    spawn_local(self.do_position(elem, peg, pos, rx, ry))
+                }
                 None => log::warn!("invalid Peg: {zoom} {lon} {lat}"),
             }
         }
     }
 
-    /// Center map at a given position
-    async fn do_center(self, elem: Element, peg: Peg, pos: WebMercatorPos) {
+    /// Position map with given peg and lon/lat
+    async fn do_position(
+        self,
+        elem: Element,
+        peg: Peg,
+        pos: WebMercatorPos,
+        rx: f64,
+        ry: f64,
+    ) {
         // start fading out current tiles
         self.set_anim(
             ".wyrm-tile { animation: wyrm-fade-out 0.25s forwards; }",
         );
         let rect = elem.get_bounding_client_rect();
-        // "Center" position at (0.32, 0.5) of client bounds
-        let cx = (rect.width() * 0.32) as u32;
-        let cy = (rect.height() * 0.5) as u32;
+        // "Client" position within rectangle
+        let cx = (rect.width() * rx) as u32;
+        let cy = (rect.height() * ry) as u32;
         // Offset from north-west corner of peg (0-255)
         let off = (pos.x, pos.y) * self.grid.peg_transform(peg);
         let ox = (off.x * 256.0) as u32;
         let oy = (off.y * 256.0) as u32;
-        let peg_nw = peg_nw(peg, cx - ox, cy - oy);
+        let peg_nw = peg_nw(peg, cx.saturating_sub(ox), cy.saturating_sub(oy));
         let peg_se = peg_se(peg, &rect);
         let ocx = ((peg.x() - peg_nw.x()) * 256 + ox).saturating_sub(cx);
         let ocy = ((peg.y() - peg_nw.y()) * 256 + oy).saturating_sub(cy);

@@ -31,5 +31,6 @@ features = [
   'PointerEvent',
   'Request',
   'Response',
+  'WheelEvent',
   'Window'
 ]

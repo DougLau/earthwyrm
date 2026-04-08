@@ -64,6 +64,11 @@ impl MapPane {
         }
     }
 
+    /// Get map grid
+    pub(crate) fn grid(&self) -> &MapGrid {
+        &self.grid
+    }
+
     /// Get map pane
     pub fn get() -> Option<MapPane> {
         crate::state::map_pane()

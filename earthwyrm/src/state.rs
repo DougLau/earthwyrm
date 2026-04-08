@@ -3,12 +3,12 @@
 use crate::error::{Error, Result};
 use crate::map::MapPane;
 use crate::util::lookup_id;
-use squarepeg::Peg;
+use squarepeg::{Peg, WebMercatorPos, Wgs84Pos};
 use std::cell::RefCell;
 use wasm_bindgen::JsCast;
 use wasm_bindgen::closure::Closure;
 use wasm_bindgen::prelude::UnwrapThrowExt;
-use web_sys::{Element, Event, PointerEvent};
+use web_sys::{Element, Event, PointerEvent, WheelEvent};
 
 /// Global map state
 struct MapState {
@@ -20,13 +20,15 @@ struct MapState {
     pointerup: Closure<dyn Fn(PointerEvent)>,
     /// Pointermove handler
     pointermove: Closure<dyn Fn(PointerEvent)>,
+    /// Wheel handler
+    wheel: Closure<dyn Fn(WheelEvent)>,
     /// Click handler
     click: Closure<dyn Fn(Event)>,
     /// Click callback
     click_cb: Box<dyn Fn(Event)>,
     /// Flag to suppress click (while panning)
     suppress_click: bool,
-    /// Origin point
+    /// Origin point (relative to upper-left corner of map pane)
     origin: (i32, i32),
     /// Pan "grab" point
     pan_point: Option<(i32, i32)>,
@@ -48,6 +50,7 @@ impl MapState {
             pointerdown: Closure::new(handle_pointerdown),
             pointerup: Closure::new(handle_pointerup),
             pointermove: Closure::new(handle_pointermove),
+            wheel: Closure::new(handle_wheel),
             click: Closure::new(handle_click),
             click_cb: Box::new(click_cb),
             suppress_click: false,
@@ -127,6 +130,36 @@ impl MapState {
         }
         self.map_pane.set_style(&css);
     }
+
+    /// Change zoom level
+    fn change_zoom(&self, zoom: i32, rx: i32, ry: i32) {
+        if let Some(nw) = self.nw {
+            let zoom = zoom as u32;
+            let point = (rx - self.origin.0, ry - self.origin.1);
+            let px = nw.x().saturating_add((point.0 / 255) as u32);
+            let py = nw.y().saturating_add((point.1 / 256) as u32);
+            if let Some(peg) = Peg::new(nw.z(), px, py) {
+                let x = (point.0 % 256) as f64 / 256.0;
+                let y = (point.1 % 256) as f64 / 256.0;
+                let map_pane = self.map_pane.clone();
+                let bbox = map_pane.grid().peg_bbox(peg);
+                let width = bbox.x_span();
+                let height = bbox.y_span();
+                // dimensions in WebMercator
+                let mx = bbox.x_min() + x * width;
+                let my = bbox.y_max() - y * height;
+                let pos = WebMercatorPos::new(mx, my);
+                let loc = Wgs84Pos::from(pos);
+                map_pane.position(
+                    zoom,
+                    loc.lon_deg(),
+                    loc.lat_deg(),
+                    0.0,
+                    0.0,
+                );
+            }
+        }
+    }
 }
 
 /// Handle a `pointerdown` event
@@ -160,6 +193,27 @@ fn handle_pointermove(pe: PointerEvent) {
             state.suppress_click = true;
         }
     });
+}
+
+/// Handle a `wheel` event
+fn handle_wheel(we: WheelEvent) {
+    let delta_zoom: i32 = if we.delta_y() < 0.0 {
+        1
+    } else if we.delta_y() > 0.0 {
+        -1
+    } else {
+        0
+    };
+    if delta_zoom != 0 {
+        MAP_STATE.with(|rc| {
+            if let Some(ref mut state) = *rc.borrow_mut() {
+                let zoom = state.nw.map(|peg| peg.z() as i32 + delta_zoom).unwrap_or(0);
+                if zoom > 0 {
+                    state.change_zoom(zoom, we.client_x(), we.client_y());
+                }
+            }
+        });
+    }
 }
 
 /// Handle a `click` event
@@ -210,6 +264,11 @@ pub fn init(
         mp.add_event_listener_with_callback(
             "pointermove",
             ms.pointermove.as_ref().unchecked_ref(),
+        )
+        .unwrap_throw();
+        mp.add_event_listener_with_callback(
+            "wheel",
+            ms.wheel.as_ref().unchecked_ref(),
         )
         .unwrap_throw();
         mp.add_event_listener_with_callback(

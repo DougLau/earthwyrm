@@ -24,7 +24,8 @@ impl CasterDef {
     ) -> Result<Option<String>> {
         for group in self.groups() {
             if group_name == group.name() {
-                return group.write_wyrm(self.tile_cfg(peg, 8));
+                // Margin 28 needed for point markers on tile edge
+                return group.write_wyrm(self.tile_cfg(peg, 28));
             }
         }
         Err(anyhow!("Unknown group name: {group_name}"))

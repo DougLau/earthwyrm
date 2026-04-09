@@ -26,6 +26,8 @@ struct MapState {
     click: Closure<dyn Fn(Event)>,
     /// Click callback
     click_cb: Box<dyn Fn(Event)>,
+    /// Zoom callback
+    zoom_cb: Box<dyn Fn(u32)>,
     /// Flag to suppress click (while panning)
     suppress_click: bool,
     /// Origin point (relative to upper-left corner of map pane)
@@ -44,7 +46,11 @@ thread_local! {
 
 impl MapState {
     /// Make a new map state
-    fn new(map_pane: MapPane, click_cb: impl Fn(Event) + 'static) -> Self {
+    fn new(
+        map_pane: MapPane,
+        click_cb: impl Fn(Event) + 'static,
+        zoom_cb: impl Fn(u32) + 'static,
+    ) -> Self {
         MapState {
             map_pane,
             pointerdown: Closure::new(handle_pointerdown),
@@ -53,6 +59,7 @@ impl MapState {
             wheel: Closure::new(handle_wheel),
             click: Closure::new(handle_click),
             click_cb: Box::new(click_cb),
+            zoom_cb: Box::new(zoom_cb),
             suppress_click: false,
             origin: (0, 0),
             pan_point: None,
@@ -151,13 +158,8 @@ impl MapState {
                 let pos = WebMercatorPos::new(mx, my);
                 let loc = Wgs84Pos::from(pos);
                 let (rx, ry) = map_pane.client_pos(rx, ry);
-                map_pane.position(
-                    zoom,
-                    loc.lon_deg(),
-                    loc.lat_deg(),
-                    rx,
-                    ry,
-                );
+                map_pane.position(zoom, loc.lon_deg(), loc.lat_deg(), rx, ry);
+                (self.zoom_cb)(zoom);
             }
         }
     }
@@ -208,7 +210,10 @@ fn handle_wheel(we: WheelEvent) {
     if delta_zoom != 0 {
         MAP_STATE.with(|rc| {
             if let Some(ref mut state) = *rc.borrow_mut() {
-                let zoom = state.nw.map(|peg| peg.z() as i32 + delta_zoom).unwrap_or(0);
+                let zoom = state
+                    .nw
+                    .map(|peg| peg.z() as i32 + delta_zoom)
+                    .unwrap_or(0);
                 if zoom > 0 {
                     state.change_zoom(zoom, we.client_x(), we.client_y());
                 }
@@ -233,10 +238,12 @@ fn handle_click(e: Event) {
 /// - `id`: HTML `id` attribute of map element
 /// - `groups`: Layer group tile names
 /// - `click_cb`: Click callback
+/// - `zoom_cb`: Zoom callback
 pub fn init(
     id: &str,
     groups: &'static [&'static str],
     click_cb: impl Fn(Event) + 'static,
+    zoom_cb: impl Fn(u32) + 'static,
 ) -> Result<MapPane> {
     let mp = lookup_id(id)?;
     let map_pane = MapPane::new(id, groups);
@@ -246,7 +253,7 @@ pub fn init(
             // FIXME: allow multiple map panes?
             return Err(Error::Other("init: state exists!"));
         }
-        let ms = MapState::new(map_pane.clone(), click_cb);
+        let ms = MapState::new(map_pane.clone(), click_cb, zoom_cb);
         mp.add_event_listener_with_callback(
             "pointerdown",
             ms.pointerdown.as_ref().unchecked_ref(),

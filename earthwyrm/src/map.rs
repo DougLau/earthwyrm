@@ -44,12 +44,14 @@ impl MapPane {
     /// - `id`: HTML `id` attribute of map element
     /// - `groups`: Layer group tile names
     /// - `click_cb`: Click callback
+    /// - `zoom_cb`: Zoom callback
     pub fn init(
         id: &str,
         groups: &'static [&'static str],
         click_cb: impl Fn(Event) + 'static,
+        zoom_cb: impl Fn(u32) + 'static,
     ) -> Option<Self> {
-        crate::state::init(id, groups, click_cb)
+        crate::state::init(id, groups, click_cb, zoom_cb)
             .inspect_err(|e| log::warn!("MapPane::init: {e:?}"))
             .ok()
     }

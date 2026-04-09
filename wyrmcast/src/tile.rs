@@ -129,7 +129,7 @@ impl PointChain {
                 pen = p;
             }
             let y1 = self.tile_cfg.bbox.y_max();
-            self.edge_point_x(y1, pt, &pen);
+            self.edge_point_y(y1, pt, &pen);
         }
         if pt.bounded_by(self.tile_cfg.bbox) {
             self.pts.push(*pt);
@@ -183,14 +183,8 @@ impl PointChain {
 
     /// Connect back to front (close loop)
     pub fn connect(&mut self) {
-        if let Some(first) = self.first
-            && let Some(last) = self.pts.last()
-        {
-            let (p0x, p0y) = self.tile_cfg.xform(first);
-            let (p1x, p1y) = self.tile_cfg.xform(*last);
-            if (p0x != p1x) || (p0y != p1y) {
-                self.pts.push(first);
-            }
+        if let Some(first) = self.first {
+            self.push_back(&first);
         }
     }
 

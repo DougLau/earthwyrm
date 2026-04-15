@@ -11,6 +11,7 @@ version.workspace = true
 edition.workspace = true
 
 [dependencies]
+futures = { version = "0.3", default-features = false }
 hatmil.workspace = true
 log = "0.4"
 js-sys = "0.3"

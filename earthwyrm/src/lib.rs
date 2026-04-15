@@ -8,6 +8,7 @@ mod error;
 mod fetch;
 mod map;
 mod state;
+mod tile;
 mod util;
 
 pub use map::MapPane;

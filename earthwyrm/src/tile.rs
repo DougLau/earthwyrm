@@ -2,8 +2,8 @@
 //
 use crate::error::Error;
 use crate::fetch::Uri;
-use futures::Future;
-use futures::stream::FuturesUnordered;
+use futures_util::Future;
+use futures_util::stream::FuturesUnordered;
 use squarepeg::Peg;
 
 /// Make tile fetcher

@@ -2,7 +2,7 @@
 //
 use crate::tile::make_fetcher;
 use crate::util::lookup_id;
-use futures::StreamExt;
+use futures_util::StreamExt;
 use squarepeg::{MapGrid, Peg, WebMercatorPos, Wgs84Pos};
 use wasm_bindgen_futures::spawn_local;
 use web_sys::{DomRect, Element, Event};

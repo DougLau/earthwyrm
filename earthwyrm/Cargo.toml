@@ -13,6 +13,7 @@ edition.workspace = true
 [dependencies]
 futures-util = "0.3"
 hatmil.workspace = true
+jiff = { version = "0.2", features = ["js"] }
 log = "0.4"
 js-sys = "0.3"
 percent-encoding = "2.3"

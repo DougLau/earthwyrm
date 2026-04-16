@@ -3,6 +3,7 @@
 use crate::tile::make_fetcher;
 use crate::util::lookup_id;
 use futures_util::StreamExt;
+use jiff::Zoned;
 use squarepeg::{MapGrid, Peg, WebMercatorPos, Wgs84Pos};
 use wasm_bindgen_futures::spawn_local;
 use web_sys::{DomRect, Element, Event};
@@ -125,14 +126,19 @@ impl MapPane {
         for _gr in self.groups {
             layers.push(String::with_capacity(1024));
         }
+        let start = Zoned::now();
+        let mut n_tiles = 0;
         let mut fetcher = make_fetcher(peg_nw, peg_se, self.groups, self.cycle);
         while let Some((group, svg)) = fetcher.next().await {
             for (gr, layer) in self.groups.iter().zip(&mut layers) {
                 if *gr == group {
                     layer.push_str(&svg);
+                    n_tiles += 1;
                 }
             }
         }
+        let finish = Zoned::now();
+        log::info!("fetched {n_tiles} tiles in {:#}", finish - start);
         crate::state::reset(origin, peg_nw);
         elem.set_inner_html(&layers.join(""));
         // start fading in new tiles

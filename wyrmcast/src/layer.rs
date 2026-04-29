@@ -372,6 +372,7 @@ impl LayerDef {
                 if !cname.is_empty() && !cname.ends_with('-') {
                     cname.push('_');
                 }
+                // FIXME: use CSS escape rules
                 cname.push_str(nm);
             }
         }
@@ -379,6 +380,7 @@ impl LayerDef {
             cname.push('-');
             for ch in name.chars() {
                 if !ch.is_whitespace() && !ch.is_control() {
+                    // FIXME: use CSS escape rules
                     cname.push(ch);
                 }
             }

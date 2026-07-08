@@ -7,7 +7,6 @@ use squarepeg::{Peg, WebMercatorPos, Wgs84Pos};
 use std::cell::RefCell;
 use wasm_bindgen::JsCast;
 use wasm_bindgen::closure::Closure;
-use wasm_bindgen::prelude::UnwrapThrowExt;
 use web_sys::{Element, Event, PointerEvent, WheelEvent};
 
 /// Global map state
@@ -257,33 +256,27 @@ pub fn init(
         mp.add_event_listener_with_callback(
             "pointerdown",
             ms.pointerdown.as_ref().unchecked_ref(),
-        )
-        .unwrap_throw();
+        )?;
         mp.add_event_listener_with_callback(
             "pointerup",
             ms.pointerup.as_ref().unchecked_ref(),
-        )
-        .unwrap_throw();
+        )?;
         mp.add_event_listener_with_callback(
             "pointercancel",
             ms.pointerup.as_ref().unchecked_ref(),
-        )
-        .unwrap_throw();
+        )?;
         mp.add_event_listener_with_callback(
             "pointermove",
             ms.pointermove.as_ref().unchecked_ref(),
-        )
-        .unwrap_throw();
+        )?;
         mp.add_event_listener_with_callback(
             "wheel",
             ms.wheel.as_ref().unchecked_ref(),
-        )
-        .unwrap_throw();
+        )?;
         mp.add_event_listener_with_callback(
             "click",
             ms.click.as_ref().unchecked_ref(),
-        )
-        .unwrap_throw();
+        )?;
         *state = Some(ms);
         Ok(map_pane)
     })

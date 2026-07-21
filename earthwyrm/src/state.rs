@@ -296,7 +296,8 @@ pub fn reset(origin: (i32, i32), nw: Peg) {
 }
 
 /// Get map pane
-pub fn map_pane() -> Option<MapPane> {
+pub fn map_pane(_id: &str) -> Option<MapPane> {
+    // FIXME: use id to select from multiple map panes
     MAP_STATE
         .with(|rc| (*rc.borrow()).as_ref().map(|state| state.map_pane.clone()))
 }

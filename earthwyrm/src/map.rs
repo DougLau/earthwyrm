@@ -26,7 +26,12 @@ pub struct MapPane {
 }
 
 impl MapPane {
-    /// Create a new map on `id` element
+    /// Get map pane by element ID
+    pub fn get(id: &str) -> Option<MapPane> {
+        crate::state::map_pane(id)
+    }
+
+    /// Create a new map on element with ID
     pub fn new(id: &str) -> Self {
         let click_handler = |_ev| {};
         let zoom_handler = |_z| {};
@@ -63,14 +68,14 @@ impl MapPane {
 
     /// Build the map pane
     ///
-    /// Returns `true` if built successfully
+    /// Returns `true` if successful
     pub fn build(self) -> bool {
         crate::state::init(self)
             .inspect_err(|e| log::warn!("MapPane::build: {e:?}"))
             .is_ok()
     }
 
-    /// Get map ID
+    /// Get map element ID
     pub(crate) fn id(&self) -> &str {
         &self.id
     }
@@ -78,11 +83,6 @@ impl MapPane {
     /// Get map grid
     pub(crate) fn grid(&self) -> &MapGrid {
         &self.grid
-    }
-
-    /// Get map pane
-    pub fn get() -> Option<MapPane> {
-        crate::state::map_pane()
     }
 
     /// Lookup map pane element

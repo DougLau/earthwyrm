@@ -17,36 +17,62 @@ pub struct MapPane {
     grid: MapGrid,
     /// Layer groups
     groups: &'static [&'static str],
+    /// Click handler
+    pub(crate) click_handler: fn(Event) -> (),
+    /// Zoom handler
+    pub(crate) zoom_handler: fn(u32) -> (),
     /// Cycle number
     cycle: u32,
 }
 
 impl MapPane {
-    /// Initialize the map pane
-    ///
-    /// - `id`: HTML `id` attribute of map element
-    /// - `groups`: Layer group tile names
-    /// - `click_cb`: Click callback
-    /// - `zoom_cb`: Zoom callback
-    pub fn init(
-        id: &str,
-        groups: &'static [&'static str],
-        click_cb: impl Fn(Event) + 'static,
-        zoom_cb: impl Fn(u32) + 'static,
-    ) -> Option<Self> {
-        crate::state::init(id, groups, click_cb, zoom_cb)
-            .inspect_err(|e| log::warn!("MapPane::init: {e:?}"))
-            .ok()
-    }
-
-    /// Create new map on `id` element
-    pub(crate) fn new(id: &str, groups: &'static [&'static str]) -> Self {
+    /// Create a new map on `id` element
+    pub fn new(id: &str) -> Self {
+        let click_handler = |_ev| {};
+        let zoom_handler = |_z| {};
         MapPane {
             id: id.to_string(),
             grid: MapGrid::default(),
-            groups,
+            groups: &[],
+            click_handler,
+            zoom_handler,
             cycle: 0,
         }
+    }
+
+    /// Set layer group tile names
+    pub fn with_groups(mut self, groups: &'static [&'static str]) -> Self {
+        self.groups = groups;
+        self
+    }
+
+    /// Set click event handler
+    pub fn with_click_handler(
+        mut self,
+        click_handler: fn(Event) -> (),
+    ) -> Self {
+        self.click_handler = click_handler;
+        self
+    }
+
+    /// Set zoom event handler
+    pub fn with_zoom_handler(mut self, zoom_handler: fn(u32) -> ()) -> Self {
+        self.zoom_handler = zoom_handler;
+        self
+    }
+
+    /// Build the map pane
+    ///
+    /// Returns `true` if built successfully
+    pub fn build(self) -> bool {
+        crate::state::init(self)
+            .inspect_err(|e| log::warn!("MapPane::build: {e:?}"))
+            .is_ok()
+    }
+
+    /// Get map ID
+    pub(crate) fn id(&self) -> &str {
+        &self.id
     }
 
     /// Get map grid
@@ -83,8 +109,8 @@ impl MapPane {
         }
     }
 
-    /// Position map with given zoom and lon/lat
-    pub fn position(self, zoom: u32, lon: f64, lat: f64, rx: f64, ry: f64) {
+    /// Set map position with given zoom and lon/lat
+    pub fn set_position(self, zoom: u32, lon: f64, lat: f64, rx: f64, ry: f64) {
         if let Some(elem) = self.elem() {
             let pos: WebMercatorPos = Wgs84Pos::new(lon, lat).into();
             match self.grid.zxy_peg(zoom, pos.x, pos.y) {

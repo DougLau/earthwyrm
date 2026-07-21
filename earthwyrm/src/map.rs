@@ -15,6 +15,8 @@ pub struct MapPane {
     id: String,
     /// Map grid
     grid: MapGrid,
+    /// Anchor position within pane
+    anchor: (f64, f64),
     /// Layer groups
     groups: &'static [&'static str],
     /// Click handler
@@ -37,12 +39,22 @@ impl MapPane {
         let zoom_handler = |_z| {};
         MapPane {
             id: id.to_string(),
+            anchor: (0.5, 0.5),
             grid: MapGrid::default(),
             groups: &[],
             click_handler,
             zoom_handler,
             cycle: 0,
         }
+    }
+
+    /// Set anchor point
+    ///
+    /// - `ax`: Anchor X value, between `0.0` and `1.0`
+    /// - `ay`: Anchor Y value, between `0.0` and `1.0`
+    pub fn with_anchor(mut self, ax: f64, ay: f64) -> Self {
+        self.anchor = (ax, ay);
+        self
     }
 
     /// Set layer group tile names
@@ -98,11 +110,11 @@ impl MapPane {
     }
 
     /// Get client position in rectangle
-    pub(crate) fn client_pos(&self, rx: i32, ry: i32) -> (f64, f64) {
+    pub(crate) fn client_pos(&self, ax: i32, ay: i32) -> (f64, f64) {
         if let Some(elem) = self.elem() {
             let rect = elem.get_bounding_client_rect();
-            let cx = rx as f64 / rect.width();
-            let cy = ry as f64 / rect.height();
+            let cx = ax as f64 / rect.width();
+            let cy = ay as f64 / rect.height();
             (cx, cy)
         } else {
             (0.0, 0.0)
@@ -110,12 +122,25 @@ impl MapPane {
     }
 
     /// Set map position with given zoom and lon/lat
-    pub fn set_position(self, zoom: u32, lon: f64, lat: f64, rx: f64, ry: f64) {
+    pub fn set_position(self, zoom: u32, lon: f64, lat: f64) {
+        let (ax, ay) = self.anchor;
+        self.set_position_anchor(zoom, lon, lat, ax, ay);
+    }
+
+    /// Set map position with given zoom, lon/lat and anchor
+    pub(crate) fn set_position_anchor(
+        self,
+        zoom: u32,
+        lon: f64,
+        lat: f64,
+        ax: f64,
+        ay: f64,
+    ) {
         if let Some(elem) = self.elem() {
             let pos: WebMercatorPos = Wgs84Pos::new(lon, lat).into();
             match self.grid.zxy_peg(zoom, pos.x, pos.y) {
                 Some(peg) => {
-                    spawn_local(self.do_position(elem, peg, pos, rx, ry))
+                    spawn_local(self.do_position(elem, peg, pos, ax, ay))
                 }
                 None => log::warn!("invalid Peg: {zoom} {lon} {lat}"),
             }
@@ -128,8 +153,8 @@ impl MapPane {
         elem: Element,
         peg: Peg,
         pos: WebMercatorPos,
-        rx: f64,
-        ry: f64,
+        ax: f64,
+        ay: f64,
     ) {
         // start fading out current tiles
         self.set_anim(
@@ -137,8 +162,8 @@ impl MapPane {
         );
         let rect = elem.get_bounding_client_rect();
         // "Client" position within rectangle
-        let cx = (rect.width() * rx) as u32;
-        let cy = (rect.height() * ry) as u32;
+        let cx = (rect.width() * ax) as u32;
+        let cy = (rect.height() * ay) as u32;
         let peg_nw = peg_nw(peg, cx, cy);
         let peg_se = peg_se(peg, &rect);
         // Offset from north-west corner of peg (0-255)

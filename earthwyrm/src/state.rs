@@ -148,7 +148,7 @@ impl MapState {
                 let pos = WebMercatorPos::new(mx, my);
                 let loc = Wgs84Pos::from(pos);
                 let (rx, ry) = map_pane.client_pos(rx, ry);
-                map_pane.set_position(
+                map_pane.set_position_anchor(
                     zoom,
                     loc.lon_deg(),
                     loc.lat_deg(),

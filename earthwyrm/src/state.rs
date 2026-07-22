@@ -230,8 +230,8 @@ fn handle_click(e: Event) {
     });
 }
 
-/// Initialize map pane state
-pub fn init(map_pane: MapPane) -> Result<()> {
+/// Register map pane state
+pub fn register(map_pane: MapPane) -> Result<()> {
     let mp = lookup_id(map_pane.id())?;
     MAP_STATE.with(|rc| {
         let mut state = rc.borrow_mut();

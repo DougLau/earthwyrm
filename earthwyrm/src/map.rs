@@ -78,12 +78,12 @@ impl MapPane {
         self
     }
 
-    /// Build the map pane
+    /// Register the map pane in the browser
     ///
     /// Returns `true` if successful
-    pub fn build(self) -> bool {
-        crate::state::init(self)
-            .inspect_err(|e| log::warn!("MapPane::build: {e:?}"))
+    pub fn register(self) -> bool {
+        crate::state::register(self)
+            .inspect_err(|e| log::warn!("MapPane::register: {e:?}"))
             .is_ok()
     }
 

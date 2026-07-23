@@ -709,7 +709,7 @@ dependencies = [
 
 [[package]]
 name = "mvt"
-version = "0.13.0"
+version = "0.14.0"
 dependencies = [
  "log",
  "num-traits",

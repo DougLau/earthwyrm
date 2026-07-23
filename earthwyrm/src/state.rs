@@ -19,6 +19,8 @@ struct MapState {
     pointerup: Closure<dyn Fn(PointerEvent)>,
     /// Pointermove handler
     pointermove: Closure<dyn Fn(PointerEvent)>,
+    /// Contextmenu handler
+    contextmenu: Closure<dyn Fn(PointerEvent)>,
     /// Wheel handler
     wheel: Closure<dyn Fn(WheelEvent)>,
     /// Click handler
@@ -49,6 +51,7 @@ impl MapState {
             pointermove: Closure::new(handle_pointermove),
             wheel: Closure::new(handle_wheel),
             click: Closure::new(handle_click),
+            contextmenu: Closure::new(handle_contextmenu),
             suppress_click: false,
             origin: (0, 0),
             pan_point: None,
@@ -194,6 +197,16 @@ fn handle_pointermove(pe: PointerEvent) {
     });
 }
 
+/// Handle a `contextmenu` event
+fn handle_contextmenu(pe: PointerEvent) {
+    MAP_STATE.with(|rc| {
+        if let Some(ref state) = *rc.borrow() {
+            pe.prevent_default();
+            (state.map_pane.contextmenu_handler)(pe);
+        }
+    });
+}
+
 /// Handle a `wheel` event
 fn handle_wheel(we: WheelEvent) {
     let delta_zoom: i32 = if we.delta_y() < 0.0 {
@@ -255,6 +268,10 @@ pub fn register(map_pane: MapPane) -> Result<()> {
         mp.add_event_listener_with_callback(
             "pointermove",
             ms.pointermove.as_ref().unchecked_ref(),
+        )?;
+        mp.add_event_listener_with_callback(
+            "contextmenu",
+            ms.contextmenu.as_ref().unchecked_ref(),
         )?;
         mp.add_event_listener_with_callback(
             "wheel",

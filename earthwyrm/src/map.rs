@@ -6,7 +6,7 @@ use futures_util::StreamExt;
 use jiff::Zoned;
 use squarepeg::{MapGrid, Peg, WebMercatorPos, Wgs84Pos};
 use wasm_bindgen_futures::spawn_local;
-use web_sys::{DomRect, Element, Event};
+use web_sys::{DomRect, Element, Event, PointerEvent};
 
 /// Map pane
 #[derive(Clone)]
@@ -19,10 +19,12 @@ pub struct MapPane {
     anchor: (f64, f64),
     /// Layer groups
     groups: &'static [&'static str],
-    /// Click handler
-    pub(crate) click_handler: fn(Event) -> (),
     /// Zoom handler
     pub(crate) zoom_handler: fn(u32) -> (),
+    /// Click handler
+    pub(crate) click_handler: fn(Event) -> (),
+    /// Context menu handler
+    pub(crate) contextmenu_handler: fn(PointerEvent) -> (),
     /// Cycle number
     cycle: u32,
 }
@@ -35,15 +37,17 @@ impl MapPane {
 
     /// Create a new map on element with ID
     pub fn new(id: &str) -> Self {
-        let click_handler = |_ev| {};
         let zoom_handler = |_z| {};
+        let click_handler = |_ev| {};
+        let contextmenu_handler = |_pe| {};
         MapPane {
             id: id.to_string(),
             anchor: (0.5, 0.5),
             grid: MapGrid::default(),
             groups: &[],
-            click_handler,
             zoom_handler,
+            click_handler,
+            contextmenu_handler,
             cycle: 0,
         }
     }
@@ -63,6 +67,12 @@ impl MapPane {
         self
     }
 
+    /// Set zoom event handler
+    pub fn with_zoom_handler(mut self, zoom_handler: fn(u32) -> ()) -> Self {
+        self.zoom_handler = zoom_handler;
+        self
+    }
+
     /// Set click event handler
     pub fn with_click_handler(
         mut self,
@@ -72,9 +82,12 @@ impl MapPane {
         self
     }
 
-    /// Set zoom event handler
-    pub fn with_zoom_handler(mut self, zoom_handler: fn(u32) -> ()) -> Self {
-        self.zoom_handler = zoom_handler;
+    /// Set contextmenu event handler
+    pub fn with_contextmenu_handler(
+        mut self,
+        contextmenu_handler: fn(PointerEvent) -> (),
+    ) -> Self {
+        self.contextmenu_handler = contextmenu_handler;
         self
     }
 

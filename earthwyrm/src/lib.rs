@@ -12,3 +12,4 @@ mod tile;
 mod util;
 
 pub use map::MapPane;
+pub use state::Target;

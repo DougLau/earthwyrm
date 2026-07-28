@@ -1,12 +1,13 @@
 // Copyright (C) 2026  Douglas Lau
 //
+use crate::state::Target;
 use crate::tile::make_fetcher;
 use crate::util::lookup_id;
 use futures_util::StreamExt;
 use jiff::Zoned;
 use squarepeg::{MapGrid, Peg, WebMercatorPos, Wgs84Pos};
 use wasm_bindgen_futures::spawn_local;
-use web_sys::{DomRect, Element, Event, PointerEvent};
+use web_sys::{DomRect, Element};
 
 /// Map pane
 #[derive(Clone)]
@@ -22,9 +23,9 @@ pub struct MapPane {
     /// Zoom handler
     pub(crate) zoom_handler: fn(u32) -> (),
     /// Click handler
-    pub(crate) click_handler: fn(Event) -> (),
+    pub(crate) click_handler: fn(Target) -> (),
     /// Context menu handler
-    pub(crate) contextmenu_handler: fn(PointerEvent) -> (),
+    pub(crate) contextmenu_handler: fn(Target) -> (),
     /// Cycle number
     cycle: u32,
 }
@@ -76,7 +77,7 @@ impl MapPane {
     /// Set click event handler
     pub fn with_click_handler(
         mut self,
-        click_handler: fn(Event) -> (),
+        click_handler: fn(Target) -> (),
     ) -> Self {
         self.click_handler = click_handler;
         self
@@ -85,7 +86,7 @@ impl MapPane {
     /// Set contextmenu event handler
     pub fn with_contextmenu_handler(
         mut self,
-        contextmenu_handler: fn(PointerEvent) -> (),
+        contextmenu_handler: fn(Target) -> (),
     ) -> Self {
         self.contextmenu_handler = contextmenu_handler;
         self

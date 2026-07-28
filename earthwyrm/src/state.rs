@@ -9,6 +9,17 @@ use wasm_bindgen::JsCast;
 use wasm_bindgen::closure::Closure;
 use web_sys::{Element, Event, PointerEvent, WheelEvent};
 
+/// Event target
+#[derive(Debug)]
+pub struct Target {
+    /// Target class
+    pub cls: String,
+    /// OSM reference (`data-ref`)
+    pub osm_ref: String,
+    /// Target name (`data-name`)
+    pub name: String,
+}
+
 /// Global map state
 struct MapState {
     /// Map pane
@@ -202,9 +213,47 @@ fn handle_contextmenu(pe: PointerEvent) {
     MAP_STATE.with(|rc| {
         if let Some(ref state) = *rc.borrow() {
             pe.prevent_default();
-            (state.map_pane.contextmenu_handler)(pe);
+            if let Some(target) = Target::from_pointer_event(pe) {
+                (state.map_pane.contextmenu_handler)(target);
+            }
         }
     });
+}
+
+impl Target {
+    /// Get target data from target element
+    fn new(target: Element) -> Option<Self> {
+        if let Ok(Some(el)) = target.closest("g,path")
+            && let Some(cls) = el.get_attribute("class")
+        {
+            let osm_ref = match el.get_attribute("data-ref") {
+                Some(dr) => dr,
+                None => "".to_string(),
+            };
+            let name = match el.get_attribute("data-name") {
+                Some(nm) => nm.to_string(),
+                None => "".to_string(),
+            };
+            return Some(Target { cls, osm_ref, name });
+        }
+        None
+    }
+
+    /// Get target data from event
+    fn from_event(ev: Event) -> Option<Self> {
+        match ev.target().map(|e| e.dyn_into::<Element>()) {
+            Some(Ok(target)) => Target::new(target),
+            _ => None,
+        }
+    }
+
+    /// Get target data from pointer event
+    fn from_pointer_event(pe: PointerEvent) -> Option<Self> {
+        match pe.target().map(|e| e.dyn_into::<Element>()) {
+            Some(Ok(target)) => Target::new(target),
+            _ => None,
+        }
+    }
 }
 
 /// Handle a `wheel` event
@@ -232,13 +281,13 @@ fn handle_wheel(we: WheelEvent) {
 }
 
 /// Handle a `click` event
-fn handle_click(e: Event) {
+fn handle_click(ev: Event) {
     MAP_STATE.with(|rc| {
         if let Some(ref state) = *rc.borrow()
             && !state.suppress_click
+            && let Some(target) = Target::from_event(ev)
         {
-            let click_handler = state.map_pane.click_handler;
-            (click_handler)(e);
+            (state.map_pane.click_handler)(target);
         }
     });
 }

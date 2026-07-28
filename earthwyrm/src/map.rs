@@ -25,7 +25,7 @@ pub struct MapPane {
     /// Click handler
     pub(crate) click_handler: fn(Target) -> (),
     /// Context menu handler
-    pub(crate) contextmenu_handler: fn(Target) -> (),
+    pub(crate) contextmenu_handler: fn(Target, i32, i32) -> (),
     /// Cycle number
     cycle: u32,
 }
@@ -39,8 +39,8 @@ impl MapPane {
     /// Create a new map on element with ID
     pub fn new(id: &str) -> Self {
         let zoom_handler = |_z| {};
-        let click_handler = |_ev| {};
-        let contextmenu_handler = |_pe| {};
+        let click_handler = |_tgt| {};
+        let contextmenu_handler = |_tgt, _x, _y| {};
         MapPane {
             id: id.to_string(),
             anchor: (0.5, 0.5),
@@ -86,7 +86,7 @@ impl MapPane {
     /// Set contextmenu event handler
     pub fn with_contextmenu_handler(
         mut self,
-        contextmenu_handler: fn(Target) -> (),
+        contextmenu_handler: fn(Target, i32, i32) -> (),
     ) -> Self {
         self.contextmenu_handler = contextmenu_handler;
         self

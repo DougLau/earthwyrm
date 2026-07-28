@@ -213,8 +213,10 @@ fn handle_contextmenu(pe: PointerEvent) {
     MAP_STATE.with(|rc| {
         if let Some(ref state) = *rc.borrow() {
             pe.prevent_default();
+            let x = pe.client_x();
+            let y = pe.client_y();
             if let Some(target) = Target::from_pointer_event(pe) {
-                (state.map_pane.contextmenu_handler)(target);
+                (state.map_pane.contextmenu_handler)(target, x, y);
             }
         }
     });

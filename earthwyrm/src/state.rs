@@ -118,7 +118,6 @@ impl MapState {
 
     /// Reset the map state
     fn reset(&mut self, origin: (i32, i32)) {
-        self.map_pane.next_cycle();
         self.origin = origin;
         self.pan_point = None;
         self.point = (0, 0);

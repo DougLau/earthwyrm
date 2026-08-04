@@ -11,7 +11,6 @@ pub fn make_fetcher(
     peg_nw: Peg,
     peg_se: Peg,
     groups: &'static [&'static str],
-    cycle: u32,
 ) -> FuturesUnordered<impl Future<Output = (&'static str, String)>> {
     let futures = FuturesUnordered::new();
     let zoom = peg_nw.z();
@@ -21,7 +20,7 @@ pub fn make_fetcher(
                 let tx = (px - peg_nw.x()) as i32;
                 let ty = (py - peg_nw.y()) as i32;
                 for gr in groups {
-                    futures.push(fetch_tile(gr, peg, cycle, tx, ty));
+                    futures.push(fetch_tile(gr, peg, tx, ty));
                 }
             }
         }
@@ -33,7 +32,6 @@ pub fn make_fetcher(
 async fn fetch_tile(
     group: &'static str,
     peg: Peg,
-    cycle: u32,
     tx: i32,
     ty: i32,
 ) -> (&'static str, String) {
@@ -56,8 +54,6 @@ async fn fetch_tile(
     svg.push_str(group);
     svg.push('-');
     svg.push_str(&peg.to_string());
-    svg.push_str(" cycle-");
-    svg.push_str(&cycle.to_string());
     svg.push('"');
     if tx != 0 || ty != 0 {
         svg.push_str(" transform=\"translate(");

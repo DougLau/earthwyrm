@@ -26,12 +26,10 @@ pub struct MapPane {
     pub(crate) click_handler: fn(MapEvent) -> (),
     /// Context menu handler
     pub(crate) contextmenu_handler: fn(MapEvent, i32, i32) -> (),
-    /// Cycle number
-    cycle: u32,
 }
 
 impl MapPane {
-    /// Get map pane by element ID
+    /// Get registered map pane by element ID
     pub fn get(id: &str) -> Option<MapPane> {
         crate::state::map_pane(id)
     }
@@ -49,7 +47,6 @@ impl MapPane {
             zoom_handler,
             click_handler,
             contextmenu_handler,
-            cycle: 0,
         }
     }
 
@@ -116,11 +113,6 @@ impl MapPane {
         lookup_id(&self.id)
             .inspect_err(|e| log::warn!("{e:?}"))
             .ok()
-    }
-
-    /// Advance to next cycle
-    pub(crate) fn next_cycle(&mut self) {
-        self.cycle += 1;
     }
 
     /// Get client position in rectangle
@@ -193,7 +185,7 @@ impl MapPane {
         }
         let start = Zoned::now();
         let mut n_tiles = 0;
-        let mut fetcher = make_fetcher(peg_nw, peg_se, self.groups, self.cycle);
+        let mut fetcher = make_fetcher(peg_nw, peg_se, self.groups);
         while let Some((group, svg)) = fetcher.next().await {
             for (gr, layer) in self.groups.iter().zip(&mut layers) {
                 if *gr == group {

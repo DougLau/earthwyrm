@@ -14,9 +14,9 @@ use web_sys::{Element, MouseEvent, PointerEvent, WheelEvent};
 pub struct MapEvent {
     /// Target class
     pub target: String,
-    /// Target layer
+    /// Map layer name
     pub layer: String,
-    /// OSM reference (`data-ref`)
+    /// Target OSM reference (`data-ref`)
     pub osm_ref: Option<String>,
     /// Target name (`data-name`)
     pub name: Option<String>,

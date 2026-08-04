@@ -14,10 +14,12 @@ use web_sys::{Element, Event, PointerEvent, WheelEvent};
 pub struct Target {
     /// Target class
     pub cls: String,
+    /// Target layer
+    pub layer: String,
     /// OSM reference (`data-ref`)
-    pub osm_ref: String,
+    pub osm_ref: Option<String>,
     /// Target name (`data-name`)
-    pub name: String,
+    pub name: Option<String>,
 }
 
 /// Global map state
@@ -227,16 +229,19 @@ impl Target {
     fn new(target: Element) -> Option<Self> {
         if let Ok(Some(el)) = target.closest("g,path")
             && let Some(cls) = el.get_attribute("class")
+            && let Some(parent) = el.parent_element()
+            && let Some(pcls) = parent.get_attribute("class")
+            && let Some(("wyrm", layer)) = pcls.split_once('-')
         {
-            let osm_ref = match el.get_attribute("data-ref") {
-                Some(dr) => dr,
-                None => "".to_string(),
-            };
-            let name = match el.get_attribute("data-name") {
-                Some(nm) => nm.to_string(),
-                None => "".to_string(),
-            };
-            return Some(Target { cls, osm_ref, name });
+            let layer = layer.to_string();
+            let osm_ref = el.get_attribute("data-ref");
+            let name = el.get_attribute("data-name");
+            return Some(Target {
+                cls,
+                layer,
+                osm_ref,
+                name,
+            });
         }
         None
     }

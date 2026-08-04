@@ -30,6 +30,7 @@ features = [
   'Element',
   'Headers',
   'HtmlCollection',
+  'MouseEvent',
   'PointerEvent',
   'Request',
   'Response',

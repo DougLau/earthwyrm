@@ -7,19 +7,27 @@ use squarepeg::{Peg, WebMercatorPos, Wgs84Pos};
 use std::cell::RefCell;
 use wasm_bindgen::JsCast;
 use wasm_bindgen::closure::Closure;
-use web_sys::{Element, Event, PointerEvent, WheelEvent};
+use web_sys::{Element, MouseEvent, PointerEvent, WheelEvent};
 
-/// Event target
-#[derive(Debug)]
-pub struct Target {
+/// Map event
+#[derive(Clone, Debug)]
+pub struct MapEvent {
     /// Target class
-    pub cls: String,
+    pub target: String,
     /// Target layer
     pub layer: String,
     /// OSM reference (`data-ref`)
     pub osm_ref: Option<String>,
     /// Target name (`data-name`)
     pub name: Option<String>,
+    /// Alt key state
+    pub alt_key: bool,
+    /// Shift key state
+    pub shift_key: bool,
+    /// Meta key state
+    pub meta_key: bool,
+    /// Ctrl key state
+    pub ctrl_key: bool,
 }
 
 /// Global map state
@@ -37,7 +45,7 @@ struct MapState {
     /// Wheel handler
     wheel: Closure<dyn Fn(WheelEvent)>,
     /// Click handler
-    click: Closure<dyn Fn(Event)>,
+    click: Closure<dyn Fn(MouseEvent)>,
     /// Flag to suppress click (while panning)
     suppress_click: bool,
     /// Origin point (relative to upper-left corner of map pane)
@@ -217,49 +225,37 @@ fn handle_contextmenu(pe: PointerEvent) {
             pe.prevent_default();
             let x = pe.client_x();
             let y = pe.client_y();
-            if let Some(target) = Target::from_pointer_event(pe) {
+            if let Ok(me) = pe.dyn_into::<MouseEvent>()
+                && let Some(target) = MapEvent::from_mouse_event(me)
+            {
                 (state.map_pane.contextmenu_handler)(target, x, y);
             }
         }
     });
 }
 
-impl Target {
-    /// Get target data from target element
-    fn new(target: Element) -> Option<Self> {
-        if let Ok(Some(el)) = target.closest("g,path")
-            && let Some(cls) = el.get_attribute("class")
+impl MapEvent {
+    /// Get event data from mouse event
+    fn from_mouse_event(me: MouseEvent) -> Option<Self> {
+        if let Some(Ok(target)) = me.target().map(|e| e.dyn_into::<Element>())
+            && let Ok(Some(el)) = target.closest("g,path")
+            && let Some(target) = el.get_attribute("class")
             && let Some(parent) = el.parent_element()
             && let Some(pcls) = parent.get_attribute("class")
             && let Some(("wyrm", layer)) = pcls.split_once('-')
         {
-            let layer = layer.to_string();
-            let osm_ref = el.get_attribute("data-ref");
-            let name = el.get_attribute("data-name");
-            return Some(Target {
-                cls,
-                layer,
-                osm_ref,
-                name,
+            return Some(MapEvent {
+                target,
+                layer: layer.to_string(),
+                osm_ref: el.get_attribute("data-ref"),
+                name: el.get_attribute("data-name"),
+                alt_key: me.alt_key(),
+                ctrl_key: me.ctrl_key(),
+                meta_key: me.meta_key(),
+                shift_key: me.shift_key(),
             });
         }
         None
-    }
-
-    /// Get target data from event
-    fn from_event(ev: Event) -> Option<Self> {
-        match ev.target().map(|e| e.dyn_into::<Element>()) {
-            Some(Ok(target)) => Target::new(target),
-            _ => None,
-        }
-    }
-
-    /// Get target data from pointer event
-    fn from_pointer_event(pe: PointerEvent) -> Option<Self> {
-        match pe.target().map(|e| e.dyn_into::<Element>()) {
-            Some(Ok(target)) => Target::new(target),
-            _ => None,
-        }
     }
 }
 
@@ -288,11 +284,11 @@ fn handle_wheel(we: WheelEvent) {
 }
 
 /// Handle a `click` event
-fn handle_click(ev: Event) {
+fn handle_click(me: MouseEvent) {
     MAP_STATE.with(|rc| {
         if let Some(ref state) = *rc.borrow()
             && !state.suppress_click
-            && let Some(target) = Target::from_event(ev)
+            && let Some(target) = MapEvent::from_mouse_event(me)
         {
             (state.map_pane.click_handler)(target);
         }

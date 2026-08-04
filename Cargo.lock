@@ -648,7 +648,9 @@ checksum = "32a66949e030da00e8c7d4434b251670a91556f4144941d37452769c25d58a53"
 
 [[package]]
 name = "loam"
-version = "0.6.2"
+version = "0.7.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c401589c6624a13313dd9dc1630ad30616bcec93c8da70ab64f09d47dcbae5be"
 dependencies = [
  "bincode",
  "memmap2",
@@ -721,7 +723,9 @@ dependencies = [
 
 [[package]]
 name = "mvt"
-version = "0.14.0"
+version = "0.15.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e729a3951ed9e5e95395dd1b9ab3219f01c32576d44149f6015160ce4ae7a324"
 dependencies = [
  "log",
  "num-traits",
@@ -804,7 +808,9 @@ checksum = "a89322df9ebe1c1578d689c92318e070967d1042b512afbe49518723f4e6d5cd"
 
 [[package]]
 name = "pointy"
-version = "0.8.0"
+version = "0.9.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "2f7681f30e4dce948b75d8028ddb6321cede92ca51499db112d8cf98a3e086b1"
 dependencies = [
  "num-traits",
  "serde",
@@ -960,7 +966,9 @@ checksum = "d6f6ff9a378485b298a5286656da665ba74413d36db0979633275d2e708145d4"
 
 [[package]]
 name = "rosewood"
-version = "0.6.2"
+version = "0.7.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "3f321f968e3018672386980197fc06e78f867bda9af8985c1b025322639ce76d"
 dependencies = [
  "loam",
  "log",
@@ -1120,9 +1128,9 @@ dependencies = [
 
 [[package]]
 name = "squarepeg"
-version = "0.4.0"
+version = "0.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "048cf3406f23d706520da91232b956e18ac9b02faa4f39d846efbddc5c2b5d07"
+checksum = "ba485d90fdba3504894862cedf26bf6b33168e7c8a117d00b12a3c26b3e50b48"
 dependencies = [
  "pointy",
 ]

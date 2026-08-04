@@ -2,6 +2,8 @@
 //
 // Copyright (c) 2026  Douglas Lau
 //
+#![doc = include_str!("../README.md")]
+#![warn(missing_docs)]
 #![forbid(unsafe_code)]
 
 mod error;

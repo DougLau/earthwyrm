@@ -16,10 +16,10 @@ pub struct MapEvent {
     pub target: String,
     /// Map layer name
     pub layer: String,
-    /// Target OSM reference (`data-ref`)
-    pub osm_ref: Option<String>,
-    /// Target name (`data-name`)
-    pub name: Option<String>,
+    /// Target `data-ref` attribute
+    pub data_ref: Option<String>,
+    /// Target `data-name` attribute
+    pub data_name: Option<String>,
     /// Alt key state
     pub alt_key: bool,
     /// Shift key state
@@ -246,8 +246,8 @@ impl MapEvent {
             return Some(MapEvent {
                 target,
                 layer: layer.to_string(),
-                osm_ref: el.get_attribute("data-ref"),
-                name: el.get_attribute("data-name"),
+                data_ref: el.get_attribute("data-ref"),
+                data_name: el.get_attribute("data-name"),
                 alt_key: me.alt_key(),
                 ctrl_key: me.ctrl_key(),
                 meta_key: me.meta_key(),

@@ -127,7 +127,7 @@ impl fmt::Display for TagPattern {
             (MustMatch::Yes, IncludeValue::Yes, _) => ".",
             _ => "",
         };
-        write!(f, "{prefix}{}", &self.tag)?;
+        write!(f, "{prefix}{}", self.tag)?;
         if let (Equality::NotEqual, Some("_")) =
             (self.equality, self.values.first().map(String::as_str))
         {

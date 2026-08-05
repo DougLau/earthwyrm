@@ -223,7 +223,7 @@ impl GeometryMaker {
     {
         let mut writer = BulkWriter::new(loam)?;
         let mut n_point = 0;
-        for node in self.objs.iter().filter_map(|(_, obj)| obj.node()) {
+        for node in self.objs.values().filter_map(|obj| obj.node()) {
             if let Some(geom) = self.node_point(node) {
                 writer.push(&geom)?;
                 n_point += 1;
@@ -245,7 +245,7 @@ impl GeometryMaker {
     {
         let mut writer = BulkWriter::new(loam)?;
         let mut n_line = 0;
-        for way in self.objs.iter().filter_map(|(_, obj)| obj.way()) {
+        for way in self.objs.values().filter_map(|obj| obj.way()) {
             if let Some(geom) = self.way_linestring(way) {
                 writer.push(&geom)?;
                 n_line += 1;
@@ -267,7 +267,7 @@ impl GeometryMaker {
     {
         let mut writer = BulkWriter::new(loam)?;
         let mut n_poly = 0;
-        for (_id, obj) in self.objs.iter() {
+        for obj in self.objs.values() {
             if let Some(rel) = obj.relation() {
                 // NOTE: check tags again because relations are nebulous
                 if self.layer.check_tags(&rel.tags)

@@ -279,7 +279,7 @@ struct TileParams {
 
 impl fmt::Debug for TileParams {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}/{}/{}/{}", &self.group, self.z, self.x, self.tail)
+        write!(f, "{}/{}/{}/{}", self.group, self.z, self.x, self.tail)
     }
 }
 

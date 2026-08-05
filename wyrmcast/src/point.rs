@@ -36,23 +36,18 @@ impl PointTree {
             };
             let enc = PointEncoder::new(tile_cfg);
             found = true;
-            let mut name = None;
+            let mut g2 = g.g();
             let mut rotate = 0;
             for (tag, value, _sint) in layer_def.tag_values(points.data()) {
                 if tag == "name" {
-                    name = Some(String::from(value));
-                }
-                if tag == "rotate"
-                    && let Ok(r) = value.parse::<i16>()
-                {
-                    rotate = r;
+                    g2.class(layer_def.class_name(Some(value)));
+                } else if tag == "rotate" {
+                    rotate = value.parse::<i16>().unwrap_or(0);
+                } else {
+                    g2.data_(tag, value);
                 }
             }
-            let mut g2 = g.g();
             let marker = format!("#{}-marker", layer_def.name());
-            if let Some(name) = name {
-                g2.class(layer_def.class_name(Some(&name)));
-            }
             enc.encode_points(&points, &marker, rotate, &mut g2);
         }
         g.close();

@@ -17,7 +17,7 @@ layer_group: tile
   # osm (openstreetmap.org) data source (true/false)
   osm: true
   # Base path for loam files
-  # base_path: /var/local/wyrmcast
+  base_path: /var/local/wyrmcast
   #
   # Layer definition
   #

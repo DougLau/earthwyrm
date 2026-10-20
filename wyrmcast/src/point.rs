@@ -47,8 +47,8 @@ impl PointTree {
                     g2.data_(tag, value);
                 }
             }
-            let marker = format!("#{}-marker", layer_def.name());
-            enc.encode_points(&points, &marker, rotate, &mut g2);
+            let icon = format!("#{}-icon", layer_def.name());
+            enc.encode_points(&points, &icon, rotate, &mut g2);
         }
         g.close();
         Ok(found)
@@ -67,7 +67,7 @@ impl PointEncoder {
     fn encode_points<'p>(
         &self,
         points: &gis::Points<f64, Values>,
-        marker: &str,
+        icon: &str,
         rotate: i16,
         g: &'p mut svg::G<'p>,
     ) {
@@ -76,7 +76,7 @@ impl PointEncoder {
             if pt.bounded_by(bbox) {
                 let (x, y) = self.tile_cfg.xform(*pt);
                 let mut u = g.r#use();
-                u.href(marker);
+                u.href(icon);
                 let mut style = String::new();
                 if rotate != 0 {
                     let _ = write!(style, "rotate: {rotate}deg; ");

@@ -24,7 +24,7 @@ impl CasterDef {
     ) -> Result<Option<String>> {
         for group in self.groups() {
             if group_name == group.name() {
-                // Margin 28 needed for point markers on tile edge
+                // Margin 28 needed for point icons on tile edge
                 return group.write_wyrm(self.tile_cfg(peg, 28));
             }
         }

@@ -369,7 +369,7 @@ impl CasterCfg {
                 for layer in &group.layer {
                     let layer = LayerDef::try_from(layer)?;
                     let objs = extractor.extract_layer(&layer)?;
-                    let loam = self.loam_path(layer.name());
+                    let loam = group.loam_path(layer.name());
                     let maker = GeometryMaker::new(layer, objs);
                     maker.make_geometry(loam)?;
                 }

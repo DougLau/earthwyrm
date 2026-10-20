@@ -2,11 +2,11 @@
 //
 // Copyright (c) 2019-2026  Minnesota Department of Transportation
 //
-use crate::caster::CasterCfg;
 use crate::layer::{LayerCfg, LayerDef, LayerTree};
 use anyhow::{Context, Result};
 use serde::Deserialize;
 use std::fmt;
+use std::path::PathBuf;
 
 /// Layer Group configuration
 #[derive(Debug, Deserialize)]
@@ -16,6 +16,9 @@ pub struct LayerGroupCfg {
 
     /// OpenStreetMap data source
     pub osm: bool,
+
+    /// Base path where loam files are stored
+    pub base_path: Option<String>,
 
     /// Layers in group
     pub layer: Vec<LayerCfg>,
@@ -43,14 +46,27 @@ impl fmt::Display for LayerGroupCfg {
     }
 }
 
+impl LayerGroupCfg {
+    /// Get path to a layer `.loam` file
+    pub fn loam_path(&self, name: &str) -> PathBuf {
+        let mut path = PathBuf::new();
+        if let Some(bp) = &self.base_path {
+            path.push(bp);
+        }
+        path.push("loam");
+        path.push(format!("{name}.loam"));
+        path
+    }
+}
+
 impl LayerGroupDef {
     /// Create a new layer group
-    pub fn new(group: &LayerGroupCfg, cfg: &CasterCfg) -> Result<Self> {
+    pub fn new(group: &LayerGroupCfg) -> Result<Self> {
         let name = group.name.to_string();
         let mut layers = vec![];
         for layer_cfg in &group.layer {
             let layer_def = LayerDef::try_from(layer_cfg)?;
-            let path = cfg.loam_path(layer_def.name());
+            let path = group.loam_path(layer_def.name());
             let tree = LayerTree::new(layer_def, &path)
                 .with_context(|| format!("path: {:?}", path))?;
             layers.push(tree);

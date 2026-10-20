@@ -9,7 +9,7 @@ use pointy::BBox;
 use serde::Deserialize;
 use squarepeg::{MapGrid, Peg};
 use std::fs::read_to_string;
-use std::path::{Path, PathBuf};
+use std::path::Path;
 
 /// Configuration for Caster tile layers
 #[derive(Debug, Deserialize)]
@@ -53,14 +53,6 @@ impl CasterCfg {
         let cfg: Self = muon_rs::from_str(&cfg)?;
         Ok(cfg)
     }
-
-    /// Get path to a layer `.loam` file
-    pub fn loam_path(&self, name: &str) -> PathBuf {
-        let mut path = PathBuf::new();
-        path.push("loam");
-        path.push(format!("{}.loam", name));
-        path
-    }
 }
 
 impl TryFrom<&CasterCfg> for CasterDef {
@@ -71,7 +63,7 @@ impl TryFrom<&CasterCfg> for CasterDef {
         let grid = MapGrid::default();
         let mut groups = vec![];
         for group in &cfg.layer_group {
-            groups.push(LayerGroupDef::new(group, cfg)?);
+            groups.push(LayerGroupDef::new(group)?);
         }
         Ok(CasterDef {
             grid,

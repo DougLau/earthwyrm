@@ -2,6 +2,7 @@
 //
 // Copyright (c) 2019-2026  Minnesota Department of Transportation
 //
+use hatmil::{Tree, svg};
 use pointy::{BBox, Bounded, Line, Pt, Transform};
 use squarepeg::{MapGrid, Peg};
 
@@ -16,6 +17,8 @@ pub struct TileCfg {
     bbox: BBox<f64>,
     /// Transform from spatial to tile coörindates
     transform: Transform<f64>,
+    /// Background rectangle
+    rect: String,
 }
 
 /// Point chain for checking bounds and simplification
@@ -38,6 +41,11 @@ impl TileCfg {
         tile_extent: u32,
         margin: u32,
     ) -> Self {
+        let mut tree = Tree::new();
+        let mut rect = tree.root::<svg::Rect>();
+        let xy = -i64::from(margin);
+        let wh = tile_extent + 2 * margin;
+        rect.x(xy).y(xy).width(wh).height(wh).close();
         let mut bbox = grid.peg_bbox(peg);
         let margin = f64::from(margin) / f64::from(tile_extent);
         let margin_x = margin * (bbox.x_max() - bbox.x_min());
@@ -53,6 +61,7 @@ impl TileCfg {
             peg,
             bbox,
             transform,
+            rect: String::from(tree),
         }
     }
 
@@ -74,6 +83,11 @@ impl TileCfg {
     /// Get the tile transform
     pub fn transform(&self) -> Transform<f64> {
         self.transform
+    }
+
+    /// Get tile rectangle
+    pub fn rect(&self) -> &str {
+        &self.rect
     }
 
     /// Transform point to tile coörindates

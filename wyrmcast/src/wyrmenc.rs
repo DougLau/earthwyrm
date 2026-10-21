@@ -64,11 +64,17 @@ impl LayerGroupDef {
                 }
             }
         }
-        if found {
-            Ok(String::from(tree))
-        } else {
-            Ok(String::new())
-        }
+        let v = match (self.osm(), found) {
+            (false, false) => String::new(),
+            (false, true) => String::from(tree),
+            (true, false) => tile_cfg.rect().to_string(),
+            (true, true) => {
+                let mut v = tile_cfg.rect().to_string();
+                v.push_str(&String::from(tree));
+                v
+            }
+        };
+        Ok(v)
     }
 }
 

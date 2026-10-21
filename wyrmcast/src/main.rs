@@ -256,8 +256,7 @@ fn tile_wyrm(
     peg: Peg,
 ) -> (StatusCode, Response<Body>) {
     match caster.fetch_wyrm(group, peg) {
-        Ok(Some(page)) => (StatusCode::OK, page.into_response()),
-        Ok(None) => (StatusCode::NOT_FOUND, "Not Found".into_response()),
+        Ok(page) => (StatusCode::OK, page.into_response()),
         Err(err) => {
             log::warn!("tile_wyrm: {err:?}");
             (

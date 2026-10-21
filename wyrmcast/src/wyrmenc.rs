@@ -17,15 +17,12 @@ impl CasterDef {
     ///
     /// * `group_name` Name of layer group.
     /// * `peg` Peg (tile ID).
-    pub fn fetch_wyrm(
-        &self,
-        group_name: &str,
-        peg: Peg,
-    ) -> Result<Option<String>> {
+    pub fn fetch_wyrm(&self, group_name: &str, peg: Peg) -> Result<String> {
+        // Margin 28 needed for point icons on tile edge
+        let tile_cfg = self.tile_cfg(peg, 28);
         for group in self.groups() {
             if group_name == group.name() {
-                // Margin 28 needed for point icons on tile edge
-                return group.write_wyrm(self.tile_cfg(peg, 28));
+                return group.fetch_wyrm(&tile_cfg);
             }
         }
         Err(anyhow!("Unknown group name: {group_name}"))
@@ -33,17 +30,6 @@ impl CasterDef {
 }
 
 impl LayerGroupDef {
-    /// Write group layers to a wyrm tile
-    fn write_wyrm(&self, tile_cfg: TileCfg) -> Result<Option<String>> {
-        let wyrm = self.fetch_wyrm(&tile_cfg)?;
-        if !wyrm.is_empty() {
-            Ok(Some(wyrm))
-        } else {
-            log::debug!("tile {} empty (no layers)", tile_cfg.peg());
-            Ok(None)
-        }
-    }
-
     /// Fetch a tile
     fn fetch_wyrm(&self, tile_cfg: &TileCfg) -> Result<String> {
         let t = Instant::now();

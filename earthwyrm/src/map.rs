@@ -1,7 +1,7 @@
 // Copyright (C) 2026  Douglas Lau
 //
 use crate::state::MapEvent;
-use crate::tile::make_fetcher;
+use crate::tile::WyrmCache;
 use crate::util::lookup_id;
 use futures_util::StreamExt;
 use jiff::Zoned;
@@ -179,25 +179,19 @@ impl MapPane {
         let ocx = ((peg.x() - peg_nw.x()) * 256 + ox).saturating_sub(cx);
         let ocy = ((peg.y() - peg_nw.y()) * 256 + oy).saturating_sub(cy);
         let origin = (-(ocx as i32), -(ocy as i32));
-        let mut layers = Vec::new();
-        for _gr in self.groups {
-            layers.push(String::with_capacity(1024));
-        }
         let start = Zoned::now();
         let mut n_tiles = 0;
-        let mut fetcher = make_fetcher(peg_nw, peg_se, self.groups);
-        while let Some((group, svg)) = fetcher.next().await {
-            for (gr, layer) in self.groups.iter().zip(&mut layers) {
-                if *gr == group {
-                    layer.push_str(&svg);
-                    n_tiles += 1;
-                }
-            }
+        let mut cache = WyrmCache::new(&self.groups);
+        let mut fetcher = cache.fetcher(peg_nw, peg_se);
+        while let Some((key, wyrm)) = fetcher.next().await {
+            cache.insert(key, wyrm);
+            n_tiles += 1;
         }
         let finish = Zoned::now();
         log::info!("fetched {n_tiles} tiles in {:#}", finish - start);
+        let svg = cache.build(peg_nw, peg_se);
         crate::state::reset(origin, peg_nw);
-        elem.set_inner_html(&layers.join(""));
+        elem.set_inner_html(&svg);
         // start fading in new tiles
         self.set_anim(".wyrm-tile { animation: wyrm-fade-in 0.25s forwards; }");
     }

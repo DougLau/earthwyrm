@@ -17,7 +17,7 @@ pub struct TileCfg {
     bbox: BBox<f64>,
     /// Transform from spatial to tile coörindates
     transform: Transform<f64>,
-    /// Background rectangle
+    /// Background rectangle (for pointer-events)
     rect: String,
 }
 
@@ -85,7 +85,7 @@ impl TileCfg {
         self.transform
     }
 
-    /// Get tile rectangle
+    /// Get background rectangle (for pointer-events)
     pub fn rect(&self) -> &str {
         &self.rect
     }

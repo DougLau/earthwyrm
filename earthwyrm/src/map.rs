@@ -150,26 +150,24 @@ impl MapPane {
             let pos: WebMercatorPos = Wgs84Pos::new(lon, lat).into();
             match self.grid.zxy_peg(zoom, pos.x, pos.y) {
                 Some(peg) => {
-                    spawn_local(self.do_position(elem, peg, pos, ax, ay))
+                    let (peg_nw, peg_se, origin) =
+                        self.peg_bounds(&elem, peg, pos, ax, ay);
+                    spawn_local(self.do_position(elem, peg_nw, peg_se, origin))
                 }
                 None => log::warn!("invalid Peg: {zoom} {lon} {lat}"),
             }
         }
     }
 
-    /// Position map with given peg and lon/lat
-    async fn do_position(
-        self,
-        elem: Element,
+    /// Get Peg bounds
+    fn peg_bounds(
+        &self,
+        elem: &Element,
         peg: Peg,
         pos: WebMercatorPos,
         ax: f64,
         ay: f64,
-    ) {
-        // start fading out current tiles
-        self.set_anim(
-            ".wyrm-tile { animation: wyrm-fade-out 0.25s forwards; }",
-        );
+    ) -> (Peg, Peg, (i32, i32)) {
         let rect = elem.get_bounding_client_rect();
         // "Client" position within rectangle
         let cx = (rect.width() * ax) as u32;
@@ -183,6 +181,21 @@ impl MapPane {
         let ocx = ((peg.x() - peg_nw.x()) * 256 + ox).saturating_sub(cx);
         let ocy = ((peg.y() - peg_nw.y()) * 256 + oy).saturating_sub(cy);
         let origin = (-(ocx as i32), -(ocy as i32));
+        (peg_nw, peg_se, origin)
+    }
+
+    /// Position map with given peg and lon/lat
+    async fn do_position(
+        self,
+        elem: Element,
+        peg_nw: Peg,
+        peg_se: Peg,
+        origin: (i32, i32),
+    ) {
+        // start fading out current tiles
+        self.set_anim(
+            ".wyrm-tile { animation: wyrm-fade-out 0.25s forwards; }",
+        );
         let start = Zoned::now();
         let mut n_tiles = 0;
         let mut fetcher = state::fetcher(peg_nw, peg_se);

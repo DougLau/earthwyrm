@@ -1,7 +1,6 @@
 // Copyright (C) 2026  Douglas Lau
 //
-use crate::state::MapEvent;
-use crate::tile::WyrmCache;
+use crate::state::{self, MapEvent};
 use crate::util::lookup_id;
 use futures_util::StreamExt;
 use jiff::Zoned;
@@ -98,6 +97,11 @@ impl MapPane {
             .is_ok()
     }
 
+    /// Get layer groups names
+    pub fn groups(&self) -> &'static [&'static str] {
+        self.groups
+    }
+
     /// Get map element ID
     pub(crate) fn id(&self) -> &str {
         &self.id
@@ -181,15 +185,14 @@ impl MapPane {
         let origin = (-(ocx as i32), -(ocy as i32));
         let start = Zoned::now();
         let mut n_tiles = 0;
-        let mut cache = WyrmCache::new(&self.groups);
-        let mut fetcher = cache.fetcher(peg_nw, peg_se);
+        let mut fetcher = state::fetcher(peg_nw, peg_se);
         while let Some((key, wyrm)) = fetcher.next().await {
-            cache.insert(key, wyrm);
+            state::cache_wyrm(key, wyrm);
             n_tiles += 1;
         }
         let finish = Zoned::now();
         log::info!("fetched {n_tiles} tiles in {:#}", finish - start);
-        let svg = cache.build(peg_nw, peg_se);
+        let svg = state::render_map(peg_nw, peg_se);
         crate::state::reset(origin, peg_nw);
         elem.set_inner_html(&svg);
         // start fading in new tiles

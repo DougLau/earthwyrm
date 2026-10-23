@@ -2,7 +2,9 @@
 //
 use crate::error::{Error, Result};
 use crate::map::MapPane;
+use crate::tile::{TileKey, WyrmCache};
 use crate::util::lookup_id;
+use futures_util::stream::FuturesUnordered;
 use squarepeg::{Peg, WebMercatorPos, Wgs84Pos};
 use std::cell::RefCell;
 use wasm_bindgen::JsCast;
@@ -56,6 +58,8 @@ struct MapState {
     point: (i32, i32),
     /// North-west peg
     nw: Option<Peg>,
+    /// Tile cache
+    cache: WyrmCache,
 }
 
 thread_local! {
@@ -65,6 +69,7 @@ thread_local! {
 impl MapState {
     /// Make a new map state
     fn new(map_pane: MapPane) -> Self {
+        let groups = map_pane.groups();
         MapState {
             map_pane,
             pointerdown: Closure::new(handle_pointerdown),
@@ -78,6 +83,7 @@ impl MapState {
             pan_point: None,
             point: (0, 0),
             nw: None,
+            cache: WyrmCache::new(groups),
         }
     }
 
@@ -378,5 +384,35 @@ pub fn zoom() -> u32 {
         } else {
             0
         }
+    })
+}
+
+/// Make a tile fetcher
+pub(crate) fn fetcher(
+    peg_nw: Peg,
+    peg_se: Peg,
+) -> FuturesUnordered<impl Future<Output = (TileKey, String)> + use<>> {
+    MAP_STATE.with(|rc| {
+        let state = rc.borrow();
+        let cache = &state.as_ref().unwrap().cache;
+        cache.fetcher(peg_nw, peg_se)
+    })
+}
+
+/// Cache a wyrm tile
+pub(crate) fn cache_wyrm(key: TileKey, wyrm: String) {
+    MAP_STATE.with(|rc| {
+        let mut state = rc.borrow_mut();
+        let cache = &mut state.as_mut().unwrap().cache;
+        cache.insert(key, wyrm);
+    });
+}
+
+/// Render map from cached tiles
+pub(crate) fn render_map(peg_nw: Peg, peg_se: Peg) -> String {
+    MAP_STATE.with(|rc| {
+        let state = rc.borrow();
+        let cache = &state.as_ref().unwrap().cache;
+        cache.render_map(peg_nw, peg_se)
     })
 }

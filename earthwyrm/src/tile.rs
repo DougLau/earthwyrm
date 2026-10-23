@@ -16,7 +16,6 @@ pub struct TileKey {
 }
 
 /// Cache of wyrm tiles
-#[derive(Default)]
 pub struct WyrmCache {
     /// Layer group names
     groups: &'static [&'static str],
@@ -27,10 +26,7 @@ pub struct WyrmCache {
 impl TileKey {
     /// Create a new tile key
     pub fn new(group: &'static str, peg: Peg) -> Self {
-        TileKey {
-            group,
-            peg,
-        }
+        TileKey { group, peg }
     }
 
     /// Fetch the tile
@@ -51,10 +47,10 @@ impl TileKey {
         (self, wyrm)
     }
 
-    /// Build svg element
-    fn build_svg(&self, svg: &mut String, tx: i32, ty: i32) {
+    /// Render svg element
+    fn render_svg(&self, svg: &mut String, tx: i32, ty: i32) {
         svg.push_str("<svg class=\"wyrm-tile ");
-        svg.push_str(&self.group);
+        svg.push_str(self.group);
         svg.push('-');
         svg.push_str(&self.peg.to_string());
         svg.push('"');
@@ -79,9 +75,11 @@ impl WyrmCache {
     }
 
     /// Make a tile fetcher
-    pub fn fetcher(&self, peg_nw: Peg, peg_se: Peg) ->
-        FuturesUnordered<impl Future<Output = (TileKey, String)> + use<>>
-    {
+    pub fn fetcher(
+        &self,
+        peg_nw: Peg,
+        peg_se: Peg,
+    ) -> FuturesUnordered<impl Future<Output = (TileKey, String)> + use<>> {
         let futures = FuturesUnordered::new();
         let zoom = peg_nw.z();
         for py in peg_nw.y()..=peg_se.y() {
@@ -89,7 +87,9 @@ impl WyrmCache {
                 if let Some(peg) = Peg::new(zoom, px, py) {
                     for gr in self.groups {
                         let key = TileKey::new(gr, peg);
-                        futures.push(key.fetch());
+                        if !self.tiles.contains_key(&key) {
+                            futures.push(key.fetch());
+                        }
                     }
                 }
             }
@@ -102,8 +102,8 @@ impl WyrmCache {
         self.tiles.insert(key, wyrm);
     }
 
-    /// Build full map element, with each tile as an `<svg>`
-    pub fn build(&self, peg_nw: Peg, peg_se: Peg) -> String {
+    /// Render full map element, with each tile as an `<svg>`
+    pub fn render_map(&self, peg_nw: Peg, peg_se: Peg) -> String {
         let mut svg = String::with_capacity(256);
         let zoom = peg_nw.z();
         for gr in self.groups {
@@ -114,8 +114,8 @@ impl WyrmCache {
                         if let Some(wyrm) = self.tiles.get(&key) {
                             let tx = (px - peg_nw.x()) as i32;
                             let ty = (py - peg_nw.y()) as i32;
-                            key.build_svg(&mut svg, tx, ty);
-                            svg.push_str(&wyrm);
+                            key.render_svg(&mut svg, tx, ty);
+                            svg.push_str(wyrm);
                             svg.push_str("</svg>");
                         }
                     }

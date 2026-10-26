@@ -52,8 +52,8 @@ struct MapState {
     suppress_click: bool,
     /// Origin point (relative to upper-left corner of map pane)
     origin: (i32, i32),
-    /// Pan "grab" point
-    pan_point: Option<(i32, i32)>,
+    /// Grab (pan) point
+    grab_point: Option<(i32, i32)>,
     /// Current pointer position (client units)
     point: (i32, i32),
     /// North-west peg
@@ -80,7 +80,7 @@ impl MapState {
             contextmenu: Closure::new(handle_contextmenu),
             suppress_click: false,
             origin: (0, 0),
-            pan_point: None,
+            grab_point: None,
             point: (0, 0),
             nw: None,
             cache: WyrmCache::new(groups),
@@ -94,29 +94,29 @@ impl MapState {
 
     /// Start panning
     fn start_panning(&mut self) {
-        if self.pan_point.is_none() {
-            self.pan_point = Some(self.point);
+        if self.grab_point.is_none() {
+            self.grab_point = Some(self.point);
         }
     }
 
     /// Stop panning
     fn stop_panning(&mut self) {
-        if let Some(pan) = self.pan_point {
+        if let Some(grab) = self.grab_point {
             self.origin = (
-                self.origin.0 + self.point.0 - pan.0,
-                self.origin.1 + self.point.1 - pan.1,
+                self.origin.0 + self.point.0 - grab.0,
+                self.origin.1 + self.point.1 - grab.1,
             );
-            self.pan_point = None;
-            self.set_style("");
+            self.grab_point = None;
+            self.update_style("");
         }
     }
 
     /// Get translated pointer position
     fn translated_point(&self) -> (i32, i32) {
-        match self.pan_point {
-            Some(pan) => (
-                self.origin.0 + self.point.0 - pan.0,
-                self.origin.1 + self.point.1 - pan.1,
+        match self.grab_point {
+            Some(grab) => (
+                self.origin.0 + self.point.0 - grab.0,
+                self.origin.1 + self.point.1 - grab.1,
             ),
             None => self.origin,
         }
@@ -125,31 +125,33 @@ impl MapState {
     /// Reset the map state
     fn reset(&mut self, origin: (i32, i32)) {
         self.origin = origin;
-        self.pan_point = None;
+        self.grab_point = None;
         self.point = (0, 0);
-        self.set_style("");
+        self.update_style("");
     }
 
     /// Drag (pan) map to a position
     fn drag_map(&mut self, point: (i32, i32)) {
-        if self.pan_point.is_some() {
+        if self.grab_point.is_some() {
             self.set_point(point);
-            self.set_style("grabbing");
+            self.update_style("grabbing");
             self.map_pane.fetch_edge_tiles();
         }
     }
 
-    /// Set map pane style
-    fn set_style(&self, cursor: &str) {
+    /// Update map pane style
+    fn update_style(&self, cursor: &str) {
         let (x, y) = self.translated_point();
         let mut css = String::with_capacity(80);
-        css.push_str("transform: translate(");
-        css.push_str(&x.to_string());
-        css.push_str("px, ");
-        css.push_str(&y.to_string());
-        css.push_str("px);");
+        if x != 0 || y != 0 {
+            css.push_str("transform: translate(");
+            css.push_str(&x.to_string());
+            css.push_str("px, ");
+            css.push_str(&y.to_string());
+            css.push_str("px);");
+        }
         if !cursor.is_empty() {
-            css.push_str(" cursor: ");
+            css.push_str("cursor: ");
             css.push_str(cursor);
             css.push(';');
         }
@@ -191,7 +193,7 @@ impl MapState {
 fn handle_pointerdown(pe: PointerEvent) {
     if pe.button() == 0 {
         let point = (pe.client_x(), pe.client_y());
-        set_pan_point(true, point);
+        set_grab_point(true, point);
         if let Some(target) = pe.target()
             && let Ok(elem) = target.dyn_into::<Element>()
             && let Err(e) = elem.set_pointer_capture(0)
@@ -205,7 +207,7 @@ fn handle_pointerdown(pe: PointerEvent) {
 fn handle_pointerup(pe: PointerEvent) {
     if pe.button() == 0 {
         let point = (pe.client_x(), pe.client_y());
-        set_pan_point(false, point);
+        set_grab_point(false, point);
     }
 }
 
@@ -340,8 +342,8 @@ pub fn register(map_pane: MapPane) -> Result<()> {
     })
 }
 
-/// Set map pan point
-fn set_pan_point(start: bool, point: (i32, i32)) {
+/// Set map grab (pan) point
+fn set_grab_point(start: bool, point: (i32, i32)) {
     MAP_STATE.with(|rc| {
         if let Some(ref mut state) = *rc.borrow_mut() {
             if start {

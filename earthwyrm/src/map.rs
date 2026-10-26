@@ -139,9 +139,9 @@ impl MapPane {
             let pos: WebMercatorPos = Wgs84Pos::new(lon, lat).into();
             match self.grid.zxy_peg(zoom, pos.x, pos.y) {
                 Some(peg) => {
-                    let (peg_nw, peg_se, origin) =
+                    let (peg_nw, peg_se, offset) =
                         self.peg_bounds(&elem, peg, pos);
-                    spawn_local(self.do_position(elem, peg_nw, peg_se, origin))
+                    spawn_local(self.do_position(elem, peg_nw, peg_se, offset))
                 }
                 None => log::warn!("invalid Peg: {zoom} {lon} {lat}"),
             }
@@ -168,8 +168,8 @@ impl MapPane {
         let oy = (off.y * 256.0) as u32;
         let ocx = ((peg.x() - peg_nw.x()) * 256 + ox).saturating_sub(cx);
         let ocy = ((peg.y() - peg_nw.y()) * 256 + oy).saturating_sub(cy);
-        let origin = (-(ocx as i32), -(ocy as i32));
-        (peg_nw, peg_se, origin)
+        let offset = (-(ocx as i32), -(ocy as i32));
+        (peg_nw, peg_se, offset)
     }
 
     /// Position map with given peg and lon/lat
@@ -178,7 +178,7 @@ impl MapPane {
         elem: Element,
         peg_nw: Peg,
         peg_se: Peg,
-        origin: (i32, i32),
+        offset: (i32, i32),
     ) {
         // start fading out current tiles
         self.set_anim(
@@ -194,7 +194,7 @@ impl MapPane {
         let finish = Zoned::now();
         log::info!("fetched {n_tiles} tiles in {:#}", finish - start);
         let svg = state::render_map(peg_nw, peg_se);
-        crate::state::reset(origin, peg_nw);
+        crate::state::reset(peg_nw, offset);
         elem.set_inner_html(&svg);
         // start fading in new tiles
         self.set_anim(".wyrm-tile { animation: wyrm-fade-in 0.25s forwards; }");

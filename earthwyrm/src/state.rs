@@ -50,14 +50,14 @@ struct MapState {
     click: Closure<dyn Fn(MouseEvent)>,
     /// Flag to suppress click (while panning)
     suppress_click: bool,
-    /// Origin point (relative to upper-left corner of map pane)
-    origin: (i32, i32),
+    /// North-west peg
+    nw: Option<Peg>,
+    /// Offset point (relative to upper-left corner of map pane)
+    offset: (i32, i32),
     /// Grab (pan) point
     grab_point: Option<(i32, i32)>,
     /// Current pointer position (client units)
     point: (i32, i32),
-    /// North-west peg
-    nw: Option<Peg>,
     /// Tile cache
     cache: WyrmCache,
 }
@@ -79,15 +79,15 @@ impl MapState {
             click: Closure::new(handle_click),
             contextmenu: Closure::new(handle_contextmenu),
             suppress_click: false,
-            origin: (0, 0),
+            nw: None,
+            offset: (0, 0),
             grab_point: None,
             point: (0, 0),
-            nw: None,
             cache: WyrmCache::new(groups),
         }
     }
 
-    /// Set pointer position
+    /// Set current pointer position
     fn set_point(&mut self, point: (i32, i32)) {
         self.point = point;
     }
@@ -101,30 +101,27 @@ impl MapState {
 
     /// Stop panning
     fn stop_panning(&mut self) {
-        if let Some(grab) = self.grab_point {
-            self.origin = (
-                self.origin.0 + self.point.0 - grab.0,
-                self.origin.1 + self.point.1 - grab.1,
-            );
+        if self.grab_point.is_some() {
+            self.offset = self.offset_point();
             self.grab_point = None;
             self.update_style("");
         }
     }
 
-    /// Get translated pointer position
-    fn translated_point(&self) -> (i32, i32) {
+    /// Get updated offset pointer position
+    fn offset_point(&self) -> (i32, i32) {
         match self.grab_point {
             Some(grab) => (
-                self.origin.0 + self.point.0 - grab.0,
-                self.origin.1 + self.point.1 - grab.1,
+                self.offset.0 + self.point.0 - grab.0,
+                self.offset.1 + self.point.1 - grab.1,
             ),
-            None => self.origin,
+            None => self.offset,
         }
     }
 
     /// Reset the map state
-    fn reset(&mut self, origin: (i32, i32)) {
-        self.origin = origin;
+    fn reset(&mut self, offset: (i32, i32)) {
+        self.offset = offset;
         self.grab_point = None;
         self.point = (0, 0);
         self.update_style("");
@@ -141,7 +138,7 @@ impl MapState {
 
     /// Update map pane style
     fn update_style(&self, cursor: &str) {
-        let (x, y) = self.translated_point();
+        let (x, y) = self.offset_point();
         let mut css = String::with_capacity(80);
         if x != 0 || y != 0 {
             css.push_str("transform: translate(");
@@ -162,7 +159,7 @@ impl MapState {
     fn change_zoom(&self, zoom: i32, rx: i32, ry: i32) {
         if let Some(nw) = self.nw {
             let zoom = zoom as u32;
-            let point = (rx - self.origin.0, ry - self.origin.1);
+            let point = (rx - self.offset.0, ry - self.offset.1);
             let px = nw.x().saturating_add((point.0 / 255) as u32);
             let py = nw.y().saturating_add((point.1 / 256) as u32);
             if let Some(peg) = Peg::new(nw.z(), px, py) {
@@ -359,11 +356,11 @@ fn set_grab_point(start: bool, point: (i32, i32)) {
 }
 
 /// Reset map pane state
-pub fn reset(origin: (i32, i32), nw: Peg) {
+pub fn reset(nw: Peg, offset: (i32, i32)) {
     MAP_STATE.with(|rc| {
         if let Some(ref mut state) = *rc.borrow_mut() {
-            state.reset(origin);
             state.nw = Some(nw);
+            state.reset(offset);
         }
     })
 }

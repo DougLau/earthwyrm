@@ -164,8 +164,8 @@ impl MapState {
             let px = nw.x().saturating_add((point.0 / 255) as u32);
             let py = nw.y().saturating_add((point.1 / 256) as u32);
             if let Some(peg) = Peg::new(nw.z(), px, py) {
-                let x = (point.0 % 256) as f64 / 256.0;
-                let y = (point.1 % 256) as f64 / 256.0;
+                let x = f64::from(point.0 % 256) / 256.0;
+                let y = f64::from(point.1 % 256) / 256.0;
                 let map_pane = self.map_pane.clone();
                 let zoom_handler = map_pane.zoom_handler;
                 let bbox = map_pane.grid().peg_bbox(peg);
@@ -176,13 +176,10 @@ impl MapState {
                 let my = bbox.y_max() - y * height;
                 let pos = WebMercatorPos::new(mx, my);
                 let loc = Wgs84Pos::from(pos);
-                let (rx, ry) = map_pane.client_pos(rx, ry);
-                map_pane.set_position_anchor(
+                map_pane.with_anchor_px(rx, ry).set_position(
                     zoom,
                     loc.lon_deg(),
                     loc.lat_deg(),
-                    rx,
-                    ry,
                 );
                 (zoom_handler)(zoom);
             }

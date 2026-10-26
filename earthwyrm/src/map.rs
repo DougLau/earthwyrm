@@ -58,6 +58,20 @@ impl MapPane {
         self
     }
 
+    /// Set anchor point
+    ///
+    /// - `ax`: Anchor X value, in pixels
+    /// - `ay`: Anchor Y value, in pixels
+    pub(crate) fn with_anchor_px(mut self, ax: i32, ay: i32) -> Self {
+        if let Some(elem) = self.elem() {
+            let rect = elem.get_bounding_client_rect();
+            let cx = f64::from(ax) / rect.width();
+            let cy = f64::from(ay) / rect.height();
+            self.anchor = (cx, cy);
+        }
+        self
+    }
+
     /// Set layer group tile names
     pub fn with_groups(mut self, groups: &'static [&'static str]) -> Self {
         self.groups = groups;
@@ -119,39 +133,14 @@ impl MapPane {
             .ok()
     }
 
-    /// Get client position in rectangle
-    pub(crate) fn client_pos(&self, ax: i32, ay: i32) -> (f64, f64) {
-        if let Some(elem) = self.elem() {
-            let rect = elem.get_bounding_client_rect();
-            let cx = ax as f64 / rect.width();
-            let cy = ay as f64 / rect.height();
-            (cx, cy)
-        } else {
-            (0.0, 0.0)
-        }
-    }
-
     /// Set map position with given zoom and lon/lat
     pub fn set_position(self, zoom: u32, lon: f64, lat: f64) {
-        let (ax, ay) = self.anchor;
-        self.set_position_anchor(zoom, lon, lat, ax, ay);
-    }
-
-    /// Set map position with given zoom, lon/lat and anchor
-    pub(crate) fn set_position_anchor(
-        self,
-        zoom: u32,
-        lon: f64,
-        lat: f64,
-        ax: f64,
-        ay: f64,
-    ) {
         if let Some(elem) = self.elem() {
             let pos: WebMercatorPos = Wgs84Pos::new(lon, lat).into();
             match self.grid.zxy_peg(zoom, pos.x, pos.y) {
                 Some(peg) => {
                     let (peg_nw, peg_se, origin) =
-                        self.peg_bounds(&elem, peg, pos, ax, ay);
+                        self.peg_bounds(&elem, peg, pos);
                     spawn_local(self.do_position(elem, peg_nw, peg_se, origin))
                 }
                 None => log::warn!("invalid Peg: {zoom} {lon} {lat}"),
@@ -165,10 +154,9 @@ impl MapPane {
         elem: &Element,
         peg: Peg,
         pos: WebMercatorPos,
-        ax: f64,
-        ay: f64,
     ) -> (Peg, Peg, (i32, i32)) {
         let rect = elem.get_bounding_client_rect();
+        let (ax, ay) = self.anchor;
         // "Client" position within rectangle
         let cx = (rect.width() * ax) as u32;
         let cy = (rect.height() * ay) as u32;

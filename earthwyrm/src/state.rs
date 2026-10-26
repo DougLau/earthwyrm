@@ -104,7 +104,7 @@ impl MapState {
         if self.grab_point.is_some() {
             self.offset = self.offset_point();
             self.grab_point = None;
-            self.update_style("");
+            self.map_pane.set_offset(self.offset, false);
         }
     }
 
@@ -124,35 +124,15 @@ impl MapState {
         self.offset = offset;
         self.grab_point = None;
         self.point = (0, 0);
-        self.update_style("");
+        self.map_pane.set_offset(offset, false);
     }
 
     /// Drag (pan) map to a position
     fn drag_map(&mut self, point: (i32, i32)) {
         if self.grab_point.is_some() {
             self.set_point(point);
-            self.update_style("grabbing");
-            self.map_pane.fetch_edge_tiles();
+            self.map_pane.set_offset(self.offset_point(), true);
         }
-    }
-
-    /// Update map pane style
-    fn update_style(&self, cursor: &str) {
-        let (x, y) = self.offset_point();
-        let mut css = String::with_capacity(80);
-        if x != 0 || y != 0 {
-            css.push_str("transform: translate(");
-            css.push_str(&x.to_string());
-            css.push_str("px, ");
-            css.push_str(&y.to_string());
-            css.push_str("px);");
-        }
-        if !cursor.is_empty() {
-            css.push_str("cursor: ");
-            css.push_str(cursor);
-            css.push(';');
-        }
-        self.map_pane.set_style(&css);
     }
 
     /// Change zoom level

@@ -200,8 +200,28 @@ impl MapPane {
         self.set_anim(".wyrm-tile { animation: wyrm-fade-in 0.25s forwards; }");
     }
 
+    /// Set the map pane offset
+    pub(crate) fn set_offset(&self, offset: (i32, i32), grabbing: bool) {
+        let (x, y) = offset;
+        let mut css = String::with_capacity(80);
+        if x != 0 || y != 0 {
+            css.push_str("transform: translate(");
+            css.push_str(&x.to_string());
+            css.push_str("px, ");
+            css.push_str(&y.to_string());
+            css.push_str("px);");
+        }
+        if grabbing {
+            css.push_str("cursor: grabbing;");
+        }
+        self.set_style(&css);
+        if self.needs_more_tiles() {
+            spawn_local(self.clone().do_fetch_edge_tiles());
+        }
+    }
+
     /// Set style
-    pub(crate) fn set_style(&self, value: &str) {
+    fn set_style(&self, value: &str) {
         if let Some(elem) = self.elem()
             && let Err(e) = elem.set_attribute("style", value)
         {
@@ -214,13 +234,6 @@ impl MapPane {
         match lookup_id("wyrm-anim-style") {
             Ok(style) => style.set_inner_html(css),
             Err(e) => log::warn!("set_anim: {e:?}"),
-        }
-    }
-
-    /// Fetch tiles on an edge if necessary
-    pub(crate) fn fetch_edge_tiles(&self) {
-        if self.needs_more_tiles() {
-            spawn_local(self.clone().do_fetch_edge_tiles());
         }
     }
 

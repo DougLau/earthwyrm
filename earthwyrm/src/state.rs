@@ -227,15 +227,6 @@ pub fn register(map_pane: MapPane) -> Result<()> {
     })
 }
 
-/// Update map pane state
-pub(crate) fn update_map(map_pane: MapPane) {
-    MAP_STATE.with(|rc| {
-        if let Some(ref mut state) = *rc.borrow_mut() {
-            state.map_pane = map_pane;
-        }
-    });
-}
-
 /// Set map grab (pan) point
 fn set_grab_point(start: bool, point: (i32, i32)) {
     MAP_STATE.with(|rc| {
@@ -245,7 +236,6 @@ fn set_grab_point(start: bool, point: (i32, i32)) {
                 state.map_pane.start_panning(point);
             } else {
                 state.map_pane.stop_panning();
-                // FIXME: remove unused tiles (garbage collect)
             }
         }
     });
@@ -256,6 +246,15 @@ pub fn map_pane(_id: &str) -> Option<MapPane> {
     // FIXME: use id to select from multiple map panes
     MAP_STATE
         .with(|rc| (*rc.borrow()).as_ref().map(|state| state.map_pane.clone()))
+}
+
+/// Update map pane state
+pub(crate) fn update_map(map_pane: MapPane) {
+    MAP_STATE.with(|rc| {
+        if let Some(ref mut state) = *rc.borrow_mut() {
+            state.map_pane = map_pane;
+        }
+    });
 }
 
 /// Make a tile fetcher

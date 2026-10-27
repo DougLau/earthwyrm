@@ -1,7 +1,7 @@
 // Copyright (C) 2026  Douglas Lau
 //
 use crate::state::{self, MapEvent};
-use crate::util::lookup_id;
+use crate::util;
 use futures_util::StreamExt;
 use jiff::Zoned;
 use squarepeg::{MapGrid, Peg, WebMercatorPos, Wgs84Pos};
@@ -25,8 +25,8 @@ pub struct MapPane {
     pub(crate) click_handler: fn(MapEvent) -> (),
     /// Context menu handler
     pub(crate) contextmenu_handler: fn(MapEvent, i32, i32) -> (),
-    /// North-west peg
-    nw: Option<Peg>,
+    /// Origin peg
+    origin: Option<Peg>,
     /// Offset point (relative to upper-left corner of map pane)
     offset: (i32, i32),
     /// Grab (pan) point
@@ -54,7 +54,7 @@ impl MapPane {
             zoom_handler,
             click_handler,
             contextmenu_handler,
-            nw: None,
+            origin: None,
             offset: (0, 0),
             grab_point: None,
             point: (0, 0),
@@ -140,9 +140,26 @@ impl MapPane {
 
     /// Lookup map pane element
     fn elem(&self) -> Option<Element> {
-        lookup_id(&self.id)
+        util::lookup_id(&self.id)
             .inspect_err(|e| log::warn!("{e:?}"))
             .ok()
+    }
+
+    /// Get Peg bounds
+    pub(crate) fn bounds(&self) -> Option<(Peg, Peg)> {
+        if let Some(origin) = self.origin
+            && let Some(elem) = self.elem()
+        {
+            let offset = self.offset_point();
+            let peg_nw = peg_nw(origin, offset.0, offset.1);
+            let rect = elem.get_bounding_client_rect();
+            let cw = rect.width() as u32;
+            let ch = rect.height() as u32;
+            let peg_se = peg_se(peg_nw, cw, ch);
+            Some((peg_nw, peg_se))
+        } else {
+            None
+        }
     }
 
     /// Set map position with given zoom and lon/lat
@@ -160,7 +177,7 @@ impl MapPane {
         }
     }
 
-    /// Get Peg bounds
+    /// Determine Peg bounds
     fn peg_bounds(
         &self,
         elem: &Element,
@@ -170,19 +187,21 @@ impl MapPane {
         let rect = elem.get_bounding_client_rect();
         let (ax, ay) = self.anchor;
         // "Client" position within rectangle
-        let cx = (rect.width() * ax) as u32;
-        let cy = (rect.height() * ay) as u32;
+        let cx = (rect.width() * ax) as i32;
+        let cy = (rect.height() * ay) as i32;
         let peg_nw = peg_nw(peg, cx, cy);
         let cw = rect.width() as u32;
         let ch = rect.height() as u32;
         let peg_se = peg_se(peg_nw, cw, ch);
         // Offset from north-west corner of peg (0-255)
+        let px = (peg.x() as i32 - peg_nw.x() as i32) * 256;
+        let py = (peg.y() as i32 - peg_nw.y() as i32) * 256;
         let off = (pos.x, pos.y) * self.grid.peg_transform(peg);
-        let ox = (off.x * 256.0) as u32;
-        let oy = (off.y * 256.0) as u32;
-        let ocx = ((peg.x() - peg_nw.x()) * 256 + ox).saturating_sub(cx);
-        let ocy = ((peg.y() - peg_nw.y()) * 256 + oy).saturating_sub(cy);
-        let offset = (-(ocx as i32), -(ocy as i32));
+        let ox = (off.x * 256.0) as i32;
+        let oy = (off.y * 256.0) as i32;
+        let ocx = px + ox - cx;
+        let ocy = py + oy - cy;
+        let offset = (-ocx, -ocy);
         (peg_nw, peg_se, offset)
     }
 
@@ -216,15 +235,15 @@ impl MapPane {
 
     /// Set wyrm animation style
     fn set_anim(&self, css: &str) {
-        match lookup_id("wyrm-anim-style") {
+        match util::lookup_id("wyrm-anim-style") {
             Ok(style) => style.set_inner_html(css),
             Err(e) => log::warn!("set_anim: {e:?}"),
         }
     }
 
     /// Update the map position
-    fn update_position(mut self, nw: Peg, offset: (i32, i32)) {
-        self.nw = Some(nw);
+    fn update_position(mut self, origin: Peg, offset: (i32, i32)) {
+        self.origin = Some(origin);
         self.offset = offset;
         self.grab_point = None;
         self.point = (0, 0);
@@ -291,26 +310,60 @@ impl MapPane {
         if self.grab_point.is_some() {
             self.point = point;
             self.set_offset(self.offset_point(), true);
-            if self.needs_more_tiles() {
-                spawn_local(self.clone().do_fetch_edge_tiles());
-            }
         }
     }
 
-    /// Check if more tiles need to be fetched
-    fn needs_more_tiles(&self) -> bool {
-        // FIXME
-        false
+    /// Fetch uncached tiles on edges
+    pub fn fetch_edge_tiles(self, peg_nw: Peg, peg_se: Peg) {
+        if let Some(elem) = self.elem() {
+            spawn_local(self.do_fetch_edge_tiles(elem, peg_nw, peg_se))
+        }
     }
 
-    /// Fetch tiles on an edge if necessary
-    async fn do_fetch_edge_tiles(self) {
-        // FIXME: do the needful
+    /// Fetch uncached tiles on edges
+    async fn do_fetch_edge_tiles(
+        self,
+        elem: Element,
+        peg_nw: Peg,
+        peg_se: Peg,
+    ) {
+        let Ok(doc) = util::doc() else {
+            log::error!("do_fetch_edge_tiles doc lookup failed");
+            return;
+        };
+        let Some(origin) = self.origin else {
+            log::error!("do_fetch_edge_tiles no origin");
+            return;
+        };
+        let start = Zoned::now();
+        let mut n_tiles = 0;
+        let mut fetcher = state::fetcher(peg_nw, peg_se);
+        while let Some((key, wyrm)) = fetcher.next().await {
+            state::cache_wyrm(key, wyrm);
+            let svg = state::render_svg(key, origin);
+            match doc.create_element("svg") {
+                Ok(el) => {
+                    if let Err(e) = elem.append_with_node_1(&el) {
+                        log::error!("do_fetch_edge_tiles append: {e:?}");
+                        return;
+                    }
+                    el.set_outer_html(&svg);
+                }
+                Err(e) => {
+                    log::error!("do_fetch_edge_tiles create_element: {e:?}");
+                    return;
+                }
+            }
+            n_tiles += 1;
+        }
+        let finish = Zoned::now();
+        log::info!("fetched {n_tiles} edge tiles in {:#}", finish - start);
+        crate::state::complete_fetch();
     }
 
     /// Get zoom level
     pub fn zoom(&self) -> u32 {
-        self.nw.map(|peg| peg.z()).unwrap_or(0)
+        self.origin.map(|peg| peg.z()).unwrap_or(0)
     }
 
     /// Change zoom level
@@ -318,12 +371,12 @@ impl MapPane {
         let zoom = self.zoom() as i32 + delta_zoom;
         let zoom = if zoom >= 0 { zoom as u32 } else { 0 };
         if zoom > 0
-            && let Some(nw) = self.nw
+            && let Some(origin) = self.origin
         {
             let point = (cx - self.offset.0, cy - self.offset.1);
-            let px = nw.x().saturating_add((point.0 / 255) as u32);
-            let py = nw.y().saturating_add((point.1 / 256) as u32);
-            if let Some(peg) = Peg::new(nw.z(), px, py) {
+            let px = origin.x().saturating_add((point.0 / 255) as u32);
+            let py = origin.y().saturating_add((point.1 / 256) as u32);
+            if let Some(peg) = Peg::new(origin.z(), px, py) {
                 let x = f64::from(point.0 % 256) / 256.0;
                 let y = f64::from(point.1 % 256) / 256.0;
                 let bbox = self.grid().peg_bbox(peg);
@@ -347,9 +400,11 @@ impl MapPane {
 }
 
 /// Calculate Northwest peg
-fn peg_nw(peg: Peg, cx: u32, cy: u32) -> Peg {
-    let px = peg.x().saturating_sub(cx / 256 + 1);
-    let py = peg.y().saturating_sub(cy / 256 + 1);
+fn peg_nw(peg: Peg, cx: i32, cy: i32) -> Peg {
+    let px = peg.x() as i32 - (cx / 256) - 1;
+    let px = px.max(0) as u32;
+    let py = peg.y() as i32 - (cy / 256) - 1;
+    let py = py.max(0) as u32;
     Peg::new(peg.z(), px, py).unwrap_or(peg)
 }
 

@@ -53,6 +53,8 @@ struct MapState {
     click: Closure<dyn Fn(MouseEvent)>,
     /// Flag to suppress click (while panning)
     suppress_click: bool,
+    /// Fetch in progress
+    fetch_in_progress: bool,
     /// Tile cache
     cache: WyrmCache,
 }
@@ -74,6 +76,7 @@ impl MapState {
             click: Closure::new(handle_click),
             contextmenu: Closure::new(handle_contextmenu),
             suppress_click: false,
+            fetch_in_progress: false,
             cache: WyrmCache::new(groups),
         }
     }
@@ -108,6 +111,14 @@ fn handle_pointermove(pe: PointerEvent) {
             let point = (pe.client_x(), pe.client_y());
             state.map_pane.drag_map(point);
             state.suppress_click = true;
+            if !state.fetch_in_progress
+                && let Some((nw, se)) = state.map_pane.bounds()
+                && (!state.cache.contains_tile(nw)
+                    || !state.cache.contains_tile(se))
+            {
+                state.fetch_in_progress = true;
+                state.map_pane.clone().fetch_edge_tiles(nw, se);
+            }
         }
     });
 }
@@ -266,26 +277,55 @@ pub fn fetcher(
     peg_se: Peg,
 ) -> FuturesUnordered<impl Future<Output = (TileKey, String)> + use<>> {
     MAP_STATE.with(|rc| {
-        let state = rc.borrow();
-        let cache = &state.as_ref().unwrap().cache;
-        cache.fetcher(peg_nw, peg_se)
+        if let Some(ref state) = *rc.borrow() {
+            state.cache.fetcher(peg_nw, peg_se)
+        } else {
+            log::warn!("fetcher: no state");
+            FuturesUnordered::new()
+        }
     })
 }
 
 /// Cache a wyrm tile
 pub fn cache_wyrm(key: TileKey, wyrm: String) {
     MAP_STATE.with(|rc| {
-        let mut state = rc.borrow_mut();
-        let cache = &mut state.as_mut().unwrap().cache;
-        cache.insert(key, wyrm);
+        if let Some(ref mut state) = *rc.borrow_mut() {
+            state.cache.insert(key, wyrm);
+        } else {
+            log::warn!("cache_wyrm: no state");
+        }
     });
 }
 
 /// Render map from cached tiles
 pub fn render_map(peg_nw: Peg, peg_se: Peg) -> String {
     MAP_STATE.with(|rc| {
-        let state = rc.borrow();
-        let cache = &state.as_ref().unwrap().cache;
-        cache.render_map(peg_nw, peg_se)
+        if let Some(ref state) = *rc.borrow() {
+            state.cache.render_map(peg_nw, peg_se)
+        } else {
+            log::warn!("render_map: no state");
+            String::new()
+        }
     })
+}
+
+/// Render one tile as SVG
+pub fn render_svg(key: TileKey, origin: Peg) -> String {
+    MAP_STATE.with(|rc| {
+        if let Some(ref state) = *rc.borrow() {
+            state.cache.render_svg(key, origin)
+        } else {
+            log::warn!("render_svg: no state");
+            String::new()
+        }
+    })
+}
+
+/// Complete tile fetch
+pub fn complete_fetch() {
+    MAP_STATE.with(|rc| {
+        if let Some(ref mut state) = *rc.borrow_mut() {
+            state.fetch_in_progress = false;
+        }
+    });
 }

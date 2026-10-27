@@ -48,7 +48,7 @@ impl TileKey {
     }
 
     /// Render svg element
-    fn render_svg(&self, svg: &mut String, tx: i32, ty: i32) {
+    fn render_svg(&self, svg: &mut String, tx: i32, ty: i32, wyrm: &str) {
         svg.push_str("<svg class=\"wyrm-tile ");
         svg.push_str(self.group);
         svg.push('-');
@@ -62,6 +62,8 @@ impl TileKey {
             svg.push_str(")\"");
         }
         svg.push('>');
+        svg.push_str(wyrm);
+        svg.push_str("</svg>");
     }
 }
 
@@ -102,6 +104,15 @@ impl WyrmCache {
         self.tiles.insert(key, wyrm);
     }
 
+    /// Check if cache contains a tile
+    pub fn contains_tile(&self, peg: Peg) -> bool {
+        !self.groups.is_empty() && {
+            let gr = self.groups[0];
+            let key = TileKey::new(gr, peg);
+            self.tiles.contains_key(&key)
+        }
+    }
+
     /// Render full map element, with each tile as an `<svg>`
     pub fn render_map(&self, peg_nw: Peg, peg_se: Peg) -> String {
         let mut svg = String::with_capacity(256);
@@ -114,13 +125,22 @@ impl WyrmCache {
                         if let Some(wyrm) = self.tiles.get(&key) {
                             let tx = (px - peg_nw.x()) as i32;
                             let ty = (py - peg_nw.y()) as i32;
-                            key.render_svg(&mut svg, tx, ty);
-                            svg.push_str(wyrm);
-                            svg.push_str("</svg>");
+                            key.render_svg(&mut svg, tx, ty, wyrm);
                         }
                     }
                 }
             }
+        }
+        svg
+    }
+
+    /// Render one tile as an `<svg>`
+    pub fn render_svg(&self, key: TileKey, origin: Peg) -> String {
+        let mut svg = String::with_capacity(256);
+        if let Some(wyrm) = self.tiles.get(&key) {
+            let tx = key.peg.x() as i32 - origin.x() as i32;
+            let ty = key.peg.y() as i32 - origin.y() as i32;
+            key.render_svg(&mut svg, tx, ty, wyrm);
         }
         svg
     }

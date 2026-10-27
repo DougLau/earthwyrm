@@ -72,14 +72,14 @@ impl MapPane {
 
     /// Set anchor point
     ///
-    /// - `ax`: Anchor X value, in pixels
-    /// - `ay`: Anchor Y value, in pixels
-    fn with_anchor_px(mut self, ax: i32, ay: i32) -> Self {
+    /// - `cx`: Anchor X value, in pixels
+    /// - `cy`: Anchor Y value, in pixels
+    fn with_anchor_px(mut self, cx: i32, cy: i32) -> Self {
         if let Some(elem) = self.elem() {
             let rect = elem.get_bounding_client_rect();
-            let cx = f64::from(ax) / rect.width();
-            let cy = f64::from(ay) / rect.height();
-            self.anchor = (cx, cy);
+            let ax = f64::from(cx) / rect.width();
+            let ay = f64::from(cy) / rect.height();
+            self.anchor = (ax, ay);
         }
         self
     }
@@ -173,9 +173,9 @@ impl MapPane {
         let cx = (rect.width() * ax) as u32;
         let cy = (rect.height() * ay) as u32;
         let peg_nw = peg_nw(peg, cx, cy);
-        let rw = rect.width() as u32;
-        let rh = rect.height() as u32;
-        let peg_se = peg_se(peg_nw, rw, rh);
+        let cw = rect.width() as u32;
+        let ch = rect.height() as u32;
+        let peg_se = peg_se(peg_nw, cw, ch);
         // Offset from north-west corner of peg (0-255)
         let off = (pos.x, pos.y) * self.grid.peg_transform(peg);
         let ox = (off.x * 256.0) as u32;
@@ -314,13 +314,13 @@ impl MapPane {
     }
 
     /// Change zoom level
-    pub(crate) fn change_zoom(self, delta_zoom: i32, rx: i32, ry: i32) {
+    pub(crate) fn change_zoom(self, delta_zoom: i32, cx: i32, cy: i32) {
         let zoom = self.zoom() as i32 + delta_zoom;
         let zoom = if zoom >= 0 { zoom as u32 } else { 0 };
         if zoom > 0
             && let Some(nw) = self.nw
         {
-            let point = (rx - self.offset.0, ry - self.offset.1);
+            let point = (cx - self.offset.0, cy - self.offset.1);
             let px = nw.x().saturating_add((point.0 / 255) as u32);
             let py = nw.y().saturating_add((point.1 / 256) as u32);
             if let Some(peg) = Peg::new(nw.z(), px, py) {
@@ -336,7 +336,7 @@ impl MapPane {
                 let loc = Wgs84Pos::from(pos);
                 let zoom_handler = self.zoom_handler;
                 (zoom_handler)(zoom);
-                self.with_anchor_px(rx, ry).set_position(
+                self.with_anchor_px(cx, cy).set_position(
                     zoom,
                     loc.lon_deg(),
                     loc.lat_deg(),
@@ -354,8 +354,8 @@ fn peg_nw(peg: Peg, cx: u32, cy: u32) -> Peg {
 }
 
 /// Calculate Southeast peg
-fn peg_se(peg_nw: Peg, rw: u32, rh: u32) -> Peg {
-    let px = peg_nw.x().saturating_add(rw / 256 + 2);
-    let py = peg_nw.y().saturating_add(rh / 256 + 2);
+fn peg_se(peg_nw: Peg, cw: u32, ch: u32) -> Peg {
+    let px = peg_nw.x().saturating_add(cw / 256 + 2);
+    let py = peg_nw.y().saturating_add(ch / 256 + 2);
     Peg::new(peg_nw.z(), px, py).unwrap_or(peg_nw)
 }

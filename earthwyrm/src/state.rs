@@ -11,7 +11,10 @@ use wasm_bindgen::JsCast;
 use wasm_bindgen::closure::Closure;
 use web_sys::{Element, MouseEvent, PointerEvent, WheelEvent};
 
-/// Map event
+/// Map event for [click] and [contextmenu] handling
+///
+/// [click]: struct.MapPane.html#method.with_click_handler
+/// [contextmenu]: struct.MapPane.html#method.with_contextmenu_handler
 #[derive(Clone, Debug)]
 pub struct MapEvent {
     /// Target class
@@ -249,7 +252,7 @@ pub fn map_pane(_id: &str) -> Option<MapPane> {
 }
 
 /// Update map pane state
-pub(crate) fn update_map(map_pane: MapPane) {
+pub fn update_map(map_pane: MapPane) {
     MAP_STATE.with(|rc| {
         if let Some(ref mut state) = *rc.borrow_mut() {
             state.map_pane = map_pane;
@@ -258,7 +261,7 @@ pub(crate) fn update_map(map_pane: MapPane) {
 }
 
 /// Make a tile fetcher
-pub(crate) fn fetcher(
+pub fn fetcher(
     peg_nw: Peg,
     peg_se: Peg,
 ) -> FuturesUnordered<impl Future<Output = (TileKey, String)> + use<>> {
@@ -270,7 +273,7 @@ pub(crate) fn fetcher(
 }
 
 /// Cache a wyrm tile
-pub(crate) fn cache_wyrm(key: TileKey, wyrm: String) {
+pub fn cache_wyrm(key: TileKey, wyrm: String) {
     MAP_STATE.with(|rc| {
         let mut state = rc.borrow_mut();
         let cache = &mut state.as_mut().unwrap().cache;
@@ -279,7 +282,7 @@ pub(crate) fn cache_wyrm(key: TileKey, wyrm: String) {
 }
 
 /// Render map from cached tiles
-pub(crate) fn render_map(peg_nw: Peg, peg_se: Peg) -> String {
+pub fn render_map(peg_nw: Peg, peg_se: Peg) -> String {
     MAP_STATE.with(|rc| {
         let state = rc.borrow();
         let cache = &state.as_ref().unwrap().cache;

@@ -5,7 +5,7 @@ use crate::map::MapPane;
 use crate::tile::{TileKey, WyrmCache};
 use crate::util::lookup_id;
 use futures_util::stream::FuturesUnordered;
-use squarepeg::{Peg, WebMercatorPos, Wgs84Pos};
+use squarepeg::Peg;
 use std::cell::RefCell;
 use wasm_bindgen::JsCast;
 use wasm_bindgen::closure::Closure;
@@ -50,14 +50,6 @@ struct MapState {
     click: Closure<dyn Fn(MouseEvent)>,
     /// Flag to suppress click (while panning)
     suppress_click: bool,
-    /// North-west peg
-    nw: Option<Peg>,
-    /// Offset point (relative to upper-left corner of map pane)
-    offset: (i32, i32),
-    /// Grab (pan) point
-    grab_point: Option<(i32, i32)>,
-    /// Current pointer position (client units)
-    point: (i32, i32),
     /// Tile cache
     cache: WyrmCache,
 }
@@ -79,89 +71,7 @@ impl MapState {
             click: Closure::new(handle_click),
             contextmenu: Closure::new(handle_contextmenu),
             suppress_click: false,
-            nw: None,
-            offset: (0, 0),
-            grab_point: None,
-            point: (0, 0),
             cache: WyrmCache::new(groups),
-        }
-    }
-
-    /// Set current pointer position
-    fn set_point(&mut self, point: (i32, i32)) {
-        self.point = point;
-    }
-
-    /// Start panning
-    fn start_panning(&mut self) {
-        if self.grab_point.is_none() {
-            self.grab_point = Some(self.point);
-        }
-    }
-
-    /// Stop panning
-    fn stop_panning(&mut self) {
-        if self.grab_point.is_some() {
-            self.offset = self.offset_point();
-            self.grab_point = None;
-            self.map_pane.set_offset(self.offset, false);
-        }
-    }
-
-    /// Get updated offset pointer position
-    fn offset_point(&self) -> (i32, i32) {
-        match self.grab_point {
-            Some(grab) => (
-                self.offset.0 + self.point.0 - grab.0,
-                self.offset.1 + self.point.1 - grab.1,
-            ),
-            None => self.offset,
-        }
-    }
-
-    /// Reset the map state
-    fn reset(&mut self, offset: (i32, i32)) {
-        self.offset = offset;
-        self.grab_point = None;
-        self.point = (0, 0);
-        self.map_pane.set_offset(offset, false);
-    }
-
-    /// Drag (pan) map to a position
-    fn drag_map(&mut self, point: (i32, i32)) {
-        if self.grab_point.is_some() {
-            self.set_point(point);
-            self.map_pane.set_offset(self.offset_point(), true);
-        }
-    }
-
-    /// Change zoom level
-    fn change_zoom(&self, zoom: i32, rx: i32, ry: i32) {
-        if let Some(nw) = self.nw {
-            let zoom = zoom as u32;
-            let point = (rx - self.offset.0, ry - self.offset.1);
-            let px = nw.x().saturating_add((point.0 / 255) as u32);
-            let py = nw.y().saturating_add((point.1 / 256) as u32);
-            if let Some(peg) = Peg::new(nw.z(), px, py) {
-                let x = f64::from(point.0 % 256) / 256.0;
-                let y = f64::from(point.1 % 256) / 256.0;
-                let map_pane = self.map_pane.clone();
-                let zoom_handler = map_pane.zoom_handler;
-                let bbox = map_pane.grid().peg_bbox(peg);
-                let width = bbox.x_span();
-                let height = bbox.y_span();
-                // dimensions in WebMercator
-                let mx = bbox.x_min() + x * width;
-                let my = bbox.y_max() - y * height;
-                let pos = WebMercatorPos::new(mx, my);
-                let loc = Wgs84Pos::from(pos);
-                map_pane.with_anchor_px(rx, ry).set_position(
-                    zoom,
-                    loc.lon_deg(),
-                    loc.lat_deg(),
-                );
-                (zoom_handler)(zoom);
-            }
         }
     }
 }
@@ -193,7 +103,7 @@ fn handle_pointermove(pe: PointerEvent) {
     MAP_STATE.with(|rc| {
         if let Some(ref mut state) = *rc.borrow_mut() {
             let point = (pe.client_x(), pe.client_y());
-            state.drag_map(point);
+            state.map_pane.drag_map(point);
             state.suppress_click = true;
         }
     });
@@ -251,14 +161,12 @@ fn handle_wheel(we: WheelEvent) {
     };
     if delta_zoom != 0 {
         MAP_STATE.with(|rc| {
-            if let Some(ref mut state) = *rc.borrow_mut() {
-                let zoom = state
-                    .nw
-                    .map(|peg| peg.z() as i32 + delta_zoom)
-                    .unwrap_or(0);
-                if zoom > 0 {
-                    state.change_zoom(zoom, we.client_x(), we.client_y());
-                }
+            if let Some(ref state) = *rc.borrow() {
+                state.map_pane.clone().change_zoom(
+                    delta_zoom,
+                    we.client_x(),
+                    we.client_y(),
+                );
             }
         });
     }
@@ -319,30 +227,28 @@ pub fn register(map_pane: MapPane) -> Result<()> {
     })
 }
 
+/// Update map pane state
+pub(crate) fn update_map(map_pane: MapPane) {
+    MAP_STATE.with(|rc| {
+        if let Some(ref mut state) = *rc.borrow_mut() {
+            state.map_pane = map_pane;
+        }
+    });
+}
+
 /// Set map grab (pan) point
 fn set_grab_point(start: bool, point: (i32, i32)) {
     MAP_STATE.with(|rc| {
         if let Some(ref mut state) = *rc.borrow_mut() {
             if start {
                 state.suppress_click = false;
-                state.set_point(point);
-                state.start_panning();
+                state.map_pane.start_panning(point);
             } else {
-                state.stop_panning();
+                state.map_pane.stop_panning();
                 // FIXME: remove unused tiles (garbage collect)
             }
         }
     });
-}
-
-/// Reset map pane state
-pub fn reset(nw: Peg, offset: (i32, i32)) {
-    MAP_STATE.with(|rc| {
-        if let Some(ref mut state) = *rc.borrow_mut() {
-            state.nw = Some(nw);
-            state.reset(offset);
-        }
-    })
 }
 
 /// Get map pane
@@ -350,17 +256,6 @@ pub fn map_pane(_id: &str) -> Option<MapPane> {
     // FIXME: use id to select from multiple map panes
     MAP_STATE
         .with(|rc| (*rc.borrow()).as_ref().map(|state| state.map_pane.clone()))
-}
-
-/// Get current zoom level
-pub fn zoom() -> u32 {
-    MAP_STATE.with(|rc| {
-        if let Some(ref state) = *rc.borrow() {
-            state.nw.map(|peg| peg.z()).unwrap_or(0)
-        } else {
-            0
-        }
-    })
 }
 
 /// Make a tile fetcher

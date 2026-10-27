@@ -25,6 +25,14 @@ pub struct MapPane {
     pub(crate) click_handler: fn(MapEvent) -> (),
     /// Context menu handler
     pub(crate) contextmenu_handler: fn(MapEvent, i32, i32) -> (),
+    /// North-west peg
+    nw: Option<Peg>,
+    /// Offset point (relative to upper-left corner of map pane)
+    offset: (i32, i32),
+    /// Grab (pan) point
+    grab_point: Option<(i32, i32)>,
+    /// Current pointer position (client units)
+    point: (i32, i32),
 }
 
 impl MapPane {
@@ -46,6 +54,10 @@ impl MapPane {
             zoom_handler,
             click_handler,
             contextmenu_handler,
+            nw: None,
+            offset: (0, 0),
+            grab_point: None,
+            point: (0, 0),
         }
     }
 
@@ -62,7 +74,7 @@ impl MapPane {
     ///
     /// - `ax`: Anchor X value, in pixels
     /// - `ay`: Anchor Y value, in pixels
-    pub(crate) fn with_anchor_px(mut self, ax: i32, ay: i32) -> Self {
+    fn with_anchor_px(mut self, ax: i32, ay: i32) -> Self {
         if let Some(elem) = self.elem() {
             let rect = elem.get_bounding_client_rect();
             let cx = f64::from(ax) / rect.width();
@@ -194,14 +206,60 @@ impl MapPane {
         let finish = Zoned::now();
         log::info!("fetched {n_tiles} tiles in {:#}", finish - start);
         let svg = state::render_map(peg_nw, peg_se);
-        crate::state::reset(peg_nw, offset);
         elem.set_inner_html(&svg);
         // start fading in new tiles
         self.set_anim(".wyrm-tile { animation: wyrm-fade-in 0.25s forwards; }");
+        self.clone().update_position(peg_nw, offset);
+    }
+
+    /// Update the map position
+    fn update_position(mut self, nw: Peg, offset: (i32, i32)) {
+        self.nw = Some(nw);
+        self.offset = offset;
+        self.grab_point = None;
+        self.point = (0, 0);
+        self.set_offset(offset, false);
+        crate::state::update_map(self);
+    }
+
+    /// Start panning
+    pub(crate) fn start_panning(&mut self, point: (i32, i32)) {
+        self.point = point;
+        if self.grab_point.is_none() {
+            self.grab_point = Some(point);
+        }
+    }
+
+    /// Stop panning
+    pub(crate) fn stop_panning(&mut self) {
+        if self.grab_point.is_some() {
+            self.offset = self.offset_point();
+            self.grab_point = None;
+            self.set_offset(self.offset, false);
+        }
+    }
+
+    /// Get updated offset pointer position
+    fn offset_point(&self) -> (i32, i32) {
+        match self.grab_point {
+            Some(grab) => (
+                self.offset.0 + self.point.0 - grab.0,
+                self.offset.1 + self.point.1 - grab.1,
+            ),
+            None => self.offset,
+        }
+    }
+
+    /// Drag (pan) map to a position
+    pub(crate) fn drag_map(&mut self, point: (i32, i32)) {
+        if self.grab_point.is_some() {
+            self.point = point;
+            self.set_offset(self.offset_point(), true);
+        }
     }
 
     /// Set the map pane offset
-    pub(crate) fn set_offset(&self, offset: (i32, i32), grabbing: bool) {
+    fn set_offset(&self, offset: (i32, i32), grabbing: bool) {
         let (x, y) = offset;
         let mut css = String::with_capacity(80);
         if x != 0 || y != 0 {
@@ -250,7 +308,39 @@ impl MapPane {
 
     /// Get zoom level
     pub fn zoom(&self) -> u32 {
-        crate::state::zoom()
+        self.nw.map(|peg| peg.z()).unwrap_or(0)
+    }
+
+    /// Change zoom level
+    pub(crate) fn change_zoom(self, delta_zoom: i32, rx: i32, ry: i32) {
+        let zoom = self.zoom() as i32 + delta_zoom;
+        let zoom = if zoom >= 0 { zoom as u32 } else { 0 };
+        if zoom > 0
+            && let Some(nw) = self.nw
+        {
+            let point = (rx - self.offset.0, ry - self.offset.1);
+            let px = nw.x().saturating_add((point.0 / 255) as u32);
+            let py = nw.y().saturating_add((point.1 / 256) as u32);
+            if let Some(peg) = Peg::new(nw.z(), px, py) {
+                let x = f64::from(point.0 % 256) / 256.0;
+                let y = f64::from(point.1 % 256) / 256.0;
+                let bbox = self.grid().peg_bbox(peg);
+                let width = bbox.x_span();
+                let height = bbox.y_span();
+                // dimensions in WebMercator
+                let mx = bbox.x_min() + x * width;
+                let my = bbox.y_max() - y * height;
+                let pos = WebMercatorPos::new(mx, my);
+                let loc = Wgs84Pos::from(pos);
+                let zoom_handler = self.zoom_handler;
+                (zoom_handler)(zoom);
+                self.with_anchor_px(rx, ry).set_position(
+                    zoom,
+                    loc.lon_deg(),
+                    loc.lat_deg(),
+                );
+            }
+        }
     }
 }
 

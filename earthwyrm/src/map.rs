@@ -6,7 +6,7 @@ use futures_util::StreamExt;
 use jiff::Zoned;
 use squarepeg::{MapGrid, Peg, WebMercatorPos, Wgs84Pos};
 use wasm_bindgen_futures::spawn_local;
-use web_sys::{DomRect, Element};
+use web_sys::Element;
 
 /// Map pane
 #[derive(Clone)]
@@ -173,7 +173,9 @@ impl MapPane {
         let cx = (rect.width() * ax) as u32;
         let cy = (rect.height() * ay) as u32;
         let peg_nw = peg_nw(peg, cx, cy);
-        let peg_se = peg_se(peg, &rect);
+        let rw = rect.width() as u32;
+        let rh = rect.height() as u32;
+        let peg_se = peg_se(peg_nw, rw, rh);
         // Offset from north-west corner of peg (0-255)
         let off = (pos.x, pos.y) * self.grid.peg_transform(peg);
         let ox = (off.x * 256.0) as u32;
@@ -352,10 +354,8 @@ fn peg_nw(peg: Peg, cx: u32, cy: u32) -> Peg {
 }
 
 /// Calculate Southeast peg
-fn peg_se(peg: Peg, rect: &DomRect) -> Peg {
-    let width = (rect.width() as u32) / 256;
-    let height = (rect.height() as u32) / 256;
-    let px = peg.x().saturating_add(width + 1);
-    let py = peg.y().saturating_add(height + 1);
-    Peg::new(peg.z(), px, py).unwrap_or(peg)
+fn peg_se(peg_nw: Peg, rw: u32, rh: u32) -> Peg {
+    let px = peg_nw.x().saturating_add(rw / 256 + 2);
+    let py = peg_nw.y().saturating_add(rh / 256 + 2);
+    Peg::new(peg_nw.z(), px, py).unwrap_or(peg_nw)
 }

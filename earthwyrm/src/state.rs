@@ -113,11 +113,11 @@ fn handle_pointermove(pe: PointerEvent) {
             if !state.map_pane.drag_map(point) {
                 return;
             }
-            if !state.fetch_in_progress
-                && let Some((nw, se)) = state.map_pane.bounds()
+            if state.fetch_in_progress {
+                log::debug!("handle_pointermove: fetch in progress!");
+            } else if let Some((nw, se)) = state.map_pane.bounds()
                 && !state.cache.contains_range(nw, se)
             {
-                state.fetch_in_progress = true;
                 state.map_pane.clone().fetch_edge_tiles(nw, se);
             }
         }
@@ -322,11 +322,15 @@ pub fn render_svg(key: TileKey, origin: Peg) -> String {
     })
 }
 
-/// Complete tile fetch
-pub fn complete_fetch() {
+/// Set fetch progress
+pub fn set_fetch_progress(p: bool) -> bool {
     MAP_STATE.with(|rc| {
         if let Some(ref mut state) = *rc.borrow_mut() {
-            state.fetch_in_progress = false;
+            let prev = state.fetch_in_progress;
+            state.fetch_in_progress = p;
+            prev
+        } else {
+            false
         }
-    });
+    })
 }

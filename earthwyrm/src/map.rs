@@ -213,6 +213,10 @@ impl MapPane {
         peg_se: Peg,
         offset: (i32, i32),
     ) {
+        if crate::state::set_fetch_progress(true) {
+            log::error!("do_position fetch already in progress");
+            return;
+        }
         // start fading out current tiles
         self.set_anim(
             ".wyrm-tile { animation: wyrm-fade-out 0.25s forwards; }",
@@ -225,12 +229,13 @@ impl MapPane {
             n_tiles += 1;
         }
         let finish = Zoned::now();
-        log::info!("fetched {n_tiles} tiles in {:#}", finish - start);
+        log::debug!("fetched {n_tiles} tiles in {:#}", finish - start);
         let svg = state::render_map(peg_nw, peg_se);
         elem.set_inner_html(&svg);
         // start fading in new tiles
         self.set_anim(".wyrm-tile { animation: wyrm-fade-in 0.25s forwards; }");
         self.clone().update_position(peg_nw, offset);
+        crate::state::set_fetch_progress(false);
     }
 
     /// Set wyrm animation style
@@ -338,6 +343,10 @@ impl MapPane {
             log::error!("do_fetch_edge_tiles no origin");
             return;
         };
+        if crate::state::set_fetch_progress(true) {
+            log::error!("do_fetch_edge_tiles fetch already in progress");
+            return;
+        }
         let start = Zoned::now();
         let mut n_tiles = 0;
         let mut fetcher = state::fetcher(peg_nw, peg_se);
@@ -350,8 +359,8 @@ impl MapPane {
             n_tiles += 1;
         }
         let finish = Zoned::now();
-        log::info!("fetched {n_tiles} edge tiles in {:#}", finish - start);
-        crate::state::complete_fetch();
+        log::debug!("fetched {n_tiles} edge tiles in {:#}", finish - start);
+        crate::state::set_fetch_progress(false);
     }
 
     /// Append a tile to the map element

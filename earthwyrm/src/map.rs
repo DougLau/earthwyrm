@@ -385,8 +385,8 @@ impl MapPane {
             && let Some(origin) = self.origin
         {
             let point = (cx - self.offset.0, cy - self.offset.1);
-            let px = origin.x().saturating_add((point.0 / 255) as u32);
-            let py = origin.y().saturating_add((point.1 / 256) as u32);
+            let px = (origin.x() as i32 + (point.0 / 255)) as u32;
+            let py = (origin.y() as i32 + (point.1 / 256)) as u32;
             if let Some(peg) = Peg::new(origin.z(), px, py) {
                 let x = f64::from(point.0 % 256) / 256.0;
                 let y = f64::from(point.1 % 256) / 256.0;

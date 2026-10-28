@@ -104,13 +104,28 @@ impl WyrmCache {
         self.tiles.insert(key, wyrm);
     }
 
-    /// Check if cache contains a tile
-    pub fn contains_tile(&self, peg: Peg) -> bool {
-        !self.groups.is_empty() && {
-            let gr = self.groups[0];
-            let key = TileKey::new(gr, peg);
-            self.tiles.contains_key(&key)
+    /// Check if cache contains a range of tiles (corners)
+    pub fn contains_range(&self, peg_nw: Peg, peg_se: Peg) -> bool {
+        if self.groups.is_empty() {
+            return true;
         }
+        let Some(peg_ne) = Peg::new(peg_nw.z(), peg_se.x(), peg_nw.y()) else {
+            return true;
+        };
+        let Some(peg_sw) = Peg::new(peg_nw.z(), peg_nw.x(), peg_se.y()) else {
+            return true;
+        };
+        self.contains_tile(peg_nw)
+            && self.contains_tile(peg_se)
+            && self.contains_tile(peg_ne)
+            && self.contains_tile(peg_sw)
+    }
+
+    /// Check if cache contains a tile
+    fn contains_tile(&self, peg: Peg) -> bool {
+        let gr = self.groups[0];
+        let key = TileKey::new(gr, peg);
+        self.tiles.contains_key(&key)
     }
 
     /// Render full map element, with each tile as an `<svg>`

@@ -6,7 +6,7 @@ use futures_util::StreamExt;
 use jiff::Zoned;
 use squarepeg::{MapGrid, Peg, WebMercatorPos, Wgs84Pos};
 use wasm_bindgen_futures::spawn_local;
-use web_sys::Element;
+use web_sys::{Document, Element};
 
 /// Map pane
 #[derive(Clone)]
@@ -306,10 +306,13 @@ impl MapPane {
     }
 
     /// Drag (pan) map to a position
-    pub(crate) fn drag_map(&mut self, point: (i32, i32)) {
+    pub(crate) fn drag_map(&mut self, point: (i32, i32)) -> bool {
         if self.grab_point.is_some() {
             self.point = point;
             self.set_offset(self.offset_point(), true);
+            true
+        } else {
+            false
         }
     }
 
@@ -341,24 +344,32 @@ impl MapPane {
         while let Some((key, wyrm)) = fetcher.next().await {
             state::cache_wyrm(key, wyrm);
             let svg = state::render_svg(key, origin);
-            match doc.create_element("svg") {
-                Ok(el) => {
-                    if let Err(e) = elem.append_with_node_1(&el) {
-                        log::error!("do_fetch_edge_tiles append: {e:?}");
-                        return;
-                    }
-                    el.set_outer_html(&svg);
-                }
-                Err(e) => {
-                    log::error!("do_fetch_edge_tiles create_element: {e:?}");
-                    return;
-                }
+            if self.append_tile(&doc, &elem, svg) {
+                break;
             }
             n_tiles += 1;
         }
         let finish = Zoned::now();
         log::info!("fetched {n_tiles} edge tiles in {:#}", finish - start);
         crate::state::complete_fetch();
+    }
+
+    /// Append a tile to the map element
+    fn append_tile(&self, doc: &Document, elem: &Element, svg: String) -> bool {
+        match doc.create_element("svg") {
+            Ok(node) => {
+                if let Err(e) = elem.append_with_node_1(&node) {
+                    log::error!("append_tile 1: {e:?}");
+                    return true;
+                }
+                node.set_outer_html(&svg);
+            }
+            Err(e) => {
+                log::error!("append_tile: {e:?}");
+                return true;
+            }
+        }
+        false
     }
 
     /// Get zoom level

@@ -108,13 +108,14 @@ fn handle_pointerup(pe: PointerEvent) {
 fn handle_pointermove(pe: PointerEvent) {
     MAP_STATE.with(|rc| {
         if let Some(ref mut state) = *rc.borrow_mut() {
-            let point = (pe.client_x(), pe.client_y());
-            state.map_pane.drag_map(point);
             state.suppress_click = true;
+            let point = (pe.client_x(), pe.client_y());
+            if !state.map_pane.drag_map(point) {
+                return;
+            }
             if !state.fetch_in_progress
                 && let Some((nw, se)) = state.map_pane.bounds()
-                && (!state.cache.contains_tile(nw)
-                    || !state.cache.contains_tile(se))
+                && !state.cache.contains_range(nw, se)
             {
                 state.fetch_in_progress = true;
                 state.map_pane.clone().fetch_edge_tiles(nw, se);

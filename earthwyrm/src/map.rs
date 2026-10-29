@@ -391,8 +391,17 @@ impl MapPane {
         let zoom = self.zoom() as i32 + delta_zoom;
         let zoom = if zoom >= 0 { zoom as u32 } else { 0 };
         if zoom > 0
-            && let Some(origin) = self.origin
+            && let Some((lon, lat)) = self.lonlat(cx, cy)
         {
+            let zoom_handler = self.zoom_handler;
+            (zoom_handler)(zoom);
+            self.with_anchor_px(cx, cy).set_position(zoom, lon, lat);
+        }
+    }
+
+    /// Get longitude/latitude from client window position
+    pub fn lonlat(&self, cx: i32, cy: i32) -> Option<(f64, f64)> {
+        if let Some(origin) = self.origin {
             let point = (cx - self.offset.0, cy - self.offset.1);
             let px = (origin.x() as i32 + (point.0 / 255)) as u32;
             let py = (origin.y() as i32 + (point.1 / 256)) as u32;
@@ -407,15 +416,10 @@ impl MapPane {
                 let my = bbox.y_max() - y * height;
                 let pos = WebMercatorPos::new(mx, my);
                 let loc = Wgs84Pos::from(pos);
-                let zoom_handler = self.zoom_handler;
-                (zoom_handler)(zoom);
-                self.with_anchor_px(cx, cy).set_position(
-                    zoom,
-                    loc.lon_deg(),
-                    loc.lat_deg(),
-                );
+                return Some((loc.lon_deg(), loc.lat_deg()));
             }
         }
+        None
     }
 }
 

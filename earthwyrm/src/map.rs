@@ -214,7 +214,7 @@ impl MapPane {
         offset: (i32, i32),
     ) {
         if crate::state::set_fetch_progress(true) {
-            log::error!("do_position fetch already in progress");
+            log::warn!("do_position fetch already in progress");
             return;
         }
         // start fading out current tiles
@@ -336,15 +336,15 @@ impl MapPane {
         peg_se: Peg,
     ) {
         let Ok(doc) = util::doc() else {
-            log::error!("do_fetch_edge_tiles doc lookup failed");
+            log::warn!("do_fetch_edge_tiles doc lookup failed");
             return;
         };
         let Some(origin) = self.origin else {
-            log::error!("do_fetch_edge_tiles no origin");
+            log::warn!("do_fetch_edge_tiles no origin");
             return;
         };
         if crate::state::set_fetch_progress(true) {
-            log::error!("do_fetch_edge_tiles fetch already in progress");
+            log::warn!("do_fetch_edge_tiles fetch already in progress");
             return;
         }
         let start = Zoned::now();
@@ -368,13 +368,13 @@ impl MapPane {
         match doc.create_element("svg") {
             Ok(node) => {
                 if let Err(e) = elem.append_with_node_1(&node) {
-                    log::error!("append_tile 1: {e:?}");
+                    log::warn!("append_tile 1: {e:?}");
                     return true;
                 }
                 node.set_outer_html(&svg);
             }
             Err(e) => {
-                log::error!("append_tile: {e:?}");
+                log::warn!("append_tile: {e:?}");
                 return true;
             }
         }

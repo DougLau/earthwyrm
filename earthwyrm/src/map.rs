@@ -2,7 +2,6 @@
 //
 use crate::state::{self, MapEvent};
 use crate::util;
-use futures_util::StreamExt;
 use jiff::Zoned;
 use squarepeg::{MapGrid, Peg, WebMercatorPos, Wgs84Pos};
 use wasm_bindgen_futures::spawn_local;
@@ -221,15 +220,18 @@ impl MapPane {
         self.set_anim(
             ".wyrm-tile { animation: wyrm-fade-out 0.25s forwards; }",
         );
+        state::clear_shown_tiles();
         let start = Zoned::now();
-        let mut n_tiles = 0;
-        let mut fetcher = state::fetcher(peg_nw, peg_se);
-        while let Some((key, wyrm)) = fetcher.next().await {
-            state::cache_wyrm(key, wyrm);
-            n_tiles += 1;
+        let mut n_fetched = 0;
+        let keys = state::missing_keys(peg_nw, peg_se);
+        for key in keys {
+            if !state::show_tile(key) {
+                let wyrm = key.fetch().await;
+                n_fetched += state::cache_wyrm(key, wyrm);
+            }
         }
         let finish = Zoned::now();
-        log::debug!("fetched {n_tiles} tiles in {:#}", finish - start);
+        log::debug!("fetched {n_fetched} tiles in {:#}", finish - start);
         let svg = state::render_map(peg_nw, peg_se);
         elem.set_inner_html(&svg);
         // start fading in new tiles
@@ -348,18 +350,27 @@ impl MapPane {
             return;
         }
         let start = Zoned::now();
-        let mut n_tiles = 0;
-        let mut fetcher = state::fetcher(peg_nw, peg_se);
-        while let Some((key, wyrm)) = fetcher.next().await {
-            state::cache_wyrm(key, wyrm);
-            let svg = state::render_svg(key, origin);
-            if self.append_tile(&doc, &elem, svg) {
-                break;
+        let mut n_fetched = 0;
+        let keys = state::missing_keys(peg_nw, peg_se);
+        for key in keys {
+            if state::show_tile(key) {
+                let svg = state::render_svg(key, origin);
+                if self.append_tile(&doc, &elem, svg) {
+                    break;
+                }
+            } else {
+                let wyrm = key.fetch().await;
+                if state::cache_wyrm(key, wyrm) > 0 {
+                    n_fetched += 1;
+                    let svg = state::render_svg(key, origin);
+                    if self.append_tile(&doc, &elem, svg) {
+                        break;
+                    }
+                }
             }
-            n_tiles += 1;
         }
         let finish = Zoned::now();
-        log::debug!("fetched {n_tiles} edge tiles in {:#}", finish - start);
+        log::debug!("fetched {n_fetched} edge tiles in {:#}", finish - start);
         crate::state::set_fetch_progress(false);
     }
 

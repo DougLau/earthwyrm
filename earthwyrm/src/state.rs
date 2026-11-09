@@ -4,7 +4,6 @@ use crate::error::{Error, Result};
 use crate::map::MapPane;
 use crate::tile::{TileKey, WyrmCache};
 use crate::util::lookup_id;
-use futures_util::stream::FuturesUnordered;
 use squarepeg::Peg;
 use std::cell::RefCell;
 use wasm_bindgen::JsCast;
@@ -116,7 +115,7 @@ fn handle_pointermove(pe: PointerEvent) {
             if state.fetch_in_progress {
                 log::debug!("handle_pointermove: fetch in progress!");
             } else if let Some((nw, se)) = state.map_pane.bounds()
-                && !state.cache.contains_range(nw, se)
+                && !state.cache.is_range_shown(nw, se)
             {
                 state.map_pane.clone().fetch_edge_tiles(nw, se);
             }
@@ -272,30 +271,55 @@ pub fn update_map(map_pane: MapPane) {
     });
 }
 
-/// Make a tile fetcher
-pub fn fetcher(
-    peg_nw: Peg,
-    peg_se: Peg,
-) -> FuturesUnordered<impl Future<Output = (TileKey, String)> + use<>> {
+/// Get a `Vec` of missing tile keys
+pub fn missing_keys(peg_nw: Peg, peg_se: Peg) -> Vec<TileKey> {
     MAP_STATE.with(|rc| {
         if let Some(ref state) = *rc.borrow() {
-            state.cache.fetcher(peg_nw, peg_se)
+            state.cache.missing_keys(peg_nw, peg_se)
         } else {
-            log::warn!("fetcher: no state");
-            FuturesUnordered::new()
+            log::warn!("missing_keys: no state");
+            Vec::new()
+        }
+    })
+}
+
+/// Clear shown tiles
+pub fn clear_shown_tiles() {
+    MAP_STATE.with(|rc| {
+        if let Some(ref mut state) = *rc.borrow_mut() {
+            state.cache.clear_shown_tiles()
+        } else {
+            log::warn!("clear_shown_tiles: no state");
+        }
+    })
+}
+
+/// Show a cached tile
+pub fn show_tile(key: TileKey) -> bool {
+    MAP_STATE.with(|rc| {
+        if let Some(ref mut state) = *rc.borrow_mut() {
+            state.cache.show_tile(key)
+        } else {
+            log::warn!("show_tile: no state");
+            false
         }
     })
 }
 
 /// Cache a wyrm tile
-pub fn cache_wyrm(key: TileKey, wyrm: String) {
+pub fn cache_wyrm(key: TileKey, wyrm: String) -> u32 {
+    if wyrm.is_empty() {
+        log::debug!("cache_wyrm empty! {key:?}");
+        return 0;
+    }
     MAP_STATE.with(|rc| {
         if let Some(ref mut state) = *rc.borrow_mut() {
-            state.cache.insert(key, wyrm);
+            state.cache.insert_tile(key, wyrm);
         } else {
             log::warn!("cache_wyrm: no state");
         }
     });
+    1
 }
 
 /// Render map from cached tiles

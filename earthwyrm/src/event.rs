@@ -9,10 +9,10 @@ use web_sys::{Element, MouseEvent};
 /// [contextmenu]: struct.MapPane.html#method.with_contextmenu_handler
 #[derive(Clone, Debug)]
 pub struct MapEvent {
-    /// Target class
-    pub target: String,
-    /// Map layer name
+    /// Name of map layer
     pub layer: String,
+    /// Target class name
+    pub class: String,
     /// Target `data-ref` attribute
     pub data_ref: Option<String>,
     /// Target `data-name` attribute
@@ -32,14 +32,14 @@ impl MapEvent {
     pub(crate) fn from_mouse_event(me: MouseEvent) -> Option<Self> {
         if let Some(Ok(target)) = me.target().map(|e| e.dyn_into::<Element>())
             && let Ok(Some(el)) = target.closest("g,path")
-            && let Some(target) = el.get_attribute("class")
+            && let Some(class) = el.get_attribute("class")
             && let Some(parent) = el.parent_element()
             && let Some(pcls) = parent.get_attribute("class")
             && let Some(("wyrm", layer)) = pcls.split_once('-')
         {
             return Some(MapEvent {
-                target,
                 layer: layer.to_string(),
+                class,
                 data_ref: el.get_attribute("data-ref"),
                 data_name: el.get_attribute("data-name"),
                 alt_key: me.alt_key(),

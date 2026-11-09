@@ -124,7 +124,7 @@ impl MapPane {
     }
 
     /// Get layer groups names
-    pub fn groups(&self) -> &'static [&'static str] {
+    pub(crate) fn groups(&self) -> &'static [&'static str] {
         self.groups
     }
 
@@ -326,7 +326,7 @@ impl MapPane {
     }
 
     /// Fetch uncached tiles on edges
-    pub fn fetch_edge_tiles(self, peg_nw: Peg, peg_se: Peg) {
+    pub(crate) fn fetch_edge_tiles(self, peg_nw: Peg, peg_se: Peg) {
         if let Some(elem) = self.elem() {
             spawn_local(self.do_fetch_edge_tiles(elem, peg_nw, peg_se))
         }

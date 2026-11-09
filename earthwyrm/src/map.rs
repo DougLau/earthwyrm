@@ -9,6 +9,8 @@ use wasm_bindgen_futures::spawn_local;
 use web_sys::{Document, Element};
 
 /// Map pane
+///
+/// A browser element that loads `.wyrm` tiles on demand.
 #[derive(Clone)]
 pub struct MapPane {
     /// Map element ID
@@ -36,12 +38,12 @@ pub struct MapPane {
 }
 
 impl MapPane {
-    /// Get registered map pane by element ID
+    /// Get a registered map pane by element `id`
     pub fn get(id: &str) -> Option<MapPane> {
         state::map_pane(id)
     }
 
-    /// Create a new map on element with ID
+    /// Create a new map on element with `id`
     pub fn new(id: &str) -> Self {
         let zoom_handler = |_z| {};
         let click_handler = |_tgt| {};
@@ -96,7 +98,7 @@ impl MapPane {
         self
     }
 
-    /// Set click event handler
+    /// Set map event handler for `click` events
     pub fn with_click_handler(
         mut self,
         click_handler: fn(MapEvent) -> (),
@@ -105,7 +107,7 @@ impl MapPane {
         self
     }
 
-    /// Set contextmenu event handler
+    /// Set map event handler for `contextmenu` events
     pub fn with_contextmenu_handler(
         mut self,
         contextmenu_handler: fn(MapEvent, i32, i32) -> (),
@@ -114,7 +116,9 @@ impl MapPane {
         self
     }
 
-    /// Register the map pane in the browser
+    /// Register event handlers in browser DOM
+    ///
+    /// Handlers will be registered for: pointer, click, wheel, contextmenu
     ///
     /// Returns `true` if successful
     pub fn register(self) -> bool {

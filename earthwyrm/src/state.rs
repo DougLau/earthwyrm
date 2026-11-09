@@ -108,9 +108,9 @@ fn handle_contextmenu(pe: PointerEvent) {
             let x = pe.client_x();
             let y = pe.client_y();
             if let Ok(me) = pe.dyn_into::<MouseEvent>()
-                && let Some(target) = MapEvent::from_mouse_event(me)
+                && let Some(map_ev) = MapEvent::from_mouse_event(me)
             {
-                (state.map_pane.contextmenu_handler)(target, x, y);
+                (state.map_pane.contextmenu_handler)(map_ev, x, y);
             }
         }
     });
@@ -143,9 +143,9 @@ fn handle_click(me: MouseEvent) {
     MAP_STATE.with(|rc| {
         if let Some(ref state) = *rc.borrow()
             && !state.suppress_click
-            && let Some(target) = MapEvent::from_mouse_event(me)
+            && let Some(map_ev) = MapEvent::from_mouse_event(me)
         {
-            (state.map_pane.click_handler)(target);
+            (state.map_pane.click_handler)(map_ev);
         }
     });
 }

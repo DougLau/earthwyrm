@@ -224,7 +224,7 @@ dependencies = [
 
 [[package]]
 name = "earthwyrm"
-version = "0.20.1"
+version = "0.20.2"
 dependencies = [
  "hatmil",
  "jiff",
@@ -1426,7 +1426,7 @@ checksum = "589f6da84c646204747d1270a2a5661ea66ed1cced2631d546fdfb155959f9ec"
 
 [[package]]
 name = "wyrmcast"
-version = "0.20.1"
+version = "0.20.2"
 dependencies = [
  "anyhow",
  "argh",

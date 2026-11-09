@@ -1,6 +1,7 @@
 // Copyright (C) 2026  Douglas Lau
 //
-use crate::state::{self, MapEvent};
+use crate::event::MapEvent;
+use crate::state;
 use crate::util;
 use jiff::Zoned;
 use squarepeg::{MapGrid, Peg, WebMercatorPos, Wgs84Pos};
@@ -37,7 +38,7 @@ pub struct MapPane {
 impl MapPane {
     /// Get registered map pane by element ID
     pub fn get(id: &str) -> Option<MapPane> {
-        crate::state::map_pane(id)
+        state::map_pane(id)
     }
 
     /// Create a new map on element with ID
@@ -117,7 +118,7 @@ impl MapPane {
     ///
     /// Returns `true` if successful
     pub fn register(self) -> bool {
-        crate::state::register(self)
+        state::register(self)
             .inspect_err(|e| log::warn!("MapPane::register: {e:?}"))
             .is_ok()
     }
@@ -212,7 +213,7 @@ impl MapPane {
         peg_se: Peg,
         offset: (i32, i32),
     ) {
-        if crate::state::set_fetch_progress(true) {
+        if state::set_fetch_progress(true) {
             log::warn!("do_position fetch already in progress");
             return;
         }
@@ -238,7 +239,7 @@ impl MapPane {
         // start fading in new tiles
         self.set_anim(".wyrm-tile { animation: wyrm-fade-in 0.25s forwards; }");
         self.clone().update_position(peg_nw, offset);
-        crate::state::set_fetch_progress(false);
+        state::set_fetch_progress(false);
     }
 
     /// Set wyrm animation style
@@ -256,7 +257,7 @@ impl MapPane {
         self.grab_point = None;
         self.point = (0, 0);
         self.set_offset(offset, false);
-        crate::state::update_map(self);
+        state::update_map(self);
     }
 
     /// Set the map pane offset
@@ -346,7 +347,7 @@ impl MapPane {
             log::warn!("do_fetch_edge_tiles no origin");
             return;
         };
-        if crate::state::set_fetch_progress(true) {
+        if state::set_fetch_progress(true) {
             log::warn!("do_fetch_edge_tiles fetch already in progress");
             return;
         }
@@ -366,7 +367,7 @@ impl MapPane {
         }
         let finish = Zoned::now();
         log::debug!("fetched {n_fetched} edge tiles in {:#}", finish - start);
-        crate::state::set_fetch_progress(false);
+        state::set_fetch_progress(false);
     }
 
     /// Append a tile to the map element

@@ -227,7 +227,8 @@ impl MapPane {
         for key in keys {
             if !state::show_tile(key) {
                 let wyrm = key.fetch().await;
-                n_fetched += state::cache_wyrm(key, wyrm);
+                n_fetched += 1;
+                state::cache_wyrm(key, wyrm);
             }
         }
         let finish = Zoned::now();
@@ -353,20 +354,14 @@ impl MapPane {
         let mut n_fetched = 0;
         let keys = state::missing_keys(peg_nw, peg_se);
         for key in keys {
-            if state::show_tile(key) {
-                let svg = state::render_svg(key, origin);
-                if self.append_tile(&doc, &elem, svg) {
-                    break;
-                }
-            } else {
+            if !state::show_tile(key) {
                 let wyrm = key.fetch().await;
-                if state::cache_wyrm(key, wyrm) > 0 {
-                    n_fetched += 1;
-                    let svg = state::render_svg(key, origin);
-                    if self.append_tile(&doc, &elem, svg) {
-                        break;
-                    }
-                }
+                n_fetched += 1;
+                state::cache_wyrm(key, wyrm);
+            }
+            let svg = state::render_svg(key, origin);
+            if self.append_tile(&doc, &elem, svg) {
+                break;
             }
         }
         let finish = Zoned::now();

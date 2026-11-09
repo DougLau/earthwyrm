@@ -307,11 +307,7 @@ pub fn show_tile(key: TileKey) -> bool {
 }
 
 /// Cache a wyrm tile
-pub fn cache_wyrm(key: TileKey, wyrm: String) -> u32 {
-    if wyrm.is_empty() {
-        log::debug!("cache_wyrm empty! {key:?}");
-        return 0;
-    }
+pub fn cache_wyrm(key: TileKey, wyrm: String) {
     MAP_STATE.with(|rc| {
         if let Some(ref mut state) = *rc.borrow_mut() {
             state.cache.insert_tile(key, wyrm);
@@ -319,7 +315,6 @@ pub fn cache_wyrm(key: TileKey, wyrm: String) -> u32 {
             log::warn!("cache_wyrm: no state");
         }
     });
-    1
 }
 
 /// Render map from cached tiles
